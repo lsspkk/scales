@@ -21,9 +21,21 @@ A web-based musical scale generator that displays scales in G clef notation on a
   - Ledger lines for notes outside the staff
   - No bar lines for clean scale display
 
+## Development: Hot Reload (Live Preview)
+
+For a fast workflow with automatic browser refresh on file changes and minimal disk usage, use npx to run live-server (no install needed):
+
+```sh
+npx live-server
+```
+
+This will open your site in the browser and reload automatically when you edit HTML, CSS, or JS files. No global or local install required; npx downloads and runs it temporarily.
+
+---
+
 ## How to Use
 
-1. Open `index.html` in a web browser
+1. Open `index.html` in a web browser, or use one of the hot reload options above for live development.
 2. Select a key using the key buttons
 3. Choose a mode using the mode buttons, or click "Random Mode"
 4. The canvas will display the selected scale in G clef notation

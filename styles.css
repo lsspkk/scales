@@ -1,10 +1,6 @@
 /* Quick arrow controls for prev/next note and mode */
 .quick-arrows {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  margin: 8px 0 0 0;
-  width: 100%;
+  display: none;
 }
 .arrow-btn {
   flex: 1 1 0;
@@ -24,6 +20,7 @@
 }
 @media (max-width: 768px) {
   .quick-arrows {
+    display: flex;
     width: 100%;
     gap: 6px;
     margin: 8px 0 0 0;
@@ -69,13 +66,7 @@ h1 {
 
 /* Compact header for mobile */
 .compact-controls {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  justify-content: space-between;
-  gap: 8px;
-  margin-bottom: 12px;
-  width: 100%;
+  display: none;
 }
 
 .compact-controls button {
@@ -165,9 +156,20 @@ button.active {
 /* Selection menu styles */
 .selection-menu {
   display: block; /* visible on desktop */
+  width: 1000px;
+  margin: 0 auto;
 }
 
 @media (max-width: 768px) {
+  .compact-controls {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 12px;
+    width: 100%;
+  }
   /* Stack controls and make full width on small screens */
   .compact-controls,
   .selection-summary,

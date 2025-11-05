@@ -219,41 +219,42 @@ class MusicScale {
   drawStaff() {
     const startX = 150
     const endX = this.canvas.width - 50
+    const upperYOffset = -5
+    const lowerYOffset = 5
 
     // Upper staff lines
-    const upperStaffLines = [135, 155, 175, 195, 215] // E, G, B, D, F lines
-
-    // Lower staff lines (150px below upper staff)
-    const lowerStaffLines = [285, 305, 325, 345, 365] // E, G, B, D, F lines
+    const upperStaffLines = [135, 155, 175, 195, 215].map((y) => y + upperYOffset)
+    // Lower staff lines
+    const lowerStaffLines = [285, 305, 325, 345, 365].map((y) => y + lowerYOffset)
 
     this.ctx.strokeStyle = '#000'
     this.ctx.lineWidth = 1
 
-    // Draw upper staff lines
-    upperStaffLines.forEach((y) => {
+    for (const y of upperStaffLines) {
       this.ctx.beginPath()
       this.ctx.moveTo(startX, y)
       this.ctx.lineTo(endX, y)
       this.ctx.stroke()
-    })
-
-    // Draw lower staff lines
-    lowerStaffLines.forEach((y) => {
+    }
+    for (const y of lowerStaffLines) {
       this.ctx.beginPath()
       this.ctx.moveTo(startX, y)
       this.ctx.lineTo(endX, y)
       this.ctx.stroke()
-    })
+    }
+    // Store offsets for use in notes/clefs
+    this.upperYOffset = upperYOffset
+    this.lowerYOffset = lowerYOffset
   }
 
   drawTrebleClef() {
     // Upper staff treble clef
     const x1 = 160
-    const y1 = 175
+    const y1 = 175 + (this.upperYOffset || 0)
 
     // Lower staff treble clef
     const x2 = 160
-    const y2 = 325
+    const y2 = 325 + (this.lowerYOffset || 0)
 
     this.ctx.fillStyle = '#000'
     this.ctx.font = 'bold 80px serif'
@@ -287,10 +288,11 @@ class MusicScale {
     const noteInfo = this.getNoteInfo(note)
     const y = this.getNoteY(noteInfo.noteName, noteInfo.octave, staff, scaleIndex)
 
-    // Draw note head (made bigger)
+    // Draw note head (wider, more elliptical, more rotated ccw)
     this.ctx.fillStyle = '#000'
     this.ctx.beginPath()
-    this.ctx.ellipse(x, y, 10, 8, -Math.PI / 6, 0, 2 * Math.PI) // Increased from 8,6 to 10,8
+    // Make height moderately narrow (6.5 instead of 8 or 5)
+    this.ctx.ellipse(x, y, 10, 6.5, -Math.PI / 6 - 0.087, 0, 2 * Math.PI)
     this.ctx.fill()
 
     // Draw stem (made taller)
@@ -316,53 +318,36 @@ class MusicScale {
     //
   }
   drawLedgerLines(x, y, staff = 'upper') {
+    // Dynamic staff boundaries and spacing
+    let staffLines, staffTop, staffBottom, staffStep
     if (staff === 'upper') {
-      // C6 (middle C) ledger line at y=155
-      if (Math.abs(y - 155) < 2) {
+      staffLines = [135, 155, 175, 195, 215].map((y) => y + (this.upperYOffset || 0))
+    } else {
+      staffLines = [285, 305, 325, 345, 365].map((y) => y + (this.lowerYOffset || 0))
+    }
+    staffTop = staffLines[0]
+    staffBottom = staffLines[4]
+    staffStep = staffLines[1] - staffLines[0] // should be 20
+
+    // Draw ledger lines below staff
+    if (y > staffBottom + 2) {
+      // Draw for every line/space below staff that the note sits on
+      for (let ledgerY = staffBottom + staffStep; ledgerY <= y + 2; ledgerY += staffStep) {
         this.ctx.beginPath()
-        this.ctx.moveTo(x - 15, 155)
-        this.ctx.lineTo(x + 15, 155)
+        this.ctx.moveTo(x - 15, ledgerY)
+        this.ctx.lineTo(x + 15, ledgerY)
         this.ctx.lineWidth = 1
         this.ctx.stroke()
       }
-
-      // Additional ledger lines above upper staff
-      if (y < 135) {
-        for (let ledgerY = 115; ledgerY >= y - 5; ledgerY -= 20) {
-          this.ctx.beginPath()
-          this.ctx.moveTo(x - 15, ledgerY)
-          this.ctx.lineTo(x + 15, ledgerY)
-          this.ctx.stroke()
-        }
-      }
-
-      // Additional ledger lines below upper staff
-      if (y > 215) {
-        for (let ledgerY = 235; ledgerY <= y + 5; ledgerY += 20) {
-          this.ctx.beginPath()
-          this.ctx.moveTo(x - 15, ledgerY)
-          this.ctx.lineTo(x + 15, ledgerY)
-          this.ctx.stroke()
-        }
-      }
-    } else {
-      // Lower staff ledger lines
-      if (y < 285) {
-        for (let ledgerY = 265; ledgerY >= y - 5; ledgerY -= 20) {
-          this.ctx.beginPath()
-          this.ctx.moveTo(x - 15, ledgerY)
-          this.ctx.lineTo(x + 15, ledgerY)
-          this.ctx.stroke()
-        }
-      }
-
-      if (y > 365) {
-        for (let ledgerY = 385; ledgerY <= y + 5; ledgerY += 20) {
-          this.ctx.beginPath()
-          this.ctx.moveTo(x - 15, ledgerY)
-          this.ctx.lineTo(x + 15, ledgerY)
-          this.ctx.stroke()
-        }
+    }
+    // Draw ledger lines above staff
+    if (y < staffTop - 2) {
+      for (let ledgerY = staffTop - staffStep; ledgerY >= y - 2; ledgerY -= staffStep) {
+        this.ctx.beginPath()
+        this.ctx.moveTo(x - 15, ledgerY)
+        this.ctx.lineTo(x + 15, ledgerY)
+        this.ctx.lineWidth = 1
+        this.ctx.stroke()
       }
     }
   }
@@ -418,24 +403,26 @@ class MusicScale {
   getNoteY(noteName, octave, staff = 'upper', scaleIndex = 0) {
     // Define note positions based on staff positions (not semitones)
     // Each position represents where the note sits on the musical staff
+    const upperYOffset = this.upperYOffset || 0
+    const lowerYOffset = this.lowerYOffset || 0
     const noteToStaffPosition = {
-      C: 235, // Ledger line below staff
-      D: 225, // Space below staff
-      E: 215, // Bottom line (1st line)
-      F: 205, // Space between 1st and 2nd line
-      G: 195, // 2nd line
-      A: 185, // Space between 2nd and 3rd line
-      B: 175, // 3rd line (middle line)
+      C: 235 + upperYOffset, // Ledger line below staff
+      D: 225 + upperYOffset, // Space below staff
+      E: 215 + upperYOffset, // Bottom line (1st line)
+      F: 205 + upperYOffset, // Space between 1st and 2nd line
+      G: 195 + upperYOffset, // 2nd line
+      A: 185 + upperYOffset, // Space between 2nd and 3rd line
+      B: 175 + upperYOffset, // 3rd line (middle line)
     }
 
     const lowerNoteToStaffPosition = {
-      C: 385, // Ledger line below lower staff
-      D: 375, // Space below lower staff
-      E: 365, // Bottom line of lower staff
-      F: 355, // Space between 1st and 2nd line
-      G: 345, // 2nd line of lower staff
-      A: 335, // Space between 2nd and 3rd line
-      B: 325, // 3rd line of lower staff
+      C: 385 + lowerYOffset, // Ledger line below lower staff
+      D: 375 + lowerYOffset, // Space below lower staff
+      E: 365 + lowerYOffset, // Bottom line of lower staff
+      F: 355 + lowerYOffset, // Space between 1st and 2nd line
+      G: 345 + lowerYOffset, // 2nd line of lower staff
+      A: 335 + lowerYOffset, // Space between 2nd and 3rd line
+      B: 325 + lowerYOffset, // 3rd line of lower staff
     }
 
     if (staff === 'upper') {
@@ -446,7 +433,7 @@ class MusicScale {
       }
 
       // Get the starting staff position
-      const startY = noteToStaffPosition[this.currentKey] || 235
+      const startY = noteToStaffPosition[this.currentKey] || 235 + upperYOffset
 
       // Calculate staff position steps from the starting note
       const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
@@ -477,7 +464,7 @@ class MusicScale {
         baseNoteName = noteName[0]
       }
 
-      const startY = lowerNoteToStaffPosition[this.currentKey] || 385
+      const startY = lowerNoteToStaffPosition[this.currentKey] || 385 + lowerYOffset
       const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
       const startIndex = noteNames.indexOf(this.currentKey)
       const currentIndex = noteNames.indexOf(baseNoteName)
