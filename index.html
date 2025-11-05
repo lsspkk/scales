@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Kirkkosävellajit</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="container">
+      <h1>Kirkkosävellajit</h1>
+
+      <div class="controls">
+        <!-- Compact mobile-friendly header -->
+        <div class="compact-controls">
+          <button id="menuToggle" class="menu-toggle" aria-expanded="false" aria-controls="selectionMenu">
+            Valitse sävel & moodi ▾
+          </button>
+          <button id="randomBtn" class="random-btn" title="Pick a random mode for the current note">Random</button>
+
+          <div class="quick-arrows">
+            <button id="prevNoteBtn" class="arrow-btn" title="Edellinen sävel" aria-label="Edellinen sävel">
+              <span style="display: inline-flex; align-items: center; justify-content: center; gap: 2px">
+                <svg width="60" height="32" viewBox="0 0 60 32" style="vertical-align: middle" aria-hidden="true">
+                  <!-- Arrow up, longer line, aligned with note -->
+                  <path d="M16 27V9" stroke="#333" stroke-width="2" stroke-linecap="round" />
+                  <path d="M12 13l4-4 4 4" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" />
+                  <!-- Notehead and stem, stem moved up, more right -->
+                  <g transform="rotate(-15 44 25)">
+                    <ellipse cx="43" cy="27" rx="5" ry="3.2" fill="#333" />
+                  </g>
+                  <rect x="48.5" y="5" width="2" height="22" rx="1" fill="#333" />
+                </svg>
+              </span>
+            </button>
+            <button id="nextNoteBtn" class="arrow-btn" title="Seuraava sävel" aria-label="Seuraava sävel">
+              <span style="display: inline-flex; align-items: center; justify-content: center; gap: 2px">
+                <svg width="60" height="32" viewBox="0 0 60 32" style="vertical-align: middle" aria-hidden="true">
+                  <!-- Arrow down, longer line, aligned with note -->
+                  <path d="M16 6v18" stroke="#333" stroke-width="2" stroke-linecap="round" />
+                  <path d="M12 23l4 4 4-4" fill="none" stroke="#333" stroke-width="2" stroke-linecap="round" />
+                  <!-- Notehead and stem, stem moved up, more right -->
+                  <g transform="rotate(-15 44 25)">
+                    <ellipse cx="43" cy="27" rx="5" ry="3.2" fill="#333" />
+                  </g>
+                  <rect x="48.5" y="5" width="2" height="22" rx="1" fill="#333" />
+                </svg>
+              </span>
+            </button>
+            <button id="prevModeBtn" class="arrow-btn" title="Edellinen moodi" aria-label="Edellinen moodi">
+              <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+                <polyline
+                  points="14,6 8,11 14,16"
+                  fill="none"
+                  stroke="#333"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+            <button id="nextModeBtn" class="arrow-btn" title="Seuraava moodi" aria-label="Seuraava moodi">
+              <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+                <polyline
+                  points="8,6 14,11 8,16"
+                  fill="none"
+                  stroke="#333"
+                  stroke-width="2"
+                  stroke-linecap="round"
+                  stroke-linejoin="round"
+                />
+              </svg>
+            </button>
+          </div>
+
+          <div class="selection-summary">
+            <span id="currentSelection">C • Ionian</span>
+          </div>
+        </div>
+
+        <!-- Selection menu (shown inline on desktop, dropdown on mobile) -->
+        <section id="selectionMenu" class="selection-menu" aria-label="Note and mode selection">
+          <div class="button-group note-buttons">
+            <span class="group-label">Alkusävel:</span>
+            <button class="key-btn active" data-key="C">C</button>
+            <button class="key-btn" data-key="D">D</button>
+            <button class="key-btn" data-key="E">E</button>
+            <button class="key-btn" data-key="F">F</button>
+            <button class="key-btn" data-key="G">G</button>
+            <button class="key-btn" data-key="A">A</button>
+            <button class="key-btn" data-key="B">H</button>
+          </div>
+
+          <div class="button-group">
+            <span class="group-label">Mode:</span>
+            <button class="mode-btn active" data-mode="ionian">Ionian (Major)</button>
+            <button class="mode-btn" data-mode="dorian">Dorian</button>
+            <button class="mode-btn" data-mode="phrygian">Phrygian</button>
+            <button class="mode-btn" data-mode="lydian">Lydian</button>
+            <button class="mode-btn" data-mode="mixolydian">Mixolydian</button>
+            <button class="mode-btn" data-mode="aeolian">Aeolian (Minor)</button>
+            <button class="mode-btn" data-mode="locrian">Locrian</button>
+          </div>
+        </section>
+      </div>
+
+      <div class="canvas-viewport">
+        <canvas id="musicCanvas" width="1000" height="500"></canvas>
+      </div>
+    </div>
+
+    <script src="script.js"></script>
+  </body>
+</html>

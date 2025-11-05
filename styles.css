@@ -1,0 +1,257 @@
+/* Quick arrow controls for prev/next note and mode */
+.quick-arrows {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 8px 0 0 0;
+  width: 100%;
+}
+.arrow-btn {
+  flex: 1 1 0;
+  padding: 10px 0;
+  font-size: 1.3em;
+  border: 2px solid #bbb;
+  background: #f8f9fa;
+  color: #333;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: all 0.2s;
+  margin: 0;
+}
+.arrow-btn:hover {
+  background: #e9ecef;
+  border-color: #888;
+}
+@media (max-width: 768px) {
+  .quick-arrows {
+    width: 100%;
+    gap: 6px;
+    margin: 8px 0 0 0;
+  }
+  .arrow-btn {
+    font-size: 1.1em;
+    padding: 12px 0;
+  }
+}
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Arial', sans-serif;
+  background-color: #f5f5f5;
+  padding: 20px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  background-color: white;
+  border-radius: 10px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+  padding: 30px;
+}
+
+h1 {
+  text-align: center;
+  color: #333;
+  margin-bottom: 30px;
+  font-size: 2.5em;
+  padding: 12px 0 18px 0;
+}
+
+.controls {
+  margin-bottom: 30px;
+  padding: 0 8px;
+}
+
+/* Compact header for mobile */
+.compact-controls {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 12px;
+  width: 100%;
+}
+
+.compact-controls button {
+  width: 100%;
+  min-width: 0;
+}
+
+.selection-summary {
+  font-weight: 600;
+  color: #333;
+  width: 100%;
+  text-align: center;
+  padding: 6px 0;
+  box-sizing: border-box;
+}
+
+.compact-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+}
+
+.menu-toggle {
+  background-color: #ffffff;
+  border-color: #ccc;
+}
+
+.button-group {
+  margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  width: 100%;
+}
+
+.button-group .group-label {
+  font-weight: bold;
+  color: #555;
+  min-width: 60px;
+}
+
+button {
+  padding: 10px 15px;
+  border: 2px solid #ddd;
+  background-color: #f8f9fa;
+  color: #333;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.3s ease;
+}
+
+button:hover {
+  background-color: #e9ecef;
+  border-color: #adb5bd;
+}
+
+button.active {
+  background-color: #0056b3;
+  color: white;
+  border-color: #0056b3;
+}
+
+.random-btn {
+  background-color: #1e7e34;
+  color: white;
+  border-color: #1e7e34;
+  font-weight: bold;
+}
+
+.random-btn:hover {
+  background-color: #218838;
+  border-color: #1e7e34;
+}
+
+#musicCanvas {
+  border: 2px solid #333;
+  border-radius: 5px;
+  background-color: #ffffff;
+  display: block;
+  margin: 0 auto;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Selection menu styles */
+.selection-menu {
+  display: block; /* visible on desktop */
+}
+
+@media (max-width: 768px) {
+  /* Stack controls and make full width on small screens */
+  .compact-controls,
+  .selection-summary,
+  .compact-actions,
+  .button-group {
+    width: 100%;
+    min-width: 0;
+  }
+  .button-group {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 8px;
+  }
+  .button-group button {
+    width: 100%;
+    min-width: 0;
+  }
+  /* Dropdown behavior on mobile */
+  .selection-menu {
+    display: none; /* hidden until toggled */
+    background: #fff;
+    border: 1px solid #e0e0e0;
+    border-radius: 8px;
+    padding: 12px;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.08);
+    width: 100%;
+    box-sizing: border-box;
+  }
+  .selection-menu.open {
+    display: block;
+  }
+
+  #musicCanvas {
+    width: 105%;
+    height: auto;
+    margin-left: -25px;
+    margin-right: -25px;
+    /* Remove transform/scale, just use small negative margin to trim edges */
+    transform: none !important;
+  }
+}
+
+/* ===== Canvas viewport scaling for mobile, remove edges ===== */
+.canvas-viewport {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 auto;
+}
+
+@media (max-width: 768px) {
+  /* Remove extra edges from page and container on mobile */
+  body {
+    padding: 0;
+    background-color: #ffffff; /* match canvas background to avoid visible seams */
+  }
+  .container {
+    max-width: none;
+    margin: 0;
+    padding: 0;
+    border-radius: 0;
+    box-shadow: none;
+    background: #ffffff;
+  }
+
+  .selection-summary {
+    margin-top: 10px;
+  }
+  h1,
+  .controls {
+    margin-bottom: 12px;
+  }
+
+  /* Remove canvas edges on mobile */
+  #musicCanvas {
+    border: none;
+    border-radius: 0;
+    box-shadow: none;
+    background-color: #ffffff;
+  }
+  .canvas-viewport {
+    width: 100vw;
+    aspect-ratio: 2 / 1; /* 1000x500 canvas */
+    overflow: hidden; /* hide any white edges */
+    position: relative;
+    background: #ffffff; /* same as canvas */
+  }
+}
