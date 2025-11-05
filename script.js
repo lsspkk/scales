@@ -395,8 +395,26 @@ class MusicScale {
 
     if (accidental === '#') {
       this.ctx.fillText('♯', x, y + 11)
+    } else if (accidental === '##') {
+      // Double sharp (𝄪); fallback to two sharps if glyph unavailable
+      const glyph = '𝄪'
+      if (this.ctx.measureText(glyph).width > 0) {
+        this.ctx.fillText(glyph, x, y + 11)
+      } else {
+        this.ctx.fillText('♯', x - 6, y + 11)
+        this.ctx.fillText('♯', x + 6, y + 11)
+      }
     } else if (accidental === 'b') {
       this.ctx.fillText('♭', x, y + 8)
+    } else if (accidental === 'bb') {
+      // Double flat (𝄫); fallback to two flats if glyph unavailable
+      const glyph = '𝄫'
+      if (this.ctx.measureText(glyph).width > 0) {
+        this.ctx.fillText(glyph, x, y + 8)
+      } else {
+        this.ctx.fillText('♭', x - 6, y + 8)
+        this.ctx.fillText('♭', x + 6, y + 8)
+      }
     }
   }
 
@@ -437,24 +455,34 @@ class MusicScale {
       const letter = scaleLetters[i]
       const base = basePC[letter]
       const delta = (targetPC - base + 12) % 12
-      let accidental = ''
-      if (delta === 1) accidental = '#'
-      else if (delta === 11) accidental = 'b'
-      else if (delta === 0) accidental = ''
-      else {
-        // Fallback for unusual spellings: prefer current accidental style, else default chromatic name
-        if (this.currentAccidentalPreference === 'sharp' && (delta === 1 || delta === 2)) {
-          accidental = '#'
-        } else if (this.currentAccidentalPreference === 'flat' && (delta === 11 || delta === 10)) {
-          accidental = 'b'
-        } else {
+
+      // Map delta to accidental string. Supported: natural(0), #(+1), ##(+2), b(-1=11), bb(-2=10)
+      let accidentalStr
+      switch (delta) {
+        case 0:
+          accidentalStr = ''
+          break
+        case 1:
+          accidentalStr = '#'
+          break
+        case 2:
+          accidentalStr = '##'
+          break
+        case 11:
+          accidentalStr = 'b'
+          break
+        case 10:
+          accidentalStr = 'bb'
+          break
+        default: {
+          // Fallback: use chromatic spelling for the target pitch class according to preference
           const chroma =
             this.currentAccidentalPreference === 'flat' ? this.chromaticNotesFlat : this.chromaticNotesSharp
           scale.push(chroma[targetPC])
           continue
         }
       }
-      scale.push(letter + accidental)
+      scale.push(letter + accidentalStr)
     }
 
     // 6) Add octave
@@ -532,17 +560,14 @@ class MusicScale {
   }
 
   getNoteInfo(note) {
-    let noteName, accidental
-
-    if (note.includes('#')) {
-      noteName = note[0]
-      accidental = '#'
-    } else if (note.includes('b')) {
-      noteName = note[0]
-      accidental = 'b'
-    } else {
-      noteName = note
-      accidental = null
+    // Parse letter and possible accidental (#, ##, b, bb)
+    // Examples: 'Bb', 'C##', 'F', 'Gb'
+    const m = note.match(/^([A-G])(bb|##|b|#)?$/)
+    let noteName = note
+    let accidental = null
+    if (m) {
+      noteName = m[1]
+      accidental = m[2] || null
     }
 
     // Octave is handled by staff positioning, not needed here
