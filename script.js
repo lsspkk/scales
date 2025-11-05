@@ -4,6 +4,7 @@ class MusicScale {
     this.ctx = this.canvas.getContext('2d')
     this.currentKey = 'C'
     this.currentMode = 'ionian'
+    this.currentAccidentalPreference = 'sharp' // 'sharp' or 'flat'
 
     // Note positions on treble clef (pixels from top)
     // First staff (upper)
@@ -70,8 +71,11 @@ class MusicScale {
       locrian: [0, 1, 3, 5, 6, 8, 10],
     }
 
-    // Chromatic notes
-    this.chromaticNotes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+    // Chromatic notes with sharps
+    this.chromaticNotesSharp = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
+    // Chromatic notes with flats
+    this.chromaticNotesFlat = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
 
     this.init()
   }
@@ -86,8 +90,8 @@ class MusicScale {
   }
 
   getKeyList() {
-    // Use the visible keys in the UI, matching the button order
-    return ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+    // All keys in order (sharp keys then flat keys)
+    return ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'C#', 'F', 'Bb', 'Eb', 'Ab', 'Db']
   }
 
   getModeList() {
@@ -107,39 +111,55 @@ class MusicScale {
     }
 
     // Key buttons
-    document.querySelectorAll('.key-btn').forEach((btn) => {
+    for (const btn of document.querySelectorAll('.key-btn')) {
       btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.key-btn').forEach((b) => b.classList.remove('active'))
+        for (const b of document.querySelectorAll('.key-btn')) b.classList.remove('active')
         e.target.classList.add('active')
         this.currentKey = e.target.dataset.key
+        this.currentAccidentalPreference = e.target.dataset.accidental || 'sharp'
         this.drawScale()
         this.updateSelectionSummary()
         // Close menu on mobile after selection
         if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
       })
-    })
+    }
 
     // Mode buttons
-    document.querySelectorAll('.mode-btn').forEach((btn) => {
+    for (const btn of document.querySelectorAll('.mode-btn')) {
       btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.mode-btn').forEach((b) => b.classList.remove('active'))
+        for (const b of document.querySelectorAll('.mode-btn')) b.classList.remove('active')
         e.target.classList.add('active')
         this.currentMode = e.target.dataset.mode
         this.drawScale()
         this.updateSelectionSummary()
         if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
       })
+    }
+
+    // RandomMode button (randomizes mode only)
+    document.getElementById('randomBtn').addEventListener('click', () => {
+      const modes = this.getModeList()
+      const randomMode = modes[Math.floor(Math.random() * modes.length)]
+      for (const b of document.querySelectorAll('.mode-btn')) b.classList.remove('active')
+      const modeBtn = document.querySelector(`[data-mode="${randomMode}"]`)
+      if (modeBtn) modeBtn.classList.add('active')
+      this.currentMode = randomMode
+      this.drawScale()
+      this.updateSelectionSummary()
+      if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
     })
 
-    // Random button
-    document.getElementById('randomBtn').addEventListener('click', () => {
-      const modes = Object.keys(this.modes)
-      const randomMode = modes[Math.floor(Math.random() * modes.length)]
-
-      document.querySelectorAll('.mode-btn').forEach((b) => b.classList.remove('active'))
-      document.querySelector(`[data-mode="${randomMode}"]`).classList.add('active')
-
-      this.currentMode = randomMode
+    // RandomSävel button (randomizes note only)
+    document.getElementById('randomNoteBtn').addEventListener('click', () => {
+      const keys = this.getKeyList()
+      const randomKey = keys[Math.floor(Math.random() * keys.length)]
+      const btn = document.querySelector(`.key-btn[data-key="${randomKey}"]`)
+      if (btn) {
+        for (const b of document.querySelectorAll('.key-btn')) b.classList.remove('active')
+        btn.classList.add('active')
+        this.currentKey = randomKey
+        this.currentAccidentalPreference = btn.dataset.accidental || 'sharp'
+      }
       this.drawScale()
       this.updateSelectionSummary()
       if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
@@ -149,25 +169,35 @@ class MusicScale {
     const prevNoteBtn = document.getElementById('prevNoteBtn')
     const nextNoteBtn = document.getElementById('nextNoteBtn')
     if (prevNoteBtn && nextNoteBtn) {
+      // Down arrow (prevNoteBtn) = go to previous note in the list
       prevNoteBtn.addEventListener('click', () => {
-        const keys = this.getKeyList()
-        let idx = keys.indexOf(this.currentKey)
-        idx = (idx - 1 + keys.length) % keys.length
-        this.currentKey = keys[idx]
-        document.querySelectorAll('.key-btn').forEach((b) => b.classList.remove('active'))
-        const btn = document.querySelector(`.key-btn[data-key="${this.currentKey}"]`)
-        if (btn) btn.classList.add('active')
-        this.drawScale()
-        this.updateSelectionSummary()
-      })
-      nextNoteBtn.addEventListener('click', () => {
         const keys = this.getKeyList()
         let idx = keys.indexOf(this.currentKey)
         idx = (idx + 1) % keys.length
         this.currentKey = keys[idx]
-        document.querySelectorAll('.key-btn').forEach((b) => b.classList.remove('active'))
+        // Update accidental preference based on the new key
         const btn = document.querySelector(`.key-btn[data-key="${this.currentKey}"]`)
-        if (btn) btn.classList.add('active')
+        if (btn) {
+          this.currentAccidentalPreference = btn.dataset.accidental || 'sharp'
+          for (const b of document.querySelectorAll('.key-btn')) b.classList.remove('active')
+          btn.classList.add('active')
+        }
+        this.drawScale()
+        this.updateSelectionSummary()
+      })
+      // Up arrow (nextNoteBtn) = go to next note in the list
+      nextNoteBtn.addEventListener('click', () => {
+        const keys = this.getKeyList()
+        let idx = keys.indexOf(this.currentKey)
+        idx = (idx - 1 + keys.length) % keys.length
+        this.currentKey = keys[idx]
+        // Update accidental preference based on the new key
+        const btn = document.querySelector(`.key-btn[data-key="${this.currentKey}"]`)
+        if (btn) {
+          this.currentAccidentalPreference = btn.dataset.accidental || 'sharp'
+          for (const b of document.querySelectorAll('.key-btn')) b.classList.remove('active')
+          btn.classList.add('active')
+        }
         this.drawScale()
         this.updateSelectionSummary()
       })
@@ -182,7 +212,7 @@ class MusicScale {
         let idx = modes.indexOf(this.currentMode)
         idx = (idx - 1 + modes.length) % modes.length
         this.currentMode = modes[idx]
-        document.querySelectorAll('.mode-btn').forEach((b) => b.classList.remove('active'))
+        for (const b of document.querySelectorAll('.mode-btn')) b.classList.remove('active')
         const btn = document.querySelector(`.mode-btn[data-mode="${this.currentMode}"]`)
         if (btn) btn.classList.add('active')
         this.drawScale()
@@ -193,7 +223,7 @@ class MusicScale {
         let idx = modes.indexOf(this.currentMode)
         idx = (idx + 1) % modes.length
         this.currentMode = modes[idx]
-        document.querySelectorAll('.mode-btn').forEach((b) => b.classList.remove('active'))
+        for (const b of document.querySelectorAll('.mode-btn')) b.classList.remove('active')
         const btn = document.querySelector(`.mode-btn[data-mode="${this.currentMode}"]`)
         if (btn) btn.classList.add('active')
         this.drawScale()
@@ -213,6 +243,8 @@ class MusicScale {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
     this.drawStaff()
     this.drawTrebleClef()
+    // Draw key signature accidentals next to the clef
+    //this.drawKeySignature()
     this.drawNotes()
   }
 
@@ -269,19 +301,23 @@ class MusicScale {
     const noteSpacing = 80
 
     // Draw scale going up on upper staff
-    scale.forEach((note, index) => {
+    let index = 0
+    for (const note of scale) {
       const x = startX + index * noteSpacing
       this.drawNote(x, note, 'upper', index)
-    })
+      index++
+    }
 
     // Draw scale going down on lower staff (from octave to root)
     const reverseScale = [...scale].reverse()
-    reverseScale.forEach((note, index) => {
+    index = 0
+    for (const note of reverseScale) {
       const x = startX + index * noteSpacing
       // Calculate the correct scale index for descending scale
       const descendingIndex = scale.length - 1 - index
       this.drawNote(x, note, 'lower', descendingIndex)
-    })
+      index++
+    }
   }
 
   drawNote(x, note, staff = 'upper', scaleIndex = 0) {
@@ -354,30 +390,145 @@ class MusicScale {
 
   drawAccidental(x, y, accidental) {
     this.ctx.fillStyle = '#000'
-    this.ctx.font = 'bold 30px serif' // Increased from 20px to 30px
+    this.ctx.font = 'bold 38px serif' // Bigger accidental symbols
     this.ctx.textAlign = 'center'
 
     if (accidental === '#') {
-      this.ctx.fillText('♯', x, y + 5)
+      this.ctx.fillText('♯', x, y + 11)
     } else if (accidental === 'b') {
-      this.ctx.fillText('♭', x, y + 5)
+      this.ctx.fillText('♭', x, y + 8)
     }
   }
 
   getScale() {
-    const rootIndex = this.chromaticNotes.indexOf(this.currentKey)
-    const intervals = this.modes[this.currentMode]
+    // Build the scale using mode intervals, then spell by letter with minimal accidentals
+    // 1) Letter cycle and natural pitch classes
+    const letterNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+    const basePC = { C: 0, D: 2, E: 4, F: 5, G: 7, A: 9, B: 11 }
 
-    // Create scale starting from the selected note (7 scale degrees)
-    const scale = intervals.map((interval) => {
-      const noteIndex = (rootIndex + interval) % 12
-      return this.chromaticNotes[noteIndex]
-    })
+    // 2) Intervals for selected mode
+    const intervals = this.modes[this.currentMode] || this.modes.ionian
 
-    // Add the octave note (8th note - same as root but one octave higher)
-    scale.push(this.currentKey)
+    // 3) Helper to compute pitch class of a spelled note (e.g., Bb -> 10)
+    const parsePC = (note) => {
+      const letter = note.replace(/[#b].*$/, '')
+      const acc = note.slice(letter.length)
+      let pc = basePC[letter]
+      for (const ch of acc) {
+        if (ch === '#') pc = (pc + 1) % 12
+        else if (ch === 'b') pc = (pc + 11) % 12
+      }
+      return pc
+    }
 
+    const rootPC = parsePC(this.currentKey)
+
+    // 4) Expected letter sequence starting from tonic letter
+    const rootLetter = this.currentKey.replace(/[#b].*$/, '')
+    let startLetterIdx = letterNames.indexOf(rootLetter)
+    if (startLetterIdx === -1) startLetterIdx = 0
+    const scaleLetters = []
+    for (let i = 0; i < 7; i++) scaleLetters.push(letterNames[(startLetterIdx + i) % 7])
+
+    // 5) Spell each degree: choose accidental so that letter+accidental matches the target pitch class
+    const scale = []
+    for (let i = 0; i < 7; i++) {
+      const targetPC = (rootPC + intervals[i]) % 12
+      const letter = scaleLetters[i]
+      const base = basePC[letter]
+      const delta = (targetPC - base + 12) % 12
+      let accidental = ''
+      if (delta === 1) accidental = '#'
+      else if (delta === 11) accidental = 'b'
+      else if (delta === 0) accidental = ''
+      else {
+        // Fallback for unusual spellings: prefer current accidental style, else default chromatic name
+        if (this.currentAccidentalPreference === 'sharp' && (delta === 1 || delta === 2)) {
+          accidental = '#'
+        } else if (this.currentAccidentalPreference === 'flat' && (delta === 11 || delta === 10)) {
+          accidental = 'b'
+        } else {
+          const chroma =
+            this.currentAccidentalPreference === 'flat' ? this.chromaticNotesFlat : this.chromaticNotesSharp
+          scale.push(chroma[targetPC])
+          continue
+        }
+      }
+      scale.push(letter + accidental)
+    }
+
+    // 6) Add octave
+    scale.push(scale[0])
     return scale
+  }
+
+  // Returns a map of key -> { Letter: accidental }
+  // Example: { Bb: { B: 'b', E: 'b' }, D: { F: '#', C: '#' } }
+  getKeySignatureMap() {
+    return {
+      // Sharps
+      C: {},
+      G: { F: '#' },
+      D: { F: '#', C: '#' },
+      A: { F: '#', C: '#', G: '#' },
+      E: { F: '#', C: '#', G: '#', D: '#' },
+      B: { F: '#', C: '#', G: '#', D: '#', A: '#' },
+      'F#': { F: '#', C: '#', G: '#', D: '#', A: '#', E: '#' },
+      'C#': { F: '#', C: '#', G: '#', D: '#', A: '#', E: '#', B: '#' },
+      // Flats
+      F: { B: 'b' },
+      Bb: { B: 'b', E: 'b' },
+      Eb: { B: 'b', E: 'b', A: 'b' },
+      Ab: { B: 'b', E: 'b', A: 'b', D: 'b' },
+      Db: { B: 'b', E: 'b', A: 'b', D: 'b', G: 'b' },
+      Gb: { B: 'b', E: 'b', A: 'b', D: 'b', G: 'b', C: 'b' },
+      Cb: { B: 'b', E: 'b', A: 'b', D: 'b', G: 'b', C: 'b', F: 'b' },
+    }
+  }
+
+  // Draw the key signature (accidentals next to the clef) for the current key on the upper staff
+  drawKeySignature() {
+    const keySig = this.getKeySignatureMap()[this.currentKey]
+    if (!keySig) return
+
+    // Determine if sharps or flats and the order in which to draw
+    const flatOrder = ['B', 'E', 'A', 'D', 'G', 'C', 'F']
+    const sharpOrder = ['F', 'C', 'G', 'D', 'A', 'E', 'B']
+
+    const isFlatKey = Object.values(keySig).includes('b')
+    const order = isFlatKey ? flatOrder : sharpOrder
+
+    // Build the list of letters to draw in order
+    const lettersToDraw = []
+    for (const letter of order) {
+      if (keySig[letter]) lettersToDraw.push(letter)
+    }
+    if (lettersToDraw.length === 0) return
+
+    // Staff positions (reuse mapping from getNoteY for upper staff)
+    const upperYOffset = this.upperYOffset || 0
+    const noteToStaffPosition = {
+      C: 235 + upperYOffset,
+      D: 225 + upperYOffset,
+      E: 215 + upperYOffset,
+      F: 205 + upperYOffset,
+      G: 195 + upperYOffset,
+      A: 185 + upperYOffset,
+      B: 175 + upperYOffset,
+    }
+
+    // Start drawing just to the right of the treble clef
+    let x = 200
+    for (const letter of lettersToDraw) {
+      const accidental = keySig[letter]
+      const y = noteToStaffPosition[letter] || 195
+      if (accidental === '#') {
+        this.drawAccidental(x, y, '#')
+      } else if (accidental === 'b') {
+        this.drawAccidental(x, y, 'b')
+      }
+      x += 16 // spacing between accidentals
+    }
   }
 
   getNoteInfo(note) {
@@ -432,21 +583,20 @@ class MusicScale {
         baseNoteName = noteName[0]
       }
 
-      // Get the starting staff position
-      const startY = noteToStaffPosition[this.currentKey] || 235 + upperYOffset
+      // Get the starting staff position based on the base letter of current key
+      const keyBaseLetter = this.currentKey.replace(/[#b].*$/, '')
+      const startY = noteToStaffPosition[keyBaseLetter] || 235 + upperYOffset
 
       // Calculate staff position steps from the starting note
       const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-      const startIndex = noteNames.indexOf(this.currentKey)
+      const startIndex = noteNames.indexOf(keyBaseLetter)
       const currentIndex = noteNames.indexOf(baseNoteName)
 
       // Calculate how many staff positions to move
       let staffSteps = 0
-      if (scaleIndex === 0) {
-        staffSteps = 0 // Starting note
-      } else if (scaleIndex === 7) {
+      if (scaleIndex === 7) {
         staffSteps = 7 // Octave - exactly 7 staff positions higher
-      } else {
+      } else if (scaleIndex !== 0) {
         // For scale degrees, calculate based on note name positions
         staffSteps = (currentIndex - startIndex + 7) % 7
         if (currentIndex < startIndex) {
@@ -464,17 +614,16 @@ class MusicScale {
         baseNoteName = noteName[0]
       }
 
-      const startY = lowerNoteToStaffPosition[this.currentKey] || 385 + lowerYOffset
+      const keyBaseLetterLower = this.currentKey.replace(/[#b].*$/, '')
+      const startY = lowerNoteToStaffPosition[keyBaseLetterLower] || 385 + lowerYOffset
       const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-      const startIndex = noteNames.indexOf(this.currentKey)
+      const startIndex = noteNames.indexOf(keyBaseLetterLower)
       const currentIndex = noteNames.indexOf(baseNoteName)
 
       let staffSteps = 0
-      if (scaleIndex === 0) {
-        staffSteps = 0
-      } else if (scaleIndex === 7) {
+      if (scaleIndex === 7) {
         staffSteps = 7
-      } else {
+      } else if (scaleIndex !== 0) {
         staffSteps = (currentIndex - startIndex + 7) % 7
         if (currentIndex < startIndex) {
           staffSteps = currentIndex + (7 - startIndex)

@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Kirkkosävellajit</title>
     <link rel="stylesheet" href="styles.css" />
+    <!-- More readable medieval-style Google Font for h1 -->
+    <link href="https://fonts.googleapis.com/css2?family=MedievalSharp&display=swap" rel="stylesheet" />
   </head>
   <body>
     <div class="container">
@@ -16,7 +18,8 @@
           <button id="menuToggle" class="menu-toggle" aria-expanded="false" aria-controls="selectionMenu">
             Valitse sävel & moodi ▾
           </button>
-          <button id="randomBtn" class="random-btn" title="Pick a random mode for the current note">Random</button>
+          <button id="randomNoteBtn" class="random-note-btn" title="Valitse satunnainen sävel">RandomSävel</button>
+          <button id="randomBtn" class="random-btn" title="Pick a random mode for the current note">RandomMode</button>
 
           <div class="quick-arrows">
             <button id="prevNoteBtn" class="arrow-btn" title="Edellinen sävel" aria-label="Edellinen sävel">
@@ -48,27 +51,37 @@
               </span>
             </button>
             <button id="prevModeBtn" class="arrow-btn" title="Edellinen moodi" aria-label="Edellinen moodi">
-              <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+              <svg width="34" height="34" viewBox="0 0 28 28" aria-hidden="true">
+                <!-- Stylized left chevron with a musical note (mode) glyph, noteheads on right, 2px gap, all moved down 2px -->
                 <polyline
-                  points="14,6 8,11 14,16"
+                  points="16,9 8,16 16,23"
                   fill="none"
                   stroke="#333"
-                  stroke-width="2"
+                  stroke-width="2.5"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
+                <!-- Mode glyph: three stacked noteheads on right, 2px gap from arrow, all moved down 2px -->
+                <ellipse cx="20" cy="12" rx="2.2" ry="1.3" fill="#333" />
+                <ellipse cx="20" cy="16" rx="2.2" ry="1.3" fill="#333" />
+                <ellipse cx="20" cy="20" rx="2.2" ry="1.3" fill="#333" />
               </svg>
             </button>
             <button id="nextModeBtn" class="arrow-btn" title="Seuraava moodi" aria-label="Seuraava moodi">
-              <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true">
+              <svg width="34" height="34" viewBox="0 0 28 28" aria-hidden="true">
+                <!-- Stylized right chevron with a musical note (mode) glyph, noteheads on left, 2px gap, all moved down 2px -->
                 <polyline
-                  points="8,6 14,11 8,16"
+                  points="12,9 20,16 12,23"
                   fill="none"
                   stroke="#333"
-                  stroke-width="2"
+                  stroke-width="2.5"
                   stroke-linecap="round"
                   stroke-linejoin="round"
                 />
+                <!-- Mode glyph: three stacked noteheads on left, 2px gap from arrow, all moved down 2px -->
+                <ellipse cx="8" cy="12" rx="2.2" ry="1.3" fill="#333" />
+                <ellipse cx="8" cy="16" rx="2.2" ry="1.3" fill="#333" />
+                <ellipse cx="8" cy="20" rx="2.2" ry="1.3" fill="#333" />
               </svg>
             </button>
           </div>
@@ -81,24 +94,34 @@
         <!-- Selection menu (shown inline on desktop, dropdown on mobile) -->
         <section id="selectionMenu" class="selection-menu" aria-label="Note and mode selection">
           <div class="button-group note-buttons">
-            <span class="group-label">Alkusävel:</span>
-            <button class="key-btn active" data-key="C">C</button>
-            <button class="key-btn" data-key="D">D</button>
-            <button class="key-btn" data-key="E">E</button>
-            <button class="key-btn" data-key="F">F</button>
-            <button class="key-btn" data-key="G">G</button>
-            <button class="key-btn" data-key="A">A</button>
-            <button class="key-btn" data-key="B">H</button>
+            <span class="group-label">Alkusävel (♯):</span>
+            <button class="key-btn active" data-key="C" data-accidental="sharp">C</button>
+            <button class="key-btn" data-key="G" data-accidental="sharp">G</button>
+            <button class="key-btn" data-key="D" data-accidental="sharp">D</button>
+            <button class="key-btn" data-key="A" data-accidental="sharp">A</button>
+            <button class="key-btn" data-key="E" data-accidental="sharp">E</button>
+            <button class="key-btn" data-key="B" data-accidental="sharp">H</button>
+            <button class="key-btn" data-key="F#" data-accidental="sharp">F♯</button>
+            <button class="key-btn" data-key="C#" data-accidental="sharp">C♯</button>
+          </div>
+
+          <div class="button-group note-buttons">
+            <span class="group-label">Alkusävel (♭):</span>
+            <button class="key-btn" data-key="F" data-accidental="flat">F</button>
+            <button class="key-btn" data-key="Bb" data-accidental="flat">B♭</button>
+            <button class="key-btn" data-key="Eb" data-accidental="flat">E♭</button>
+            <button class="key-btn" data-key="Ab" data-accidental="flat">A♭</button>
+            <button class="key-btn" data-key="Db" data-accidental="flat">D♭</button>
           </div>
 
           <div class="button-group">
-            <span class="group-label">Mode:</span>
-            <button class="mode-btn active" data-mode="ionian">Ionian (Major)</button>
+            <span class="group-label">Moodi:</span>
+            <button class="mode-btn active" data-mode="ionian">Ionian (Duuri)</button>
             <button class="mode-btn" data-mode="dorian">Dorian</button>
             <button class="mode-btn" data-mode="phrygian">Phrygian</button>
             <button class="mode-btn" data-mode="lydian">Lydian</button>
             <button class="mode-btn" data-mode="mixolydian">Mixolydian</button>
-            <button class="mode-btn" data-mode="aeolian">Aeolian (Minor)</button>
+            <button class="mode-btn" data-mode="aeolian">Aeolian (Molli)</button>
             <button class="mode-btn" data-mode="locrian">Locrian</button>
           </div>
         </section>
