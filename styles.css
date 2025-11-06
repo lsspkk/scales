@@ -58,6 +58,44 @@
     font-size: 1.1em;
     padding: 12px 0;
   }
+  /* Note arrow buttons (prev/next note) - blue like RandomSävel */
+  #prevNoteBtn,
+  #nextNoteBtn {
+    background: transparent;
+    color: #3e8ab8;
+    border: 3.5px solid #3e8ab8;
+    box-shadow:
+      0 2px 8px 0 rgba(62,138,184,0.08),
+      inset 0 0 0 5px #e8f4f9;
+  }
+  #prevNoteBtn:active, #prevNoteBtn:focus,
+  #nextNoteBtn:active, #nextNoteBtn:focus {
+    background: #e8f4f9;
+    color: #2a6d91;
+    border-color: #2a6d91;
+    box-shadow:
+      0 4px 16px 0 rgba(62,138,184,0.18),
+      inset 0 0 0 7px #e8f4f9;
+  }
+  /* Mode arrow buttons (prev/next mode) - green like RandomMode */
+  #prevModeBtn,
+  #nextModeBtn {
+    background: transparent;
+    color: #4a8c5e;
+    border: 3.5px solid #4a8c5e;
+    box-shadow:
+      0 2px 8px 0 rgba(74,140,94,0.08),
+      inset 0 0 0 5px #edf7f0;
+  }
+  #prevModeBtn:active, #prevModeBtn:focus,
+  #nextModeBtn:active, #nextModeBtn:focus {
+    background: #edf7f0;
+    color: #357048;
+    border-color: #357048;
+    box-shadow:
+      0 4px 16px 0 rgba(74,140,94,0.18),
+      inset 0 0 0 7px #edf7f0;
+  }
 }
 * {
   margin: 0;
@@ -112,6 +150,12 @@ h1 {
 .compact-controls button {
   width: 100%;
   min-width: 0;
+}
+
+.random-buttons-row {
+  display: flex;
+  gap: 8px;
+  width: 100%;
 }
 
 .selection-summary {
@@ -176,50 +220,50 @@ button.active {
 
 .random-note-btn {
   background: transparent;
-  color: #0074d9;
-  border: 3.5px solid #0074d9;
+  color: #3e8ab8;
+  border: 3.5px solid #3e8ab8;
   font-weight: 500;
   font-size: 1.08em;
   border-radius: 8px;
   box-shadow:
-    0 2px 8px 0 rgba(0,116,217,0.08),
-    inset 0 0 0 5px #e6f7ff;
+    0 2px 8px 0 rgba(62,138,184,0.08),
+    inset 0 0 0 5px #e8f4f9;
   letter-spacing: 0.5px;
   transition: all 0.18s cubic-bezier(.4,1.3,.6,1);
   outline: none;
-  text-shadow: 0 1px 0 #fff, 0 0 6px #b3e0ff;
+  text-shadow: 0 1px 0 #fff, 0 0 6px #c5e3f0;
 }
 .random-note-btn:hover, .random-note-btn:focus {
-  background: #e6f7ff;
-  color: #005fa3;
-  border-color: #005fa3;
+  background: #e8f4f9;
+  color: #2a6d91;
+  border-color: #2a6d91;
   box-shadow:
-    0 4px 16px 0 rgba(0,116,217,0.18),
-    inset 0 0 0 7px #e6f7ff;
+    0 4px 16px 0 rgba(62,138,184,0.18),
+    inset 0 0 0 7px #e8f4f9;
 }
 
 .random-btn {
   background: transparent;
-  color: #1e7e34;
-  border: 3.5px solid #1e7e34;
+  color: #4a8c5e;
+  border: 3.5px solid #4a8c5e;
   font-weight: 500;
   font-size: 1.08em;
   border-radius: 8px;
   box-shadow:
-    0 2px 8px 0 rgba(30,126,52,0.08),
-    inset 0 0 0 5px #eafff2;
+    0 2px 8px 0 rgba(74,140,94,0.08),
+    inset 0 0 0 5px #edf7f0;
   letter-spacing: 0.5px;
   transition: all 0.18s cubic-bezier(.4,1.3,.6,1);
   outline: none;
-  text-shadow: 0 1px 0 #fff, 0 0 6px #b3ffcc;
+  text-shadow: 0 1px 0 #fff, 0 0 6px #c8e6d2;
 }
 .random-btn:hover, .random-btn:focus {
-  background: #eafff2;
-  color: #218838;
-  border-color: #218838;
+  background: #edf7f0;
+  color: #357048;
+  border-color: #357048;
   box-shadow:
-    0 4px 16px 0 rgba(30,126,52,0.18),
-    inset 0 0 0 7px #eafff2;
+    0 4px 16px 0 rgba(74,140,94,0.18),
+    inset 0 0 0 7px #edf7f0;
 }
 
 #musicCanvas {
@@ -247,6 +291,17 @@ button.active {
     gap: 8px;
     margin-bottom: 12px;
     width: 100%;
+  }
+  /* Random buttons side by side on mobile */
+  .random-buttons-row {
+    display: flex;
+    gap: 8px;
+    width: 100%;
+  }
+  .random-buttons-row .random-note-btn,
+  .random-buttons-row .random-btn {
+    flex: 1;
+    width: auto;
   }
   /* Stack controls and make full width on small screens */
   .compact-controls,
