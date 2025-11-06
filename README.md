@@ -47,7 +47,18 @@ This will open your site in the browser and reload automatically when you edit H
 - `script.js` - MusicScale class with canvas drawing and music theory logic
 - `events.js` - Event handlers and user interaction listeners
 - `README.md` - This documentation
+- `LICENSE` - MIT License
 
 ## Technical Details
 
 The application uses HTML5 Canvas for rendering musical notation, with precise positioning for notes, accidentals, and staff elements. The scale generation follows proper music theory with accurate interval patterns for each mode.
+
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Credits
+
+Created by **lsspkk** using AI agents in [Vibe Coding](https://cursor.com/) fashion.
+
+This project demonstrates modern AI-assisted development, where developers collaborate with AI coding agents to rapidly build full-featured applications. The entire codebase, from music theory algorithms to responsive UI, was created through natural language conversations with AI.
