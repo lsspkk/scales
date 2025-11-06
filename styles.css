@@ -12,12 +12,6 @@
     margin-right: auto;
   }
 }
-@media (max-width: 600px) {
-  h1 {
-    font-size: 1.3em;
-    padding: 8px 0 10px 0;
-  }
-}
 /* Quick arrow controls for prev/next note and mode */
 .quick-arrows {
   display: none;
@@ -41,7 +35,6 @@
   box-shadow:
     0 4px 16px 0 rgba(0,0,0,0.12),
     inset 0 0 0 7px #e0f0ff;
-}
 }
 .arrow-btn:hover {
   background: #e9ecef;
@@ -106,7 +99,7 @@
 body {
   font-family: 'Arial', sans-serif;
   background: #fff;
-  padding: 20px;
+  padding: 0 20px 20px 20px;
 }
 
 .container {
@@ -115,14 +108,14 @@ body {
   background: #fff;
   border-radius: 10px;
   box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-  padding: 30px;
+  padding: 0 30px 30px 30px;
 }
 
 h1 {
   width: 100%;
   text-align: center;
   color: #5a2d0c;
-  margin-bottom: 30px;
+  margin: 0 0 30px 0;
   font-size: 2.5em;
   padding: 22px 0 28px 0;
   font-family: 'MedievalSharp', 'Times New Roman', Times, serif;
@@ -165,6 +158,29 @@ h1 {
   text-align: center;
   padding: 6px 0;
   box-sizing: border-box;
+}
+
+.mode-explanation {
+  font-size: 0.9em;
+  color: #666;
+  width: 100%;
+  text-align: center;
+  padding: 4px 0 2px 0;
+  box-sizing: border-box;
+  font-style: italic;
+}
+
+/* Mobile version inherits visibility from compact-controls */
+.mode-explanation-mobile {
+  display: block;
+}
+
+/* Desktop version shown by default */
+.mode-explanation-desktop {
+  display: block;
+  margin-top: 10px;
+  padding: 8px 0;
+  text-align: left;
 }
 
 .compact-actions {
@@ -283,6 +299,11 @@ button.active {
 }
 
 @media (max-width: 768px) {
+  /* Hide desktop version of mode explanation on mobile */
+  .mode-explanation-desktop {
+    display: none;
+  }
+  
   .compact-controls {
     display: flex;
     flex-direction: column;
@@ -378,7 +399,11 @@ button.active {
   .selection-summary {
     margin-top: 10px;
   }
-  h1,
+  h1 {
+    font-size: 1.7em;
+    padding: 8px 0 10px 0;
+    margin-bottom: 12px;
+  }
   .controls {
     margin-bottom: 12px;
   }

@@ -76,17 +76,6 @@ class MusicScale {
 
     // Chromatic notes with flats
     this.chromaticNotesFlat = ['C', 'Db', 'D', 'Eb', 'E', 'F', 'Gb', 'G', 'Ab', 'A', 'Bb', 'B']
-
-    this.init()
-  }
-
-  init() {
-    this.setupEventListeners()
-    // Ensure canvas is ready and draw the initial scale
-    setTimeout(() => {
-      this.drawScale()
-      this.updateSelectionSummary()
-    }, 100)
   }
 
   getKeyList() {
@@ -99,137 +88,18 @@ class MusicScale {
     return ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'aeolian', 'locrian']
   }
 
-  setupEventListeners() {
-    const selectionMenu = document.getElementById('selectionMenu')
-    const menuToggle = document.getElementById('menuToggle')
-
-    if (menuToggle && selectionMenu) {
-      menuToggle.addEventListener('click', () => {
-        const isOpen = selectionMenu.classList.toggle('open')
-        menuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false')
-      })
+  getModeDegree() {
+    // Returns which scale degree of the major scale is used as the starting note
+    const modeDegrees = {
+      ionian: 1,
+      dorian: 2,
+      phrygian: 3,
+      lydian: 4,
+      mixolydian: 5,
+      aeolian: 6,
+      locrian: 7,
     }
-
-    // Key buttons
-    for (const btn of document.querySelectorAll('.key-btn')) {
-      btn.addEventListener('click', (e) => {
-        for (const b of document.querySelectorAll('.key-btn')) b.classList.remove('active')
-        e.target.classList.add('active')
-        this.currentKey = e.target.dataset.key
-        this.currentAccidentalPreference = e.target.dataset.accidental || 'sharp'
-        this.drawScale()
-        this.updateSelectionSummary()
-        // Close menu on mobile after selection
-        if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
-      })
-    }
-
-    // Mode buttons
-    for (const btn of document.querySelectorAll('.mode-btn')) {
-      btn.addEventListener('click', (e) => {
-        for (const b of document.querySelectorAll('.mode-btn')) b.classList.remove('active')
-        e.target.classList.add('active')
-        this.currentMode = e.target.dataset.mode
-        this.drawScale()
-        this.updateSelectionSummary()
-        if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
-      })
-    }
-
-    // RandomMode button (randomizes mode only)
-    document.getElementById('randomBtn').addEventListener('click', () => {
-      const modes = this.getModeList()
-      const randomMode = modes[Math.floor(Math.random() * modes.length)]
-      for (const b of document.querySelectorAll('.mode-btn')) b.classList.remove('active')
-      const modeBtn = document.querySelector(`[data-mode="${randomMode}"]`)
-      if (modeBtn) modeBtn.classList.add('active')
-      this.currentMode = randomMode
-      this.drawScale()
-      this.updateSelectionSummary()
-      if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
-    })
-
-    // RandomSävel button (randomizes note only)
-    document.getElementById('randomNoteBtn').addEventListener('click', () => {
-      const keys = this.getKeyList()
-      const randomKey = keys[Math.floor(Math.random() * keys.length)]
-      const btn = document.querySelector(`.key-btn[data-key="${randomKey}"]`)
-      if (btn) {
-        for (const b of document.querySelectorAll('.key-btn')) b.classList.remove('active')
-        btn.classList.add('active')
-        this.currentKey = randomKey
-        this.currentAccidentalPreference = btn.dataset.accidental || 'sharp'
-      }
-      this.drawScale()
-      this.updateSelectionSummary()
-      if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
-    })
-
-    // Previous/Next note buttons
-    const prevNoteBtn = document.getElementById('prevNoteBtn')
-    const nextNoteBtn = document.getElementById('nextNoteBtn')
-    if (prevNoteBtn && nextNoteBtn) {
-      // Down arrow (prevNoteBtn) = go to previous note in the list
-      prevNoteBtn.addEventListener('click', () => {
-        const keys = this.getKeyList()
-        let idx = keys.indexOf(this.currentKey)
-        idx = (idx + 1) % keys.length
-        this.currentKey = keys[idx]
-        // Update accidental preference based on the new key
-        const btn = document.querySelector(`.key-btn[data-key="${this.currentKey}"]`)
-        if (btn) {
-          this.currentAccidentalPreference = btn.dataset.accidental || 'sharp'
-          for (const b of document.querySelectorAll('.key-btn')) b.classList.remove('active')
-          btn.classList.add('active')
-        }
-        this.drawScale()
-        this.updateSelectionSummary()
-      })
-      // Up arrow (nextNoteBtn) = go to next note in the list
-      nextNoteBtn.addEventListener('click', () => {
-        const keys = this.getKeyList()
-        let idx = keys.indexOf(this.currentKey)
-        idx = (idx - 1 + keys.length) % keys.length
-        this.currentKey = keys[idx]
-        // Update accidental preference based on the new key
-        const btn = document.querySelector(`.key-btn[data-key="${this.currentKey}"]`)
-        if (btn) {
-          this.currentAccidentalPreference = btn.dataset.accidental || 'sharp'
-          for (const b of document.querySelectorAll('.key-btn')) b.classList.remove('active')
-          btn.classList.add('active')
-        }
-        this.drawScale()
-        this.updateSelectionSummary()
-      })
-    }
-
-    // Previous/Next mode buttons
-    const prevModeBtn = document.getElementById('prevModeBtn')
-    const nextModeBtn = document.getElementById('nextModeBtn')
-    if (prevModeBtn && nextModeBtn) {
-      prevModeBtn.addEventListener('click', () => {
-        const modes = this.getModeList()
-        let idx = modes.indexOf(this.currentMode)
-        idx = (idx - 1 + modes.length) % modes.length
-        this.currentMode = modes[idx]
-        for (const b of document.querySelectorAll('.mode-btn')) b.classList.remove('active')
-        const btn = document.querySelector(`.mode-btn[data-mode="${this.currentMode}"]`)
-        if (btn) btn.classList.add('active')
-        this.drawScale()
-        this.updateSelectionSummary()
-      })
-      nextModeBtn.addEventListener('click', () => {
-        const modes = this.getModeList()
-        let idx = modes.indexOf(this.currentMode)
-        idx = (idx + 1) % modes.length
-        this.currentMode = modes[idx]
-        for (const b of document.querySelectorAll('.mode-btn')) b.classList.remove('active')
-        const btn = document.querySelector(`.mode-btn[data-mode="${this.currentMode}"]`)
-        if (btn) btn.classList.add('active')
-        this.drawScale()
-        this.updateSelectionSummary()
-      })
-    }
+    return modeDegrees[this.currentMode] || 1
   }
 
   updateSelectionSummary() {
@@ -237,6 +107,20 @@ class MusicScale {
     if (!summary) return
     const formattedMode = this.currentMode.charAt(0).toUpperCase() + this.currentMode.slice(1)
     summary.textContent = `${this.currentKey} • ${formattedMode}`
+
+    // Update mode explanation (both mobile and desktop versions)
+    const degree = this.getModeDegree()
+    const explanationText = `Alkusävel on duurin ${degree}. sävel`
+    
+    const explanationMobile = document.getElementById('modeExplanation')
+    if (explanationMobile) {
+      explanationMobile.textContent = explanationText
+    }
+    
+    const explanationDesktop = document.getElementById('modeExplanationDesktop')
+    if (explanationDesktop) {
+      explanationDesktop.textContent = explanationText
+    }
   }
 
   drawScale() {
@@ -249,18 +133,18 @@ class MusicScale {
   }
 
   drawStaff() {
-    const startX = 150
-    const endX = this.canvas.width - 50
-    const upperYOffset = -5
-    const lowerYOffset = 5
+    const startX = 80
+    const endX = this.canvas.width - 30
+    const upperYOffset = 10
+    const lowerYOffset = 10
 
-    // Upper staff lines
-    const upperStaffLines = [135, 155, 175, 195, 215].map((y) => y + upperYOffset)
-    // Lower staff lines
-    const lowerStaffLines = [285, 305, 325, 345, 365].map((y) => y + lowerYOffset)
+    // Upper staff lines (increased spacing from 20 to 25 pixels)
+    const upperStaffLines = [95, 120, 145, 170, 195].map((y) => y + upperYOffset)
+    // Lower staff lines (moved closer, increased spacing)
+    const lowerStaffLines = [265, 290, 315, 340, 365].map((y) => y + lowerYOffset)
 
     this.ctx.strokeStyle = '#000'
-    this.ctx.lineWidth = 1
+    this.ctx.lineWidth = 1.5
 
     for (const y of upperStaffLines) {
       this.ctx.beginPath()
@@ -281,15 +165,15 @@ class MusicScale {
 
   drawTrebleClef() {
     // Upper staff treble clef
-    const x1 = 160
-    const y1 = 175 + (this.upperYOffset || 0)
+    const x1 = 100
+    const y1 = 163 + (this.upperYOffset || 0)
 
     // Lower staff treble clef
-    const x2 = 160
-    const y2 = 325 + (this.lowerYOffset || 0)
+    const x2 = 100
+    const y2 = 333 + (this.lowerYOffset || 0)
 
     this.ctx.fillStyle = '#000'
-    this.ctx.font = 'bold 80px serif'
+    this.ctx.font = 'bold 105px serif'
     this.ctx.textAlign = 'center'
     this.ctx.fillText('𝄞', x1, y1)
     this.ctx.fillText('𝄞', x2, y2)
@@ -297,8 +181,8 @@ class MusicScale {
 
   drawNotes() {
     const scale = this.getScale()
-    const startX = 250
-    const noteSpacing = 80
+    const startX = 190
+    const noteSpacing = 100
 
     // Draw scale going up on upper staff
     let index = 0
@@ -327,15 +211,15 @@ class MusicScale {
     // Draw note head (wider, more elliptical, more rotated ccw)
     this.ctx.fillStyle = '#000'
     this.ctx.beginPath()
-    // Make height moderately narrow (6.5 instead of 8 or 5)
-    this.ctx.ellipse(x, y, 10, 6.5, -Math.PI / 6 - 0.087, 0, 2 * Math.PI)
+    // Bigger note heads
+    this.ctx.ellipse(x, y, 13, 8.5, -Math.PI / 6 - 0.087, 0, 2 * Math.PI)
     this.ctx.fill()
 
     // Draw stem (made taller)
     this.ctx.beginPath()
-    this.ctx.moveTo(x + 7, y)
-    this.ctx.lineTo(x + 7, y - 50) // Increased from 30 to 50
-    this.ctx.lineWidth = 1.5
+    this.ctx.moveTo(x + 9, y)
+    this.ctx.lineTo(x + 9, y - 62)
+    this.ctx.lineWidth = 2
     this.ctx.stroke()
 
     // Draw ledger lines if needed
@@ -343,7 +227,7 @@ class MusicScale {
 
     // Draw accidentals (made bigger)
     if (noteInfo.accidental) {
-      this.drawAccidental(x - 25, y, noteInfo.accidental)
+      this.drawAccidental(x - 32, y, noteInfo.accidental)
     }
 
     // DEBUG: Draw position number next to note head for debugging
@@ -357,22 +241,22 @@ class MusicScale {
     // Dynamic staff boundaries and spacing
     let staffLines, staffTop, staffBottom, staffStep
     if (staff === 'upper') {
-      staffLines = [135, 155, 175, 195, 215].map((y) => y + (this.upperYOffset || 0))
+      staffLines = [95, 120, 145, 170, 195].map((y) => y + (this.upperYOffset || 0))
     } else {
-      staffLines = [285, 305, 325, 345, 365].map((y) => y + (this.lowerYOffset || 0))
+      staffLines = [265, 290, 315, 340, 365].map((y) => y + (this.lowerYOffset || 0))
     }
     staffTop = staffLines[0]
     staffBottom = staffLines[4]
-    staffStep = staffLines[1] - staffLines[0] // should be 20
+    staffStep = staffLines[1] - staffLines[0] // should be 25
 
     // Draw ledger lines below staff
     if (y > staffBottom + 2) {
       // Draw for every line/space below staff that the note sits on
       for (let ledgerY = staffBottom + staffStep; ledgerY <= y + 2; ledgerY += staffStep) {
         this.ctx.beginPath()
-        this.ctx.moveTo(x - 15, ledgerY)
-        this.ctx.lineTo(x + 15, ledgerY)
-        this.ctx.lineWidth = 1
+        this.ctx.moveTo(x - 20, ledgerY)
+        this.ctx.lineTo(x + 20, ledgerY)
+        this.ctx.lineWidth = 1.5
         this.ctx.stroke()
       }
     }
@@ -380,9 +264,9 @@ class MusicScale {
     if (y < staffTop - 2) {
       for (let ledgerY = staffTop - staffStep; ledgerY >= y - 2; ledgerY -= staffStep) {
         this.ctx.beginPath()
-        this.ctx.moveTo(x - 15, ledgerY)
-        this.ctx.lineTo(x + 15, ledgerY)
-        this.ctx.lineWidth = 1
+        this.ctx.moveTo(x - 20, ledgerY)
+        this.ctx.lineTo(x + 20, ledgerY)
+        this.ctx.lineWidth = 1.5
         this.ctx.stroke()
       }
     }
@@ -390,30 +274,30 @@ class MusicScale {
 
   drawAccidental(x, y, accidental) {
     this.ctx.fillStyle = '#000'
-    this.ctx.font = 'bold 38px serif' // Bigger accidental symbols
+    this.ctx.font = 'bold 48px serif' // Bigger accidental symbols
     this.ctx.textAlign = 'center'
 
     if (accidental === '#') {
-      this.ctx.fillText('♯', x, y + 11)
+      this.ctx.fillText('♯', x, y + 14)
     } else if (accidental === '##') {
       // Double sharp (𝄪); fallback to two sharps if glyph unavailable
       const glyph = '𝄪'
       if (this.ctx.measureText(glyph).width > 0) {
-        this.ctx.fillText(glyph, x, y + 11)
+        this.ctx.fillText(glyph, x, y + 14)
       } else {
-        this.ctx.fillText('♯', x - 6, y + 11)
-        this.ctx.fillText('♯', x + 6, y + 11)
+        this.ctx.fillText('♯', x - 8, y + 14)
+        this.ctx.fillText('♯', x + 8, y + 14)
       }
     } else if (accidental === 'b') {
-      this.ctx.fillText('♭', x, y + 8)
+      this.ctx.fillText('♭', x, y + 10)
     } else if (accidental === 'bb') {
       // Double flat (𝄫); fallback to two flats if glyph unavailable
       const glyph = '𝄫'
       if (this.ctx.measureText(glyph).width > 0) {
-        this.ctx.fillText(glyph, x, y + 8)
+        this.ctx.fillText(glyph, x, y + 10)
       } else {
-        this.ctx.fillText('♭', x - 6, y + 8)
-        this.ctx.fillText('♭', x + 6, y + 8)
+        this.ctx.fillText('♭', x - 8, y + 10)
+        this.ctx.fillText('♭', x + 8, y + 10)
       }
     }
   }
@@ -582,22 +466,22 @@ class MusicScale {
     const upperYOffset = this.upperYOffset || 0
     const lowerYOffset = this.lowerYOffset || 0
     const noteToStaffPosition = {
-      C: 235 + upperYOffset, // Ledger line below staff
-      D: 225 + upperYOffset, // Space below staff
-      E: 215 + upperYOffset, // Bottom line (1st line)
-      F: 205 + upperYOffset, // Space between 1st and 2nd line
-      G: 195 + upperYOffset, // 2nd line
-      A: 185 + upperYOffset, // Space between 2nd and 3rd line
-      B: 175 + upperYOffset, // 3rd line (middle line)
+      C: 230 + upperYOffset, // Ledger line below staff
+      D: 218 + upperYOffset, // Space below staff
+      E: 205 + upperYOffset, // Bottom line (1st line)
+      F: 193 + upperYOffset, // Space between 1st and 2nd line
+      G: 180 + upperYOffset, // 2nd line
+      A: 168 + upperYOffset, // Space between 2nd and 3rd line
+      B: 155 + upperYOffset, // 3rd line (middle line)
     }
 
     const lowerNoteToStaffPosition = {
-      C: 385 + lowerYOffset, // Ledger line below lower staff
-      D: 375 + lowerYOffset, // Space below lower staff
-      E: 365 + lowerYOffset, // Bottom line of lower staff
-      F: 355 + lowerYOffset, // Space between 1st and 2nd line
-      G: 345 + lowerYOffset, // 2nd line of lower staff
-      A: 335 + lowerYOffset, // Space between 2nd and 3rd line
+      C: 400 + lowerYOffset, // Ledger line below lower staff
+      D: 388 + lowerYOffset, // Space below lower staff
+      E: 375 + lowerYOffset, // Bottom line of lower staff
+      F: 363 + lowerYOffset, // Space between 1st and 2nd line
+      G: 350 + lowerYOffset, // 2nd line of lower staff
+      A: 338 + lowerYOffset, // Space between 2nd and 3rd line
       B: 325 + lowerYOffset, // 3rd line of lower staff
     }
 
@@ -629,8 +513,8 @@ class MusicScale {
         }
       }
 
-      // Each staff position is 10 pixels apart
-      const baseY = startY - staffSteps * 10
+      // Each staff position is 12.5 pixels apart
+      const baseY = startY - staffSteps * 12.5
       return baseY
     } else {
       // Lower staff - same logic
@@ -655,18 +539,8 @@ class MusicScale {
         }
       }
 
-      const baseY = startY - staffSteps * 10
+      const baseY = startY - staffSteps * 12.5
       return baseY
     }
   }
 }
-
-// Initialize the application when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-  const musicScale = new MusicScale('musicCanvas')
-
-  // Ensure the C major scale is displayed immediately
-  window.addEventListener('load', () => {
-    musicScale.drawScale()
-  })
-})
