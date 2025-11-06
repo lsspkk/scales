@@ -76,8 +76,6 @@ class MusicScale {
     this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height)
     this.drawStaff()
     this.drawTrebleClef()
-    // Draw key signature accidentals next to the clef
-    //this.drawKeySignature()
     this.drawNotes()
   }
 
@@ -159,12 +157,22 @@ class MusicScale {
     this.ctx.ellipse(x, y, 13, 8.5, -Math.PI / 6 - 0.087, 0, 2 * Math.PI)
     this.ctx.fill()
 
-    // Draw stem (made taller)
-    this.ctx.beginPath()
-    this.ctx.moveTo(x + 9, y)
-    this.ctx.lineTo(x + 9, y - 62)
-    this.ctx.lineWidth = 2
-    this.ctx.stroke()
+    // Draw stem: if note is on/at/below B line, stem down and left; else, stem up and right
+    // B line is y >= 155 (upper staff) or y >= 155 + STAFF_GAP (lower staff)
+    const bLineY = staff === 'upper' ? 155 : 155 + this.STAFF_GAP
+    if (y < bLineY) {
+      this.ctx.beginPath()
+      this.ctx.moveTo(x - 9, y)
+      this.ctx.lineTo(x - 9, y + 70)
+      this.ctx.lineWidth = 2
+      this.ctx.stroke()
+    } else {
+      this.ctx.beginPath()
+      this.ctx.moveTo(x + 9, y)
+      this.ctx.lineTo(x + 9, y - 70)
+      this.ctx.lineWidth = 2
+      this.ctx.stroke()
+    }
 
     // Draw ledger lines if needed
     this.drawLedgerLines(x, y, staff)
@@ -284,32 +292,8 @@ class MusicScale {
       const base = basePC[letter]
       const delta = (targetPC - base + 12) % 12
 
-      // Map delta to accidental string. Supported: natural(0), #(+1), ##(+2), b(-1=11), bb(-2=10)
-      let accidentalStr
-      switch (delta) {
-        case 0:
-          accidentalStr = ''
-          break
-        case 1:
-          accidentalStr = '#'
-          break
-        case 2:
-          accidentalStr = '##'
-          break
-        case 11:
-          accidentalStr = 'b'
-          break
-        case 10:
-          accidentalStr = 'bb'
-          break
-        default: {
-          // Fallback: use chromatic spelling for the target pitch class according to preference
-          const chroma =
-            this.currentAccidentalPreference === 'flat' ? this.chromaticNotesFlat : this.chromaticNotesSharp
-          scale.push(chroma[targetPC])
-          continue
-        }
-      }
+      // Use helper to get accidental string
+      const accidentalStr = this.getAccidentalString(delta, letter)
       scale.push(letter + accidentalStr)
     }
 
@@ -318,6 +302,22 @@ class MusicScale {
     return scale
   }
 
+  // Helper to map delta to accidental string, throws on unsupported
+  getAccidentalString(delta, letter) {
+    const accidentalMap = {
+      0: '',
+      1: '#',
+      2: '##',
+      11: 'b',
+      10: 'bb',
+    }
+    if (delta in accidentalMap) {
+      return accidentalMap[delta]
+    }
+    throw new Error(
+      `Unsupported accidental delta (${delta}) for ${letter} in key ${this.currentKey}, mode ${this.currentMode}`
+    )
+  }
   // Returns a map of key -> { Letter: accidental }
   // Example: { Bb: { B: 'b', E: 'b' }, D: { F: '#', C: '#' } }
   getKeySignatureMap() {
@@ -342,51 +342,6 @@ class MusicScale {
     }
   }
 
-  // Draw the key signature (accidentals next to the clef) for the current key on the upper staff
-  drawKeySignature() {
-    const keySig = this.getKeySignatureMap()[this.currentKey]
-    if (!keySig) return
-
-    // Determine if sharps or flats and the order in which to draw
-    const flatOrder = ['B', 'E', 'A', 'D', 'G', 'C', 'F']
-    const sharpOrder = ['F', 'C', 'G', 'D', 'A', 'E', 'B']
-
-    const isFlatKey = Object.values(keySig).includes('b')
-    const order = isFlatKey ? flatOrder : sharpOrder
-
-    // Build the list of letters to draw in order
-    const lettersToDraw = []
-    for (const letter of order) {
-      if (keySig[letter]) lettersToDraw.push(letter)
-    }
-    if (lettersToDraw.length === 0) return
-
-    // Staff positions (reuse mapping from getNoteY for upper staff)
-    con = th || 0
-    const noteToStaffPosition = {
-      C: 235,
-      D: 225,
-      E: 215,
-      F: 205,
-      G: 195,
-      A: 185,
-      B: 175,
-    }
-
-    // Start drawing just to the right of the treble clef
-    let x = 200
-    for (const letter of lettersToDraw) {
-      const accidental = keySig[letter]
-      const y = noteToStaffPosition[letter] || 195
-      if (accidental === '#') {
-        this.drawAccidental(x, y, '#')
-      } else if (accidental === 'b') {
-        this.drawAccidental(x, y, 'b')
-      }
-      x += 16 // spacing between accidentals
-    }
-  }
-
   getNoteInfo(note) {
     // Parse letter and possible accidental (#, ##, b, bb)
     // Examples: 'Bb', 'C##', 'F', 'Gb'
@@ -404,6 +359,27 @@ class MusicScale {
     return { noteName, accidental, octave }
   }
 
+  // Calculate staff steps: how many note positions from key letter to target note letter
+  // Returns the diatonic distance (0-6), with special case scaleIndex=7 for octave
+  calculateStaffSteps(keyLetter, noteLetter, scaleIndex) {
+    const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
+    const startIndex = noteNames.indexOf(keyLetter)
+    const currentIndex = noteNames.indexOf(noteLetter)
+
+    let staffSteps = 0
+    if (scaleIndex === 7) {
+      // Octave: exactly 7 staff positions (one full cycle)
+      staffSteps = 7
+    } else if (scaleIndex !== 0) {
+      // Regular scale degree: count steps between key letter and note letter
+      staffSteps = (currentIndex - startIndex + 7) % 7
+      if (currentIndex < startIndex) {
+        staffSteps = currentIndex + (7 - startIndex)
+      }
+    }
+    return staffSteps
+  }
+
   getNoteY(noteName, octave, staff = 'upper', scaleIndex = 0) {
     // Define note positions based on staff positions (not semitones)
     // Each position represents where the note sits on the musical staff
@@ -417,50 +393,27 @@ class MusicScale {
       B: 155, // 3rd line (middle line)
     }
 
-    if (staff === 'upper') {
-      // ...existing code...
-      let baseNoteName = noteName
-      if (noteName.includes('#') || noteName.includes('b')) {
-        baseNoteName = noteName[0]
-      }
-      const keyBaseLetter = this.currentKey.replace(/[#b].*$/, '')
-      const startY = noteToStaffPosition[keyBaseLetter] || 235
-      const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-      const startIndex = noteNames.indexOf(keyBaseLetter)
-      const currentIndex = noteNames.indexOf(baseNoteName)
-      let staffSteps = 0
-      if (scaleIndex === 7) {
-        staffSteps = 7
-      } else if (scaleIndex !== 0) {
-        staffSteps = (currentIndex - startIndex + 7) % 7
-        if (currentIndex < startIndex) {
-          staffSteps = currentIndex + (7 - startIndex)
-        }
-      }
-      const baseY = startY - staffSteps * 12.5
-      return baseY - 10
-    } else {
-      // Lower staff - same logic, but start two octaves higher
-      let baseNoteName = noteName
-      if (noteName.includes('#') || noteName.includes('b')) {
-        baseNoteName = noteName[0]
-      }
-      const keyBaseLetterLower = this.currentKey.replace(/[#b].*$/, '')
-      const startY = noteToStaffPosition[keyBaseLetterLower] + this.STAFF_GAP
-      const noteNames = ['C', 'D', 'E', 'F', 'G', 'A', 'B']
-      const startIndex = noteNames.indexOf(keyBaseLetterLower)
-      const currentIndex = noteNames.indexOf(baseNoteName)
-      let staffSteps = 0
-      if (scaleIndex === 7) {
-        staffSteps = 7
-      } else if (scaleIndex !== 0) {
-        staffSteps = (currentIndex - startIndex + 7) % 7
-        if (currentIndex < startIndex) {
-          staffSteps = currentIndex + (7 - startIndex)
-        }
-      }
-      const baseY = startY - staffSteps * 12.5
-      return baseY - 10
+    // Extract base note letter (strip accidentals like # or b)
+    let baseNoteName = noteName
+    if (noteName.includes('#') || noteName.includes('b')) {
+      baseNoteName = noteName[0]
     }
+
+    // Get the key's root letter (e.g., 'G' from 'G#')
+    const keyBaseLetter = this.currentKey.replace(/[#b].*$/, '')
+
+    // Determine startY based on staff
+    // Upper staff: direct lookup; Lower staff: add STAFF_GAP offset
+    // The KEY INSIGHT: descendingIndex (used as scaleIndex for lower staff) preserves
+    // scale degree info (7=octave, 0=root), so the same staffSteps calculation works
+    const startY = noteToStaffPosition[keyBaseLetter] + (staff === 'upper' ? 0 : this.STAFF_GAP)
+
+    // Calculate staff steps: how many note positions from key to current note
+    // Each step is 12.5 pixels (lines and spaces are 25 pixels apart)
+    const staffSteps = this.calculateStaffSteps(keyBaseLetter, baseNoteName, scaleIndex)
+
+    // Calculate final Y: start position minus steps (moving upward on canvas)
+    const baseY = startY - staffSteps * 12.5
+    return baseY - 10
   }
 }
