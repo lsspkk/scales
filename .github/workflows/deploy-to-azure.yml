@@ -1,0 +1,47 @@
+name: Deploy to Azure Static Website
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Upload to Azure Storage
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            az storage blob upload-batch \
+              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+              --account-key ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }} \
+              --destination '$web' \
+              --source . \
+              --overwrite \
+              --pattern "*.html" --pattern "*.css" --pattern "*.js" --pattern "*.json" --pattern "*.png" --pattern "*.jpg" --pattern "*.svg" --pattern "*.ico"
+      
+      - name: Purge CDN (optional, if you add CDN later)
+        if: false
+        uses: azure/CLI@v1
+        with:
+          azcliversion: latest
+          inlineScript: |
+            # Uncomment when CDN is configured
+            # az cdn endpoint purge \
+            #   --resource-group ${{ secrets.AZURE_RESOURCE_GROUP }} \
+            #   --profile-name <CDN_PROFILE> \
+            #   --name <CDN_ENDPOINT> \
+            #   --content-paths '/*'
+      
+      - name: Deployment complete
+        run: |
+          echo "✅ Deployed to Azure Static Website"
+          echo "🌐 URL: https://${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }}.z16.web.core.windows.net/"
+
