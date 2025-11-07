@@ -25,8 +25,8 @@ jobs:
               --destination '$web' \
               --source . \
               --overwrite \
-              --exclude-path '.git/*' --exclude-path '.github/*' \
-              --content-type 'text/html' --pattern '*.html' || true
+              --content-type 'text/html' \
+              --pattern '*.html'
             
             az storage blob upload-batch \
               --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
@@ -34,8 +34,8 @@ jobs:
               --destination '$web' \
               --source . \
               --overwrite \
-              --exclude-path '.git/*' --exclude-path '.github/*' \
-              --content-type 'text/css' --pattern '*.css' || true
+              --content-type 'text/css' \
+              --pattern '*.css'
             
             az storage blob upload-batch \
               --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
@@ -43,8 +43,8 @@ jobs:
               --destination '$web' \
               --source . \
               --overwrite \
-              --exclude-path '.git/*' --exclude-path '.github/*' \
-              --content-type 'application/javascript' --pattern '*.js' || true
+              --content-type 'application/javascript' \
+              --pattern '*.js'
       
       - name: Purge CDN (optional, if you add CDN later)
         if: false
