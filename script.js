@@ -3,7 +3,7 @@ class MusicScale {
     this.canvas = document.getElementById(canvasId)
     this.ctx = this.canvas.getContext('2d')
     this.currentKey = 'C'
-    this.currentMode = 'ionian'
+    this.currentMode = 'ionian (Duuri)'
     this.currentAccidentalPreference = 'sharp' // 'sharp' or 'flat'
 
     // Staff gap between upper and lower staves (pixels)
@@ -34,7 +34,7 @@ class MusicScale {
 
   getModeList() {
     // Use the visible modes in the UI, matching the button order
-    return ['ionian', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'aeolian', 'locrian']
+    return ['ionian (Duuri)', 'dorian', 'phrygian', 'lydian', 'mixolydian', 'aeolian (Molli)', 'locrian']
   }
 
   getModeDegree() {
@@ -226,30 +226,37 @@ class MusicScale {
 
   drawAccidental(x, y, accidental) {
     this.ctx.fillStyle = '#000'
-    this.ctx.font = 'bold 48px serif' // Bigger accidental symbols
+    // Bigger accidental symbols - slightly larger on mobile
+    const isMobile = window.innerWidth <= 768
+    const fontSize = isMobile ? 60 : 48
+    const spacing = isMobile ? 10 : 8
+    const sharpOffsetY = isMobile ? 17.5 : 14
+    const flatOffsetY = isMobile ? 12.5 : 10
+    
+    this.ctx.font = `bold ${fontSize}px serif`
     this.ctx.textAlign = 'center'
 
     if (accidental === '#') {
-      this.ctx.fillText('♯', x, y + 14)
+      this.ctx.fillText('♯', x, y + sharpOffsetY)
     } else if (accidental === '##') {
       // Double sharp (𝄪); fallback to two sharps if glyph unavailable
       const glyph = '𝄪'
       if (this.ctx.measureText(glyph).width > 0) {
-        this.ctx.fillText(glyph, x, y + 14)
+        this.ctx.fillText(glyph, x, y + sharpOffsetY)
       } else {
-        this.ctx.fillText('♯', x - 8, y + 14)
-        this.ctx.fillText('♯', x + 8, y + 14)
+        this.ctx.fillText('♯', x - spacing, y + sharpOffsetY)
+        this.ctx.fillText('♯', x + spacing, y + sharpOffsetY)
       }
     } else if (accidental === 'b') {
-      this.ctx.fillText('♭', x, y + 10)
+      this.ctx.fillText('♭', x, y + flatOffsetY)
     } else if (accidental === 'bb') {
       // Double flat (𝄫); fallback to two flats if glyph unavailable
       const glyph = '𝄫'
       if (this.ctx.measureText(glyph).width > 0) {
-        this.ctx.fillText(glyph, x, y + 10)
+        this.ctx.fillText(glyph, x, y + flatOffsetY)
       } else {
-        this.ctx.fillText('♭', x - 8, y + 10)
-        this.ctx.fillText('♭', x + 8, y + 10)
+        this.ctx.fillText('♭', x - spacing, y + flatOffsetY)
+        this.ctx.fillText('♭', x + spacing, y + flatOffsetY)
       }
     }
   }
