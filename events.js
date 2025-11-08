@@ -1,13 +1,13 @@
 // Event handlers and UI interactions for the Musical Scale Generator
 
 function setupEventListeners(musicScale) {
-  const selectionMenu = document.getElementById('selectionMenu')
+  const selectionMenuMobile = document.getElementById('selectionMenuMobile')
   const menuToggle = document.getElementById('menuToggle')
 
   // Menu toggle button
-  if (menuToggle && selectionMenu) {
+  if (menuToggle && selectionMenuMobile) {
     menuToggle.addEventListener('click', () => {
-      const isOpen = selectionMenu.classList.toggle('open')
+      const isOpen = selectionMenuMobile.classList.toggle('open')
       menuToggle.setAttribute('aria-expanded', isOpen ? 'true' : 'false')
     })
   }
@@ -22,7 +22,7 @@ function setupEventListeners(musicScale) {
       musicScale.drawScale()
       musicScale.updateSelectionSummary()
       // Close menu on mobile after selection
-      if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
+      if (selectionMenuMobile?.classList.contains('open')) selectionMenuMobile.classList.remove('open')
     })
   }
 
@@ -34,7 +34,7 @@ function setupEventListeners(musicScale) {
       musicScale.currentMode = e.target.dataset.mode
       musicScale.drawScale()
       musicScale.updateSelectionSummary()
-      if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
+      if (selectionMenuMobile?.classList.contains('open')) selectionMenuMobile.classList.remove('open')
     })
   }
 
@@ -48,7 +48,7 @@ function setupEventListeners(musicScale) {
     musicScale.currentMode = randomMode
     musicScale.drawScale()
     musicScale.updateSelectionSummary()
-    if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
+    if (selectionMenuMobile?.classList.contains('open')) selectionMenuMobile.classList.remove('open')
   })
 
   // RandomSävel button (randomizes note only)
@@ -64,7 +64,7 @@ function setupEventListeners(musicScale) {
     }
     musicScale.drawScale()
     musicScale.updateSelectionSummary()
-    if (selectionMenu?.classList.contains('open')) selectionMenu.classList.remove('open')
+    if (selectionMenuMobile?.classList.contains('open')) selectionMenuMobile.classList.remove('open')
   })
 
   // Previous/Next note buttons

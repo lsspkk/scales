@@ -57,7 +57,7 @@ class MusicScale {
     const formattedMode = this.currentMode.charAt(0).toUpperCase() + this.currentMode.slice(1)
     summary.textContent = `${this.currentKey} • ${formattedMode}`
 
-    // Update mode explanation (both mobile and desktop versions)
+    // Update mode explanation (mobile summary and desktop versions)
     const degree = this.getModeDegree()
     const explanationText = `Alkusävel on duurin ${degree}. sävel`
 

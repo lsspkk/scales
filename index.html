@@ -20,7 +20,7 @@
       <div class="controls">
         <!-- Compact mobile-friendly header -->
         <div class="compact-controls">
-          <button id="menuToggle" class="menu-toggle" aria-expanded="false" aria-controls="selectionMenu">
+          <button id="menuToggle" class="menu-toggle" aria-expanded="false" aria-controls="selectionMenuMobile">
             Valitse sävel & moodi ▾
           </button>
           <div class="random-buttons-row">
@@ -101,8 +101,8 @@
           </div>
         </div>
 
-        <!-- Selection menu (shown inline on desktop, dropdown on mobile) -->
-        <section id="selectionMenu" class="selection-menu" aria-label="Note and mode selection">
+        <!-- Selection menu for DESKTOP (shown inline on desktop, hidden on mobile) -->
+        <section id="selectionMenuDesktop" class="selection-menu selection-menu-desktop" aria-label="Note and mode selection">
           <div class="button-group note-buttons">
             <span class="group-label">Alkusävel (♯):</span>
             <button class="key-btn active" data-key="C" data-accidental="sharp">C</button>
@@ -137,6 +137,49 @@
           
           <div class="mode-explanation mode-explanation-desktop">
             <span id="modeExplanationDesktop">Alkusävel on duurin 1. sävel</span>
+          </div>
+        </section>
+
+        <!-- Selection menu for MOBILE (dropdown on mobile, hidden on desktop) -->
+        <section id="selectionMenuMobile" class="selection-menu selection-menu-mobile" aria-label="Note and mode selection">
+          <div class="mobile-selection-row">
+            <div class="note-selection-container">
+              <span class="group-label group-label-main">Alkusävel</span>
+              
+              <div class="note-columns">
+                <div class="note-column note-column-flat">
+                  <button class="key-btn" data-key="F" data-accidental="flat">F</button>
+                  <button class="key-btn" data-key="Bb" data-accidental="flat">B♭</button>
+                  <button class="key-btn" data-key="Eb" data-accidental="flat">E♭</button>
+                  <button class="key-btn" data-key="Ab" data-accidental="flat">A♭</button>
+                  <button class="key-btn" data-key="Db" data-accidental="flat">D♭</button>
+                </div>
+                <div class="note-column note-column-sharp">
+                  <button class="key-btn active" data-key="C" data-accidental="sharp">C</button>
+                  <button class="key-btn" data-key="G" data-accidental="sharp">G</button>
+                  <button class="key-btn" data-key="D" data-accidental="sharp">D</button>
+                  <button class="key-btn" data-key="A" data-accidental="sharp">A</button>
+                  <button class="key-btn" data-key="E" data-accidental="sharp">E</button>
+                  <button class="key-btn" data-key="B" data-accidental="sharp">H</button>
+                  <button class="key-btn" data-key="F#" data-accidental="sharp">F♯</button>
+                  <button class="key-btn" data-key="C#" data-accidental="sharp">C♯</button>
+                </div>
+              </div>
+            </div>
+
+            <div class="mode-selection-container">
+              <span class="group-label group-label-main">Moodi</span>
+              
+              <div class="mode-buttons-mobile">
+                <button class="mode-btn active" data-mode="ionian">Ionian (Duuri)</button>
+                <button class="mode-btn" data-mode="dorian">Dorian</button>
+                <button class="mode-btn" data-mode="phrygian">Phrygian</button>
+                <button class="mode-btn" data-mode="lydian">Lydian</button>
+                <button class="mode-btn" data-mode="mixolydian">Mixolydian</button>
+                <button class="mode-btn" data-mode="aeolian">Aeolian (Molli)</button>
+                <button class="mode-btn" data-mode="locrian">Locrian</button>
+              </div>
+            </div>
           </div>
         </section>
       </div>
