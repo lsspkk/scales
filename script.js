@@ -39,6 +39,7 @@ class MusicScale {
 
   getModeDegree() {
     // Returns which scale degree of the major scale is used as the starting note
+    const baseModeName = this.currentMode.split(' ')[0].toLowerCase() // Handle "ionian (Duuri)" etc
     const modeDegrees = {
       ionian: 1,
       dorian: 2,
@@ -48,7 +49,33 @@ class MusicScale {
       aeolian: 6,
       locrian: 7,
     }
-    return modeDegrees[this.currentMode] || 1
+    return modeDegrees[baseModeName] || 1
+  }
+
+  getModeAlterations() {
+    // Compare current mode to Ionian (major) and return which notes are raised or lowered
+    const baseModeName = this.currentMode.split(' ')[0].toLowerCase() // Handle "ionian (Duuri)" etc
+    const ionianIntervals = this.modes.ionian
+    const currentIntervals = this.modes[baseModeName]
+    
+    if (!currentIntervals || baseModeName === 'ionian') {
+      return null // No alterations for Ionian
+    }
+
+    const raised = []
+    const lowered = []
+
+    // Compare each scale degree (skip the first one which is always 0)
+    for (let i = 1; i < ionianIntervals.length; i++) {
+      const diff = currentIntervals[i] - ionianIntervals[i]
+      if (diff > 0) {
+        raised.push(i + 1) // Scale degrees are 1-indexed
+      } else if (diff < 0) {
+        lowered.push(i + 1)
+      }
+    }
+
+    return { raised, lowered }
   }
 
   updateSelectionSummary() {
@@ -69,6 +96,28 @@ class MusicScale {
     const explanationDesktop = document.getElementById('modeExplanationDesktop')
     if (explanationDesktop) {
       explanationDesktop.textContent = explanationText
+    }
+
+    // Update mode alterations (raised/lowered notes compared to Ionian)
+    const alterations = this.getModeAlterations()
+    let alterationText = ''
+    
+    if (alterations) {
+      if (alterations.raised.length > 0) {
+        alterationText = `Ylennetyt sävelet: ${alterations.raised.join(', ')}`
+      } else if (alterations.lowered.length > 0) {
+        alterationText = `Alennetut sävelet: ${alterations.lowered.join(', ')}`
+      }
+    }
+
+    const alterationsMobile = document.getElementById('modeAlterationsMobile')
+    if (alterationsMobile) {
+      alterationsMobile.textContent = alterationText
+    }
+
+    const alterationsDesktop = document.getElementById('modeAlterationsDesktop')
+    if (alterationsDesktop) {
+      alterationsDesktop.textContent = alterationText
     }
   }
 
