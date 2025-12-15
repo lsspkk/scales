@@ -44,7 +44,7 @@ This will open your site in the browser and reload automatically when you edit H
 
 - `index.html` - Main HTML structure
 - `styles.css` - Styling and layout
-- `script.js` - MusicScale class with canvas drawing and music theory logic
+- `scales.js` - MusicScale class with canvas drawing and music theory logic
 - `events.js` - Event handlers and user interaction listeners
 - `README.md` - This documentation
 - `LICENSE` - MIT License
