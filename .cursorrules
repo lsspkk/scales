@@ -1,0 +1,111 @@
+# Agent Instructions for Musical Scale Generator
+
+## Code Style and Standards
+- Use clear, descriptive variable and function names
+- Follow JavaScript best practices and ES6+ syntax
+- Keep functions focused and single-purpose
+- Add comments for complex logic
+- Maintain consistent indentation (2 spaces)
+
+## Testing Requirements
+- All new features must have corresponding tests
+- Tests are located in the `tests/` directory
+- Run tests before any commit
+
+## Commit/Push Procedure
+
+### 1. Run Tests
+Before committing, always run the test suite to ensure no regressions:
+```bash
+cd tests
+node test_runner.js
+```
+All tests must pass before proceeding. If tests fail, fix the issues before continuing.
+
+### 2. Code Review of New Changes
+Review all new or modified code:
+```bash
+# Check what files have changed
+git status
+
+# Review the diff of all changes
+git diff
+
+# For staged changes
+git diff --cached
+```
+
+Perform a thorough code review checking for:
+- **Correctness**: Does the code work as intended?
+- **Code Quality**: Is it readable, maintainable, and following best practices?
+- **Performance**: Are there any obvious performance issues?
+- **Security**: Are there any security concerns?
+- **Edge Cases**: Are edge cases handled properly?
+- **Comments**: Is complex logic documented?
+- **Consistency**: Does it match the existing codebase style?
+
+### 3. Stage Changes
+After review and tests pass, stage the changes:
+```bash
+# Stage specific files
+git add <file1> <file2>
+
+# Or stage all changes
+git add .
+```
+
+### 4. Commit with Clear Message
+Write a concise, descriptive commit message following this format:
+- Start with a verb in imperative mood (Add, Fix, Update, Remove, Refactor)
+- Keep the first line under 50 characters
+- Be specific about what changed
+
+Examples:
+```bash
+git commit -m "Add Dorian mode support"
+git commit -m "Fix note positioning on canvas"
+git commit -m "Update scale interval calculations"
+git commit -m "Refactor event handler logic"
+```
+
+### 5. Push Changes
+Push the committed changes to the remote repository:
+```bash
+git push
+```
+
+If pushing to a new branch:
+```bash
+git push -u origin <branch-name>
+```
+
+## Complete Workflow Example
+```bash
+# 1. Run tests
+cd tests && node test_runner.js && cd ..
+
+# 2. Review changes
+git status
+git diff
+
+# 3. Stage changes
+git add .
+
+# 4. Commit with clear message
+git commit -m "Add chromatic scale support"
+
+# 5. Push changes
+git push
+```
+
+## Troubleshooting
+- If tests fail, fix the code or tests before committing
+- If push is rejected, pull the latest changes first: `git pull --rebase`
+- For merge conflicts, resolve them carefully and retest
+- Never force push (`git push -f`) unless absolutely necessary and coordinated with team
+
+## Project-Specific Notes
+- This is a music theory application; ensure musical accuracy
+- Canvas rendering must be precise for proper notation display
+- Test across different browsers when changing rendering logic
+- Keep the UI responsive and intuitive
