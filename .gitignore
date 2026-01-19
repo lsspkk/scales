@@ -1,0 +1,6 @@
+*.env
+/deploy/backups/
+/deploy/logs/
+backups
+reports
+logs
