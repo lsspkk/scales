@@ -1,0 +1,12 @@
+@import "tailwindcss";
+
+/* Mobile shell: center a ~390px viewport on desktop */
+body {
+  background-color: #fffbe9;
+  font-family: 'Arial', sans-serif;
+}
+
+/* MedievalSharp font for app title */
+.font-medieval {
+  font-family: 'MedievalSharp', 'Times New Roman', Times, serif;
+}
