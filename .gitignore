@@ -2,6 +2,7 @@
 /deploy/backups/
 /deploy/logs/
 backups
+dist
 reports
 logs
 .claude/settings.local.json
