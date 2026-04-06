@@ -369,6 +369,7 @@ function PracticeTab({ selectedScale, onSelectScale }: { selectedScale: ScaleEnt
   const selectedLevel = usePracticeStore((s) => s.selectedLevel)
   const practiceSet = usePracticeStore((s) => s.practiceSet)
   const active = usePracticeStore((s) => s.active)
+  const sessionStartedAt = usePracticeStore((s) => s.sessionStartedAt)
   const setSelectedLevel = usePracticeStore((s) => s.setSelectedLevel)
   const generatePracticeSet = usePracticeStore((s) => s.generatePracticeSet)
   const toggleDone = usePracticeStore((s) => s.toggleDone)
@@ -433,7 +434,7 @@ function PracticeTab({ selectedScale, onSelectScale }: { selectedScale: ScaleEnt
 
   // The practice list (used in both single-column mobile and left-column desktop)
   const practiceList = (
-    <div className='space-y-4'>
+    <div className='space-y-2'>
       <div className='flex items-center justify-between'>
         <p className='text-base font-bold text-[#5a2d0c]'>
           {doneCount} / {totalCount} harjoiteltu
@@ -449,10 +450,20 @@ function PracticeTab({ selectedScale, onSelectScale }: { selectedScale: ScaleEnt
         </button>
       </div>
 
-      <div className='w-full bg-[#e8d5b0] rounded-full h-2'>
-        <div className='bg-[#8B2500] h-2 rounded-full transition-all' style={{ width: `${(doneCount / totalCount) * 100}%` }} />
-      </div>
-
+      {(() => {
+        if (!sessionStartedAt) return null
+        const start = new Date(sessionStartedAt)
+        const today = new Date()
+        const daysDiff = Math.floor((today.getTime() - start.getTime()) / (1000 * 60 * 60 * 24))
+        const dateStr = `${start.getDate()}.${start.getMonth() + 1}.${start.getFullYear()}`
+        const dayLabel = daysDiff === 0 ? '1. päivä' : `${daysDiff + 1}. päivää`
+        return (
+          <div className='flex items-center justify-between bg-[#c9a96e] px-2 py-0.5 -mt-1'>
+            <span className='text-sm text-[#f5e9d0]'>{dateStr}</span>
+            <span className='text-sm text-[#f5e9d0]'>{dayLabel}</span>
+          </div>
+        )
+      })()}
       <div className='space-y-1'>
         {practiceSet.map((item, index) => (
           <div

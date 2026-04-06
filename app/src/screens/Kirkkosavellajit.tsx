@@ -1,116 +1,16 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getKeyList, getModeList, getBaseModeKey,
-  getModeDegree, getModeAlterations, getScale, getNoteInfo, getNoteY,
+  getModeDegree, getModeAlterations,
 } from '../lib/musicScale'
 import { useViewport } from '../lib/useViewport'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { SectionCard } from '../components/ui/SectionCard'
 import { Chip } from '../components/ui/Chip'
 import { Button } from '../components/ui/Button'
+import { MusicCanvas } from '../components/ui/MusicCanvas'
 import { useMusicStore } from '../stores/musicStore'
-
-const STAFF_GAP = 220
-const UPPER_STAFF_LINES = [95, 120, 145, 170, 195]
-const LOWER_STAFF_LINES = UPPER_STAFF_LINES.map(y => y + STAFF_GAP)
-
-// Canvas drawing helpers
-function drawStaff(ctx: CanvasRenderingContext2D, w: number, mobile: boolean) {
-  ctx.strokeStyle = '#000'
-  ctx.lineWidth = 1.5
-  const startX = mobile ? 5 : -5
-  for (const lines of [UPPER_STAFF_LINES, LOWER_STAFF_LINES]) {
-    for (const y of lines) {
-      ctx.beginPath(); ctx.moveTo(startX, y); ctx.lineTo(w - 5, y); ctx.stroke()
-    }
-  }
-}
-
-function drawTrebleClef(ctx: CanvasRenderingContext2D, mobile: boolean) {
-  ctx.fillStyle = '#000'
-  const fontSize = mobile ? 146 : 126
-  ctx.font = `${fontSize}px serif`
-  ctx.textAlign = 'center'
-  const xPos = 25
-  const yOffset = 10
-  for (const baseY of [153 + yOffset, 153 + yOffset + STAFF_GAP]) {
-    const anchorY = baseY - 100
-    ctx.save()
-    ctx.translate(xPos, anchorY)
-    ctx.scale(0.75, 1.3)
-    ctx.translate(-xPos, -anchorY)
-    ctx.fillText('𝄞', xPos, baseY)
-    ctx.restore()
-  }
-}
-
-function drawLedgerLines(ctx: CanvasRenderingContext2D, x: number, y: number, staff: 'upper' | 'lower') {
-  const lines = staff === 'upper' ? UPPER_STAFF_LINES : LOWER_STAFF_LINES
-  const top = lines[0], bottom = lines[4], step = lines[1] - lines[0]
-  ctx.lineWidth = 1.5
-  if (y > bottom + 2) {
-    for (let ly = bottom + step; ly <= y + 2; ly += step) {
-      ctx.beginPath(); ctx.moveTo(x - 20, ly); ctx.lineTo(x + 20, ly); ctx.stroke()
-    }
-  }
-  if (y < top - 2) {
-    for (let ly = top - step; ly >= y - 2; ly -= step) {
-      ctx.beginPath(); ctx.moveTo(x - 20, ly); ctx.lineTo(x + 20, ly); ctx.stroke()
-    }
-  }
-}
-
-function drawAccidental(ctx: CanvasRenderingContext2D, x: number, y: number, accidental: string, large: boolean) {
-  ctx.fillStyle = '#000'
-  ctx.font = large ? 'bold 48px serif' : 'bold 36px serif'
-  ctx.textAlign = 'center'
-  const sharpY = large ? y + 14 : y + 11
-  const flatY = large ? y + 10 : y + 8
-  if (accidental === '#') ctx.fillText('♯', x, sharpY)
-  else if (accidental === '##') ctx.fillText('𝄪', x, sharpY)
-  else if (accidental === 'b') ctx.fillText('♭', x, flatY)
-  else if (accidental === 'bb') ctx.fillText('𝄫', x, flatY)
-}
-
-function drawNote(
-  ctx: CanvasRenderingContext2D,
-  x: number,
-  note: string,
-  staff: 'upper' | 'lower',
-  scaleIndex: number,
-  currentKey: string,
-  largeAccidentals: boolean,
-) {
-  const info = getNoteInfo(note)
-  const y = getNoteY(info.noteName, info.octave, staff, scaleIndex, currentKey)
-  ctx.fillStyle = '#000'
-  ctx.beginPath()
-  ctx.ellipse(x, y, 13, 8.5, -Math.PI / 6 - 0.087, 0, 2 * Math.PI)
-  ctx.fill()
-  const bLineY = staff === 'upper' ? 155 : 155 + STAFF_GAP
-  ctx.lineWidth = 2
-  if (y < bLineY) {
-    ctx.beginPath(); ctx.moveTo(x - 9, y); ctx.lineTo(x - 9, y + 70); ctx.stroke()
-  } else {
-    ctx.beginPath(); ctx.moveTo(x + 9, y); ctx.lineTo(x + 9, y - 70); ctx.stroke()
-  }
-  drawLedgerLines(ctx, x, y, staff)
-  if (info.accidental) drawAccidental(ctx, x - 32, y, info.accidental, largeAccidentals)
-}
-
-function renderScale(ctx: CanvasRenderingContext2D, key: string, mode: string, canvasWidth: number, mobile: boolean) {
-  ctx.clearRect(0, 0, canvasWidth, 500)
-  drawStaff(ctx, canvasWidth, mobile)
-  drawTrebleClef(ctx, mobile)
-  const scale = getScale(key, mode)
-  const startX = mobile ? 90 : 115
-  const endPad = mobile ? 40 : 60
-  const spacing = (canvasWidth - startX - endPad) / (scale.length - 1)
-  scale.forEach((note, i) => drawNote(ctx, startX + i * spacing, note, 'upper', i, key, mobile))
-  const rev = [...scale].reverse()
-  rev.forEach((note, i) => drawNote(ctx, startX + i * spacing, note, 'lower', scale.length - 1 - i, key, mobile))
-}
 
 export function Kirkkosavellajit() {
   const keys = getKeyList()
@@ -123,19 +23,6 @@ export function Kirkkosavellajit() {
   const setCurrentMode = useMusicStore((s) => s.setMode)
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
-
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const canvasWidth = isDesktop ? 1000 : 1000
-
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current
-    if (!canvas) return
-    const ctx = canvas.getContext('2d')
-    if (!ctx) return
-    renderScale(ctx, currentKey, currentMode, canvasWidth, !isDesktop)
-  }, [currentKey, currentMode, canvasWidth, isDesktop])
-
-  useEffect(() => { draw() }, [draw])
 
   const selectKey = (key: string) => {
     setCurrentKey(key)
@@ -262,10 +149,13 @@ export function Kirkkosavellajit() {
 
           {/* Canvas area */}
           <div className="flex-1 flex items-center justify-center bg-[#fff3c9] overflow-hidden p-4">
-            <canvas
-              ref={canvasRef}
+            <MusicCanvas
+              scaleKey={currentKey}
+              mode={currentMode}
               width={1000}
               height={500}
+              staves={2}
+              mobile={false}
               style={{ display: 'block', maxWidth: '100%', height: 'auto' }}
             />
           </div>
@@ -347,10 +237,13 @@ export function Kirkkosavellajit() {
       {/* Canvas */}
       <div className="flex-1 overflow-hidden relative bg-[#fff3c9]"
         style={{ aspectRatio: '2 / 1' }}>
-        <canvas
-          ref={canvasRef}
+        <MusicCanvas
+          scaleKey={currentKey}
+          mode={currentMode}
           width={1000}
           height={500}
+          staves={2}
+          mobile={true}
           className="w-full h-full"
           style={{ display: 'block' }}
         />

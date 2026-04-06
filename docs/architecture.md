@@ -35,9 +35,11 @@
 | File | Role |
 |------|------|
 | `src/lib/musicScale.ts` | Pure music theory functions (scale generation, note info, staff positioning) |
+| `src/lib/musicStave.ts` | Pure canvas drawing library (staff lines, clef, notes, accidentals) — no React |
 | `src/lib/useViewport.ts` | `useViewport()` hook — returns `{ isDesktop }` for responsive layout branching |
 | `src/stores/musicStore.ts` | Zustand store — key, mode, screen navigation |
-| `src/screens/Kirkkosavellajit.tsx` | Scale visualizer with canvas rendering and UI controls |
+| `src/components/ui/MusicCanvas.tsx` | Reusable canvas component wrapping musicStave library |
+| `src/screens/Kirkkosavellajit.tsx` | Scale visualizer with UI controls, uses MusicCanvas for rendering |
 | `src/lib/practiceMethod.ts` | Practice method data: 36 scales across 3 levels, shuffle/format helpers |
 | `src/stores/practiceStore.ts` | Zustand store for practice session (selected levels, practice set, progress) |
 | `src/screens/Harjoittelu.tsx` | Practice screen with Tietoa/Harjoittele tabs, info page + interactive routine |
@@ -48,9 +50,27 @@
 ```
 User interacts with UI (Kirkkosavellajit screen)
   → Zustand store updates key/mode (persisted to localStorage)
-  → React re-renders canvas via useEffect + useCallback
+  → MusicCanvas re-renders via useEffect dependency on key/mode
+  → computeLayout() derives geometry from canvas size and mobile flag
   → renderScale() draws staff, clefs, and notes on HTML5 canvas
 ```
+
+## Canvas Drawing Library (`musicStave.ts`)
+
+The drawing logic is extracted into a pure TypeScript module with no React dependencies:
+
+**Key functions:**
+- `computeLayout(options)` — returns a `StaveLayout` config from high-level inputs (`width`, `height`, `staves: 1 | 2`, `mobile`)
+- `drawStaffLines(ctx, layout)` — draws 5 staff lines for 1 or 2 staves
+- `drawTrebleClef(ctx, layout)` — draws 𝄞 clef at configured size/position
+- `drawLedgerLines(ctx, x, y, staffLineYs)` — ledger lines for notes above/below staff
+- `drawAccidental(ctx, x, y, accidental, fontSize)` — ♯, ♭, 𝄪, 𝄫 symbols
+- `drawNote(ctx, x, note, staff, ...)` — complete note with head, stem, ledger lines, accidental
+- `renderScale(ctx, key, mode, layout)` — orchestrates full scale render
+
+**Design principle:** All geometry is passed via the `StaveLayout` object — no module-level constants. This allows the same code to render both:
+- Full 1000×500 two-stave canvas (Kirkkosavellajit)
+- Compact single-stave preview canvases (future Harjoittelu detail panels)
 
 ## Canvas Layout
 
