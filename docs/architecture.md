@@ -38,7 +38,9 @@
 | `src/lib/useViewport.ts` | `useViewport()` hook — returns `{ isDesktop }` for responsive layout branching |
 | `src/stores/musicStore.ts` | Zustand store — key, mode, screen navigation |
 | `src/screens/Kirkkosavellajit.tsx` | Scale visualizer with canvas rendering and UI controls |
-| `src/screens/Harjoittelu.tsx` | Placeholder screen for future practice mode |
+| `src/lib/practiceMethod.ts` | Practice method data: 36 scales across 3 levels, shuffle/format helpers |
+| `src/stores/practiceStore.ts` | Zustand store for practice session (selected levels, practice set, progress) |
+| `src/screens/Harjoittelu.tsx` | Practice screen with Tietoa/Harjoittele tabs, info page + interactive routine |
 | `src/screens/Home.tsx` | Navigation hub with HomeCard components |
 | `src/components/ui/` | Reusable UI primitives (Button, Chip, ScreenHeader, SectionCard, etc.) |
 
