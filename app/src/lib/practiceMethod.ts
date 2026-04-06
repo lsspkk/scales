@@ -317,6 +317,14 @@ export const SCALES: ScaleEntry[] = [
   },
 ]
 
+/**
+ * Generate a stable unique key for a scale entry.
+ * Used as React key to avoid re-renders on reshuffle.
+ */
+export function getScaleKey(scale: ScaleEntry): string {
+  return `${scale.key}-${scale.mode}-${scale.level}-${scale.positions.join('-')}`
+}
+
 export function getScalesForLevel(level: number): ScaleEntry[] {
   return SCALES.filter((s) => s.level === level)
 }

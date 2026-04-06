@@ -404,3 +404,28 @@ interface MusicCanvasProps {
 - `app/src/components/ui/MusicCanvas.tsx` — new, reusable canvas component
 - `app/src/screens/Kirkkosavellajit.tsx` — remove drawing code, use `<MusicCanvas>`
 - Existing tests must still pass; add a smoke test for `MusicCanvas` if practical
+
+---
+
+## Task 14: Tighten practice session state and Kirkkosavellajit layout hygiene
+
+**Status:** done
+**Blocked by:** —
+
+Address three code-quality issues found in review without changing the product scope.
+
+Focus areas:
+- **Practice session reset flow** — the screen currently mutates the Zustand store directly when starting over. Move this into a store action so session state is reset in one place and persisted fields stay consistent.
+- **Stable list identity** — the practice list uses array indexes as React keys even though the list can be reshuffled. Replace them with a stable identity derived from the scale entry.
+- **Kirkkosavellajit layout cleanup** — reduce or remove inline `style` usage used for sizing/positioning and express the same layout with Tailwind utilities or component-level API where practical.
+
+Questions the implementer must answer:
+- What is the canonical "clear session" state in the practice store: which fields must be reset, and should any values intentionally survive?
+- What unique key shape best represents a practice item if the same key/mode could appear in different positions or levels later?
+- Which inline styles in Kirkkosavellajit are truly unavoidable, and which should become Tailwind classes or props on `MusicCanvas`?
+
+Implementation hints:
+- Add an explicit store action for clearing/resetting a session instead of calling `usePracticeStore.setState(...)` from the screen.
+- Prefer a deterministic key such as `key + mode + level + positions` over the row index.
+- Keep the visual result unchanged; this task is about maintainability and state correctness, not redesign.
+- Add or extend tests around session reset / reshuffle behaviour if the refactor changes state handling.

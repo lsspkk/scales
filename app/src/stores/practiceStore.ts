@@ -17,6 +17,7 @@ interface PracticeState {
   toggleDone: (index: number) => void
   resetProgress: () => void
   reshuffleSet: () => void
+  clearSession: () => void
 }
 
 export const usePracticeStore = create<PracticeState>()(
@@ -54,6 +55,14 @@ export const usePracticeStore = create<PracticeState>()(
         const { practiceSet } = get()
         const scales = shuffleScales(practiceSet.map((item) => item.scale))
         set({ practiceSet: scales.map((scale) => ({ scale, done: false })) })
+      },
+
+      clearSession: () => {
+        set({
+          practiceSet: [],
+          active: false,
+          sessionStartedAt: null,
+        })
       },
     }),
     {

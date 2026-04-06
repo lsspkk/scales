@@ -156,7 +156,7 @@ export function Kirkkosavellajit() {
               height={500}
               staves={2}
               mobile={false}
-              style={{ display: 'block', maxWidth: '100%', height: 'auto' }}
+              className="block max-w-full h-auto"
             />
           </div>
         </div>
@@ -226,7 +226,7 @@ export function Kirkkosavellajit() {
 
       {/* Dropdown selection menu */}
       {menuOpen && (
-        <div className="absolute left-3 right-3 z-50 shadow-2xl" style={{ top: '140px' }}>
+        <div className="absolute left-3 right-3 top-[140px] z-50 shadow-2xl">
           {selectionPanels}
           <Button variant="outlined" color="neutral" size="sm" onClick={() => setMenuOpen(false)} className="mt-2 w-full">
             Sulje
@@ -235,8 +235,7 @@ export function Kirkkosavellajit() {
       )}
 
       {/* Canvas */}
-      <div className="flex-1 overflow-hidden relative bg-[#fff3c9]"
-        style={{ aspectRatio: '2 / 1' }}>
+      <div className="flex-1 overflow-hidden relative bg-[#fff3c9] aspect-[2/1]">
         <MusicCanvas
           scaleKey={currentKey}
           mode={currentMode}
@@ -244,8 +243,7 @@ export function Kirkkosavellajit() {
           height={500}
           staves={2}
           mobile={true}
-          className="w-full h-full"
-          style={{ display: 'block' }}
+          className="w-full h-full block"
         />
       </div>
     </div>

@@ -4,7 +4,7 @@ applyTo: "app/src/**"
 
 # GitHub Copilot Code Review Instructions
 
-> **Model:** Reviews should use **GPT-5.2** — configure via VS Code setting `github.copilot.chat.codeReview.model: "gpt-5.2"` (see `.vscode/settings.json`).
+> **Model:** Reviews should use **GPT-5.4** — configure via VS Code setting `github.copilot.chat.codeReview.model: "gpt-5.4"` (see `.vscode/settings.json`).
 
 This project is a **mobile-first music scale visualiser** built in React 19 + Vite + TypeScript + Tailwind CSS.
 Before reviewing any file under `app/src/`, use **CLAUDE.md** (workspace root) as the primary reference — it lists all project docs and the expected folder layout.
