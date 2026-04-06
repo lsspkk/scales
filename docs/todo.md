@@ -186,7 +186,7 @@ The original app (see `main` branch `CLAUDE.md`) had two distinct layouts separa
 
 ## Task 9: Research violin scale practice methodology
 
-**Status:** pending
+**Status:** done
 **Blocked by:** —
 
 Research well-established violin pedagogy for adult learners (~3 years of practice) to determine a structured scale practice routine. The research should cover:
@@ -205,7 +205,7 @@ Research well-established violin pedagogy for adult learners (~3 years of practi
 
 ## Task 10: Build Harjoittelu practice guide page
 
-**Status:** pending
+**Status:** done
 **Blocked by:** Task 9
 
 Present the content from `docs/scale-practice-method.md` (Task 9) as a visually polished, readable info page on the Harjoittelu screen, written in **Finnish**. This is a read-only reference page — no interactive practice logic (that's Task 11).
@@ -235,7 +235,7 @@ Present the content from `docs/scale-practice-method.md` (Task 9) as a visually 
 
 ## Task 11: Build interactive scale practice routine (draft version)
 
-**Status:** pending
+**Status:** done
 **Blocked by:** Task 9, Task 10
 
 Build the interactive practice routine on the Harjoittelu screen. This is the core "app" part — it generates a randomised practice set from the method defined in Task 9, tracks progress with local storage, and lets the user work through scales one by one.
@@ -286,3 +286,121 @@ Build the interactive practice routine on the Harjoittelu screen. This is the co
 - `app/src/stores/practiceStore.ts` — Zustand store for practice session state with local storage persist (new)
 - `app/src/screens/Harjoittelu.tsx` — add tab navigation, practice routine view
 - New sub-components as needed (e.g., `PracticeList`, `PracticeItem`, `CompletionScreen`)
+
+---
+
+## Task 12: Add scale info panel to practice routine
+
+**Status:** done
+**Blocked by:** Task 11
+
+Each scale in the Harjoittele practice list currently shows only a checkbox, the scale name, position, and shift pattern text. Add an info button to each practice item that shows detailed practice guidance for that scale — notes, shift exercises, arpeggio pattern, and practice tips — sourced from `docs/scale-practice-method.md`.
+
+### Data layer
+
+- Extend `app/src/lib/practiceMethod.ts` (or create a companion file `app/src/lib/scaleDetails.ts`) with structured detail data for each scale entry:
+  - **Scale notes** — the full sequence of notes for the scale in the given position(s) with fingerings, e.g., `G(open) – A(1) – B(2) – C(3) – D(open) – E(1) – F#(2) – G(3)`.
+  - **Shift exercise** — for Level 2+ scales, the specific shift note pair and exercise description (last note before shift → first note after shift, which finger guides, which string). Use the closest matching exercise from `docs/scale-practice-method.md` § "Shift Exercises" if an exact per-scale exercise is not documented.
+  - **Shift practice routine** — the 4-step routine (slow slide × 5, at-tempo × 5, full scale slow, full scale at tempo) from the method doc.
+  - **Arpeggio pattern** — tonic triad notes for the scale's key/mode at the appropriate level (1-octave for Level 1, 2-octave for Level 2–3).
+- This data must be in TypeScript (not hardcoded in JSX) so it is maintainable and testable.
+
+### Info button in practice list
+
+- Add a small **info icon button** to each practice list item, placed to the right of the scale label (before the checkbox area, or at the trailing edge of the row — whichever gives a cleaner layout).
+- The button must meet the 44×44px minimum touch target.
+- Use an inline SVG icon — a circled "i" (ⓘ) or similar. Keep it visually light so it does not compete with the checkbox for attention. The checkbox remains the primary action; the info button is secondary.
+- Tapping the info button opens the detail view (see below). Tapping the checkbox still toggles done state — the two actions must not conflict.
+
+### Desktop: side panel
+
+- On desktop, tapping the info button opens a **detail panel to the right** of the practice list.
+- Update the Harjoittele tab's desktop layout from a single centered column to a two-area layout:
+  - **Left:** the existing practice list (narrower, e.g. ~400px).
+  - **Right:** the detail panel (~300px), shown only when a scale is selected for info. When no scale is selected, the right area is empty or shows a short placeholder ("Valitse asteikko nähdäksesi tiedot").
+- The detail panel shows the scale's notes, shift exercise, shift routine, and arpeggio. It stays open until the user selects a different scale (replaces content) or closes it.
+- Both areas sit inside the existing `max-w-[700px]` content container — or widen the container to `max-w-[900px]` if 700px is too tight for two columns. Follow the desktop content containment rule from `docs/ux-spec.md` (sub-navigation and content panels must not span full viewport width).
+
+### Mobile: fullscreen modal dialog
+
+- On mobile, tapping the info button opens a **fullscreen modal dialog** that overlays the practice list.
+- The modal must be easy to dismiss:
+  1. **Close button** — an "✕" icon button in the top-right corner, 44×44px touch target.
+  2. **Back navigation** — pressing the browser/OS back button (or the Android back gesture) closes the modal. Use `history.pushState` / `popstate` listener (or React Router equivalent) so that back navigation closes the modal instead of leaving the Harjoittelu screen.
+- The modal content scrolls if it overflows. Use the parchment/brown/red palette, consistent with the rest of the app.
+- The modal header shows the scale name (e.g., "G-duuri — 1.–3. asema").
+
+### Content displayed in detail view (both mobile and desktop)
+
+All text in **Finnish**, consistent with the app's language policy.
+
+1. **Nuotit** (Notes) — full note sequence with fingerings and string names.
+2. **Asemavaihto** (Shift) — shift note pair, guide finger, target note, string. Only shown for Level 2+ scales.
+3. **Harjoitusrutiini** (Practice routine) — the 4-step shift routine. Only shown for Level 2+ scales.
+4. **Arpeggio** — tonic triad notes, octave count, note values (quarter/eighth).
+
+### Files to create / change
+
+- `app/src/lib/practiceMethod.ts` (or new `app/src/lib/scaleDetails.ts`) — extended scale detail data
+- `app/src/screens/Harjoittelu.tsx` — info button in practice items, desktop two-column layout, mobile modal
+- New sub-components as needed (e.g., `ScaleDetailPanel`, `ScaleDetailModal`)
+- `docs/ux-spec.md` — update Harjoittelu desktop layout ASCII diagram to show two-column practice view
+
+---
+
+## Task 13: Extract canvas drawing into reusable music stave library and component
+
+**Status:** pending
+**Blocked by:** —
+
+`Kirkkosavellajit.tsx` currently contains ~100 lines of canvas drawing code (staff lines, treble clef, ledger lines, accidentals, note heads, stems) mixed into the screen file. Extract this into a pure TypeScript drawing library and a reusable React canvas component so the same rendering can power both the full Kirkkosavellajit view and smaller single-stave canvases in Harjoittelu (Task 12 detail panels).
+
+### Drawing library: `app/src/lib/musicStave.ts`
+
+Extract all canvas drawing functions from `Kirkkosavellajit.tsx` into a pure TypeScript module with **no React dependencies**:
+
+- `drawStaffLines(ctx, options)` — draw 5 staff lines for one staff system. Currently hardcoded to two staves (upper + lower) with `STAFF_GAP = 220`. Must support drawing a configurable number of staves (1 or 2) at configurable Y positions.
+- `drawTrebleClef(ctx, options)` — draw the 𝄞 clef. Must accept Y position and font size so it works for both the full 500px canvas and a smaller single-stave canvas.
+- `drawLedgerLines(ctx, x, y, staffLines)` — draw ledger lines above/below a staff. Currently takes a `'upper' | 'lower'` string and looks up hardcoded arrays. Instead, accept the staff line Y-positions directly so it works for any staff placement.
+- `drawAccidental(ctx, x, y, accidental, fontSize)` — draw ♯, ♭, 𝄪, 𝄫. Replace the `large: boolean` flag with an explicit font size so callers control sizing.
+- `drawNote(ctx, x, note, staffLines, options)` — draw a note head, stem, ledger lines, and accidental. Currently depends on the hardcoded `UPPER_STAFF_LINES` / `LOWER_STAFF_LINES` arrays and calls `getNoteY` with a `'upper' | 'lower'` parameter. Refactor to accept staff line positions directly.
+- `renderScale(ctx, key, mode, layout)` — orchestrate a full scale render. The `layout` parameter describes canvas dimensions, number of staves, note start/end X, spacing, and accidental font size. This replaces the current `renderScale` function which hardcodes two staves and derives spacing from canvas width.
+
+**Key design rules:**
+- Every function receives its geometry via parameters — no module-level constants for positions or sizes. The current hardcoded `STAFF_GAP`, `UPPER_STAFF_LINES`, `LOWER_STAFF_LINES` must become caller-provided configuration.
+- The module must remain pure (no DOM access beyond the `CanvasRenderingContext2D` it receives, no React, no Zustand).
+- Provide a `computeLayout(options)` helper that returns a complete layout config (staff positions, clef position, note start/spacing) given high-level inputs like `{ width, height, staves: 1 | 2, mobile: boolean }`. This is the convenience function that replaces all the scattered arithmetic.
+
+### React component: `app/src/components/ui/MusicCanvas.tsx`
+
+A reusable React component that wraps an HTML5 `<canvas>` and calls the drawing library:
+
+```tsx
+interface MusicCanvasProps {
+  scaleKey: string
+  mode: string
+  width: number
+  height: number
+  staves?: 1 | 2          // default 2 (ascending + descending)
+  mobile?: boolean         // default false — controls accidental size, clef size
+}
+```
+
+- Uses `useRef<HTMLCanvasElement>` + `useEffect` to draw, exactly like the current code in Kirkkosavellajit.
+- Calls `computeLayout()` to derive geometry, then `renderScale()` to draw.
+- **Single-stave mode** (`staves: 1`): draws only one staff with notes ascending (no descending mirror). Uses a shorter canvas height (e.g., ~150px instead of 500px). This is the variant that Harjoittelu detail panels (Task 12) will use to show a compact scale preview.
+- **Two-stave mode** (`staves: 2`): the current full Kirkkosavellajit behaviour — ascending on upper staff, descending on lower staff, 500px height.
+
+### Refactor Kirkkosavellajit.tsx
+
+- Remove all drawing functions (`drawStaff`, `drawTrebleClef`, `drawLedgerLines`, `drawAccidental`, `drawNote`, `renderScale`) and the hardcoded constants (`STAFF_GAP`, `UPPER_STAFF_LINES`, `LOWER_STAFF_LINES`).
+- Replace the inline `<canvas>` + `useRef` + `useEffect` draw logic with `<MusicCanvas>`.
+- The screen file should only contain UI/layout logic (buttons, sidebar, dropdown, navigation) — no canvas drawing code.
+- Both desktop (1000×500) and mobile canvas must produce **identical visual output** to what they do today. This is a pure refactor — no visual changes.
+
+### Files to create / change
+
+- `app/src/lib/musicStave.ts` — new, pure drawing library
+- `app/src/components/ui/MusicCanvas.tsx` — new, reusable canvas component
+- `app/src/screens/Kirkkosavellajit.tsx` — remove drawing code, use `<MusicCanvas>`
+- Existing tests must still pass; add a smoke test for `MusicCanvas` if practical

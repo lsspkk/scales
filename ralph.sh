@@ -5,8 +5,8 @@
 set -euo pipefail
 
 # ── Configuration ──────────────────────────────────────────────
-MAX_LOOPS=5
-MODEL="sonnet"         # opus, sonnet, haiku
+MAX_LOOPS=1
+MODEL="opus"         # opus, sonnet, haiku
 # ───────────────────────────────────────────────────────────────
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"

@@ -11,6 +11,7 @@ Read this file before implementing any screen or UI change. It is the source of 
 - **Typography:** Finnish for all user-facing text. English for code only. Musical terms in Finnish when a clear translation exists.
 - **Viewport breakpoint:** 769px. Below = mobile, above = desktop. Use `useViewport()` hook.
 - **No scroll on hub screens.** Content screens (Kirkkosavellajit, Harjoittelu info) may scroll vertically.
+- **Desktop content containment:** On desktop, only app-level chrome (ScreenHeader) spans full viewport width. All content — including sub-navigation like tabs, toggles, and filters — must live inside the screen's max-width content container (e.g., `max-w-[700px]`). Tabs that stretch edge-to-edge on a wide monitor look disconnected from the content they control. On mobile, full-width tabs are fine because the viewport _is_ the container.
 
 ---
 
@@ -21,7 +22,7 @@ Read this file before implementing any screen or UI change. It is the source of 
 ```
 Mobile (<=768px)               Desktop (>768px)
 +---------------------------+  +---------------------------------------+
-| Kirkkosävellajit (title)  |  |        Kirkkosävellajit (title)       |
+| Sävellajit (title)  |  |        Sävellajit (title)       |
 |                           |  |                                       |
 | +-------+                 |  |   +-------+          +-------+        |
 | | icon  |                 |  |   | icon  |          | icon  |        |
@@ -81,33 +82,45 @@ Mobile (<=768px)                Desktop (>768px)
 
 ## Screen: Harjoittelu (practice)
 
-**Purpose:** Violin scale practice guide and interactive routine. Currently placeholder, will have two sub-views.
+**Purpose:** Violin scale practice guide and interactive routine with two sub-views.
 
 ```
-Planned structure (Tasks 10-11):
-+---------------------------+
-| < Harjoittelu             |   red header
-|---------------------------|
-| [Tietoa] [Harjoittele]   |   tab toggle
-|                           |
-| (tab content)             |
-+---------------------------+
+Mobile (<=768px)                Desktop (>768px)
++---------------------------+   +------------------------------------------+
+| < Harjoittelu             |   | < Harjoittelu                            |
+|---------------------------|   |------------------------------------------|
+| [Tietoa] [Harjoittele]   |   |                                          |
+|                           |   |     +-- max 700px, centered ----------+  |
+| (tab content, scrollable) |   |     | [Tietoa] [Harjoittele]         |  |
+|                           |   |     |                                 |  |
++---------------------------+   |     | (tab content, scrollable)       |  |
+                                |     |                                 |  |
+                                |     +---------------------------------+  |
+                                +------------------------------------------+
 ```
 
-### Sub-view: Tietoa (info page, Task 10)
+- **Mobile:** tabs span full width (viewport _is_ the container), content below with `px-4 py-4`
+- **Desktop:** tabs sit inside the `max-w-[700px]` centered content container, not at full viewport width. This keeps tabs visually connected to the content they control.
+
+### Sub-view: Tietoa (info page)
 - Scrollable content from `docs/scale-practice-method.md`, in Finnish
 - Mobile: collapsible accordion sections, >=16px body text
 - Desktop: max-width 700px centered, sections default expanded
-- Uses `SectionCard` for grouping
+- Uses `AccordionSection` for grouping
 
-### Sub-view: Harjoittele (practice routine, Task 11)
+### Sub-view: Harjoittele (practice routine)
 - Skill level selector at top
 - Scrollable checklist of randomized scales
-- Each item >=44px height, tap to mark done
+- Each item >=44px height, tap to mark done, info button on trailing edge
 - Progress indicator: "7 / 24 harjoiteltu"
 - Done items: visually muted (strikethrough or checkmark)
 - Completion: congratulations message + two buttons (repeat same order / roll new)
 - State persisted in `practiceStore` (Zustand + localStorage)
+
+#### Info button and detail view
+- Each practice item has a circled "i" icon button (44px touch target) at the trailing edge
+- **Desktop:** tapping opens a sticky side panel to the right of the list (two-column layout, max-w 900px). Panel shows notes, shift exercise, practice routine, and arpeggio. Empty state: "Valitse asteikko nähdäksesi tiedot"
+- **Mobile:** tapping opens a fullscreen modal overlay with close button and browser-back support. Modal header shows scale name and positions.
 
 ---
 
