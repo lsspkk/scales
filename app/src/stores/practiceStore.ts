@@ -11,6 +11,7 @@ interface PracticeState {
   selectedLevel: number
   practiceSet: PracticeItem[]
   active: boolean
+  sessionStartedAt: string | null
   setSelectedLevel: (level: number) => void
   generatePracticeSet: () => void
   toggleDone: (index: number) => void
@@ -24,6 +25,7 @@ export const usePracticeStore = create<PracticeState>()(
       selectedLevel: 1,
       practiceSet: [],
       active: false,
+      sessionStartedAt: null,
 
       setSelectedLevel: (level) => set({ selectedLevel: level }),
 
@@ -31,28 +33,27 @@ export const usePracticeStore = create<PracticeState>()(
         const { selectedLevel } = get()
         const scales = shuffleScales(getScalesForLevel(selectedLevel))
         set({
-          practiceSet: scales.map(scale => ({ scale, done: false })),
+          practiceSet: scales.map((scale) => ({ scale, done: false })),
           active: true,
+          sessionStartedAt: new Date().toISOString(),
         })
       },
 
       toggleDone: (index) => {
         const { practiceSet } = get()
-        const updated = practiceSet.map((item, i) =>
-          i === index ? { ...item, done: !item.done } : item
-        )
+        const updated = practiceSet.map((item, i) => (i === index ? { ...item, done: !item.done } : item))
         set({ practiceSet: updated })
       },
 
       resetProgress: () => {
         const { practiceSet } = get()
-        set({ practiceSet: practiceSet.map(item => ({ ...item, done: false })) })
+        set({ practiceSet: practiceSet.map((item) => ({ ...item, done: false })) })
       },
 
       reshuffleSet: () => {
         const { practiceSet } = get()
-        const scales = shuffleScales(practiceSet.map(item => item.scale))
-        set({ practiceSet: scales.map(scale => ({ scale, done: false })) })
+        const scales = shuffleScales(practiceSet.map((item) => item.scale))
+        set({ practiceSet: scales.map((scale) => ({ scale, done: false })) })
       },
     }),
     {
@@ -61,7 +62,8 @@ export const usePracticeStore = create<PracticeState>()(
         selectedLevel: s.selectedLevel,
         practiceSet: s.practiceSet,
         active: s.active,
+        sessionStartedAt: s.sessionStartedAt,
       }),
-    }
-  )
+    },
+  ),
 )

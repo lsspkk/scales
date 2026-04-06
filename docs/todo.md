@@ -350,7 +350,7 @@ All text in **Finnish**, consistent with the app's language policy.
 
 ## Task 13: Extract canvas drawing into reusable music stave library and component
 
-**Status:** pending
+**Status:** done
 **Blocked by:** —
 
 `Kirkkosavellajit.tsx` currently contains ~100 lines of canvas drawing code (staff lines, treble clef, ledger lines, accidentals, note heads, stems) mixed into the screen file. Extract this into a pure TypeScript drawing library and a reusable React canvas component so the same rendering can power both the full Kirkkosavellajit view and smaller single-stave canvases in Harjoittelu (Task 12 detail panels).

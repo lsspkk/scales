@@ -11,7 +11,7 @@ it('renders the Harjoittelu screen with tabs', () => {
   render(
     <MemoryRouter>
       <Harjoittelu />
-    </MemoryRouter>
+    </MemoryRouter>,
   )
   expect(screen.getByText('Harjoittelu')).toBeInTheDocument()
   expect(screen.getByText('Tietoa')).toBeInTheDocument()
@@ -22,7 +22,7 @@ it('shows info tab content when Tietoa is clicked', () => {
   render(
     <MemoryRouter>
       <Harjoittelu />
-    </MemoryRouter>
+    </MemoryRouter>,
   )
   fireEvent.click(screen.getByText('Tietoa'))
   expect(screen.getByText('Harjoitusmenetelmä')).toBeInTheDocument()
@@ -34,7 +34,7 @@ it('shows practice tab with level selector by default', () => {
   render(
     <MemoryRouter>
       <Harjoittelu />
-    </MemoryRouter>
+    </MemoryRouter>,
   )
   expect(screen.getByText('Valitse taitotaso')).toBeInTheDocument()
   expect(screen.getByText('Aloita harjoittelu')).toBeInTheDocument()
