@@ -6,7 +6,7 @@ import { ScaleDetailPanel } from '../components/ui/ScaleDetailPanel'
 import { ScaleDetailModal } from '../components/ui/ScaleDetailModal'
 import { useViewport } from '../lib/useViewport'
 import { usePracticeStore } from '../stores/practiceStore'
-import { formatScaleLabel, formatPositions, getScaleDetail, type ScaleEntry } from '../lib/practiceMethod'
+import { formatScaleLabel, formatPositions, getScaleDetail, getScaleKey, type ScaleEntry } from '../lib/practiceMethod'
 
 // ── Scale data for the info page (unchanged from Task 10) ──
 
@@ -375,6 +375,7 @@ function PracticeTab({ selectedScale, onSelectScale }: { selectedScale: ScaleEnt
   const toggleDone = usePracticeStore((s) => s.toggleDone)
   const resetProgress = usePracticeStore((s) => s.resetProgress)
   const reshuffleSet = usePracticeStore((s) => s.reshuffleSet)
+  const clearSession = usePracticeStore((s) => s.clearSession)
 
   const doneCount = practiceSet.filter((item) => item.done).length
   const totalCount = practiceSet.length
@@ -441,7 +442,7 @@ function PracticeTab({ selectedScale, onSelectScale }: { selectedScale: ScaleEnt
         </p>
         <button
           onClick={() => {
-            usePracticeStore.setState({ active: false, practiceSet: [] })
+            clearSession()
             onSelectScale(null)
           }}
           className='text-sm text-[#8B4513] underline min-h-[44px] px-2'
@@ -467,7 +468,7 @@ function PracticeTab({ selectedScale, onSelectScale }: { selectedScale: ScaleEnt
       <div className='space-y-1'>
         {practiceSet.map((item, index) => (
           <div
-            key={index}
+            key={getScaleKey(item.scale)}
             className={`w-full min-h-[44px] flex items-center gap-2 px-3 py-2 rounded-lg transition-colors ${
               item.done ? 'bg-[#f0dbb8] opacity-60' : 'bg-[#fffbe9] border border-[#c9a96e]'
             }`}
