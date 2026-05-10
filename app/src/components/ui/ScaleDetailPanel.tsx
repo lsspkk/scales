@@ -1,4 +1,5 @@
 import { type ScaleDetail } from '../../lib/practiceMethod'
+import { MusicCanvas } from './MusicCanvas'
 
 interface ScaleDetailPanelProps {
   detail: ScaleDetail
@@ -11,7 +12,10 @@ export function ScaleDetailPanel({ detail }: ScaleDetailPanelProps) {
       {/* Nuotit (Notes) */}
       <section>
         <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Nuotit</h3>
-        <p className='text-base font-mono bg-[#f5e9cc] rounded-lg px-3 py-2 text-[#3a1a00]'>{detail.notes.join(' – ')}</p>
+        <div className='w-full aspect-[4/1] bg-[#fff3c9]'>
+          <MusicCanvas scaleKey={detail.scaleKey} mode={detail.scaleMode} width={1000} height={300} staves={1} mobile className='w-full h-full block' />
+        </div>
+        <p className='text-xs text-[#8B4513] mt-1'>{detail.notes.join(' – ')}</p>
         <p className='text-sm text-[#8B4513] mt-1'>
           {detail.octaves} oktaavia, {detail.positionLabel}
         </p>
@@ -40,8 +44,11 @@ export function ScaleDetailPanel({ detail }: ScaleDetailPanelProps) {
       {/* Arpeggio */}
       <section>
         <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Arpeggio</h3>
-        <p className='text-base font-mono bg-[#f5e9cc] rounded-lg px-3 py-2 text-[#3a1a00] mb-1'>{detail.arpeggioNotes}</p>
-        <p className='text-sm text-[#8B4513]'>{detail.arpeggioDescription}</p>
+        <div className='w-full aspect-[4/1] bg-[#fff3c9]'>
+          <MusicCanvas arpeggioNotes={detail.arpeggioNotesWithOctave} width={1000} height={300} staves={1} mobile className='w-full h-full block' />
+        </div>
+        <p className='text-xs text-[#8B4513] mt-1'>{detail.arpeggioNotes}</p>
+        <p className='text-xs text-[#8B4513]'>{detail.arpeggioDescription}</p>
       </section>
     </div>
   )

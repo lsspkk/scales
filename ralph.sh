@@ -5,7 +5,7 @@
 set -euo pipefail
 
 # ── Configuration ──────────────────────────────────────────────
-MAX_LOOPS=1
+MAX_LOOPS=3
 MODEL="opus"         # opus, sonnet, haiku
 # ───────────────────────────────────────────────────────────────
 

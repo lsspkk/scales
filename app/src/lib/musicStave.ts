@@ -4,6 +4,9 @@
  */
 
 import { getScale, getNoteInfo, getNoteY } from './musicScale'
+import { type NoteWithOctave, getAbsoluteNoteY, DRAWING_RANGE, DIATONIC_INDEX } from './noteOctave'
+
+export { type NoteWithOctave, getAbsoluteNoteY } from './noteOctave'
 
 /** Configuration for staff layout and sizing */
 export interface StaveLayout {
@@ -29,6 +32,8 @@ export interface StaveLayout {
   clefX: number
   /** Accidental font size (larger on mobile) */
   accidentalFontSize: number
+  /** Whether this is a compact layout */
+  compact: boolean
 }
 
 /**
@@ -40,29 +45,30 @@ export function computeLayout(options: {
   height: number
   staves?: 1 | 2
   mobile?: boolean
+  compact?: boolean
 }): StaveLayout {
-  const { width, height, staves = 2, mobile = false } = options
-  
+  const { width, height, staves = 2, mobile = false, compact = false } = options
+
   // Staff line positions for upper staff (5 lines)
   const staffLines = [95, 120, 145, 170, 195]
   const staffGap = 220
-  
+
   // Staff line horizontal bounds
-  const staffStartX = mobile ? 5 : -5
+  const staffStartX = compact ? 5 : mobile ? 5 : -5
   const staffEndX = width - 5
-  
+
   // Note layout
-  const noteStartX = mobile ? 90 : 115
-  const endPad = mobile ? 40 : 60
+  const noteStartX = compact ? 50 : mobile ? 90 : 115
+  const endPad = compact ? 10 : mobile ? 40 : 60
   // For an 8-note scale, we need spacing for 7 intervals
   const noteSpacing = (width - noteStartX - endPad) / 7
-  
+
   // Clef sizing
-  const clefFontSize = mobile ? 146 : 126
-  const clefX = 25
-  
+  const clefFontSize = compact ? 80 : mobile ? 146 : 126
+  const clefX = compact ? 15 : 25
+
   // Accidental sizing
-  const accidentalFontSize = mobile ? 48 : 36
+  const accidentalFontSize = compact ? 24 : mobile ? 48 : 36
 
   return {
     width,
@@ -77,6 +83,7 @@ export function computeLayout(options: {
     clefFontSize,
     clefX,
     accidentalFontSize,
+    compact,
   }
 }
 
@@ -288,5 +295,75 @@ export function renderScale(
       const x = layout.noteStartX + i * layout.noteSpacing
       drawNote(ctx, x, note, 'lower', scale.length - 1 - i, key, lowerStaffLines, layout.accidentalFontSize)
     })
+  }
+}
+
+function isInDrawingRange(note: NoteWithOctave): boolean {
+  const pos = note.octave * 7 + DIATONIC_INDEX[note.letter]
+  const minPos = DRAWING_RANGE.min.octave * 7 + DIATONIC_INDEX[DRAWING_RANGE.min.letter]
+  const maxPos = DRAWING_RANGE.max.octave * 7 + DIATONIC_INDEX[DRAWING_RANGE.max.letter]
+  return pos >= minPos && pos <= maxPos
+}
+
+export function drawNoteAt(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  accidental: string | null,
+  accidentalFontSize: number,
+  staffLineYs: number[]
+): void {
+  ctx.fillStyle = '#000'
+  ctx.beginPath()
+  ctx.ellipse(x, y, 13, 8.5, -Math.PI / 6 - 0.087, 0, 2 * Math.PI)
+  ctx.fill()
+
+  const bLineY = staffLineYs[2] + 10
+  ctx.lineWidth = 2
+  if (y < bLineY) {
+    ctx.beginPath()
+    ctx.moveTo(x - 9, y)
+    ctx.lineTo(x - 9, y + 70)
+    ctx.stroke()
+  } else {
+    ctx.beginPath()
+    ctx.moveTo(x + 9, y)
+    ctx.lineTo(x + 9, y - 70)
+    ctx.stroke()
+  }
+
+  drawLedgerLines(ctx, x, y, staffLineYs)
+
+  if (accidental) {
+    drawAccidental(ctx, x - 32, y, accidental, accidentalFontSize)
+  }
+}
+
+export function renderArpeggio(
+  ctx: CanvasRenderingContext2D,
+  notes: NoteWithOctave[],
+  layout: StaveLayout
+): void {
+  ctx.clearRect(0, 0, layout.width, layout.height)
+
+  drawStaffLines(ctx, layout)
+  drawTrebleClef(ctx, layout)
+
+  const staffLineYs = layout.staffLines
+  const noteCount = notes.length
+  if (noteCount === 0) return
+
+  const endX = layout.staffEndX - (layout.compact ? 10 : 60)
+  const spacing = noteCount > 1 ? (endX - layout.noteStartX) / (noteCount - 1) : 0
+
+  for (let i = 0; i < noteCount; i++) {
+    const note = notes[i]
+    if (!isInDrawingRange(note)) {
+      console.warn(`Note ${note.letter}${note.accidental ?? ''}${note.octave} is outside drawing range G3–B5`)
+      continue
+    }
+    const x = layout.noteStartX + i * spacing
+    const y = getAbsoluteNoteY(note, staffLineYs)
+    drawNoteAt(ctx, x, y, note.accidental, layout.accidentalFontSize, staffLineYs)
   }
 }

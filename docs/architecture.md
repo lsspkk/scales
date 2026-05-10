@@ -70,7 +70,25 @@ The drawing logic is extracted into a pure TypeScript module with no React depen
 
 **Design principle:** All geometry is passed via the `StaveLayout` object — no module-level constants. This allows the same code to render both:
 - Full 1000×500 two-stave canvas (Kirkkosavellajit)
-- Compact single-stave preview canvases (future Harjoittelu detail panels)
+- Compact single-stave preview canvases (Harjoittelu detail panels)
+
+## Octave-Aware Note System (`noteOctave.ts`)
+
+`noteOctave.ts` provides absolute pitch representation and Finnish/Helmholtz/SPN formatting for all octaves 0–8. The drawing system supports only the violin range G3–B5.
+
+**Key types and functions:**
+- `NoteWithOctave` — `{ letter, accidental, octave }` for absolute pitch
+- `DIATONIC_INDEX` — maps note letter to diatonic step (C=0 … B=6)
+- `OCTAVE_NAMES_FI` — Finnish octave names for all octaves 0–8 (Helmholtz-based)
+- `getAbsoluteNoteY(note, staffLineYs)` — computes canvas Y from absolute pitch. Reference: E4 = bottom staff line (staffLineYs[4])
+- `formatNoteFi()`, `formatNoteHelmholtz()`, `formatNoteSPN()` — note name formatting
+- `VIOLIN_OPEN_STRING_OCTAVES`, `DRAWING_RANGE` — violin-specific constants
+
+**Arpeggio rendering:**
+- `buildArpeggioNotesWithOctave(scaleNotes, rootKey)` in `practiceMethod.ts` — builds `NoteWithOctave[]` from scale degrees 1, 3, 5, 8
+- `renderArpeggio(ctx, notes, layout)` in `musicStave.ts` — draws arpeggio notes at absolute Y positions using `getAbsoluteNoteY()`
+- `drawNoteAt(ctx, x, y, accidental, fontSize, staffLineYs)` — low-level note drawing at an absolute position (extracted from `drawNote()`)
+- `MusicCanvas` accepts `arpeggioNotes?: NoteWithOctave[]` — when provided, renders arpeggio instead of scale
 
 ## Canvas Layout
 

@@ -429,3 +429,455 @@ Implementation hints:
 - Prefer a deterministic key such as `key + mode + level + positions` over the row index.
 - Keep the visual result unchanged; this task is about maintainability and state correctness, not redesign.
 - Add or extend tests around session reset / reshuffle behaviour if the refactor changes state handling.
+
+---
+
+## Task 15: Show scale as MusicCanvas in the info panel (Nuotit-osio)
+
+**Status:** done
+**Blocked by:** Task 13
+
+The scale info panel (opened via the ⓘ button in the Harjoittele practice list) currently shows the scale notes as a text string (`G – A – B – C – D – E – F# – G`). Replace this with a compact single-stave `MusicCanvas` rendering of the one-octave ascending scale, keeping the note names as small helper text below, and leaving the Arpeggio section unchanged.
+
+### What changes
+
+1. **Extend `ScaleDetail`** — add `scaleKey: string` and `scaleMode: string` fields to the `ScaleDetail` interface in `app/src/lib/practiceMethod.ts` so the panel knows what to pass to `MusicCanvas`. Populate them in `getScaleDetail()` from the `ScaleEntry`.
+
+2. **Update `ScaleDetailPanel.tsx`** — replace the Nuotit section:
+   - **Before:** `<p className="font-mono ...">{detail.notes.join(' – ')}</p>`
+   - **After:**
+     1. `<MusicCanvas scaleKey={detail.scaleKey} mode={detail.scaleMode} width={panelWidth} height={130} staves={1} />` — compact single-stave canvas showing the ascending scale.
+     2. `<p className="text-xs text-[#8B4513] mt-1">{detail.notes.join(' – ')}</p>` — same note names in small text below the canvas.
+   - Import `MusicCanvas` from `../../components/ui/MusicCanvas`.
+
+3. **Canvas sizing** — the panel width differs between desktop (268px usable inside 300px panel with padding) and mobile (full modal width minus padding ~340px). Two approaches:
+   - **Option A (simpler):** Use a fixed width like `260` that fits both contexts. The canvas will be slightly narrower than the mobile modal but consistent.
+   - **Option B (responsive):** Accept `panelWidth` as a prop on `ScaleDetailPanel` and compute it from the parent. More work but pixel-perfect.
+   - **Recommendation:** Start with Option A (fixed 260px width). The 8-note scale renders fine at this width in staves=1 mode. If it looks cramped, the implementer can switch to Option B.
+
+4. **`computeLayout` tuning for narrow single-stave** — verify that `computeLayout({ width: 260, height: 130, staves: 1, mobile: false })` produces sensible note spacing and clef sizing. The current formula: `noteSpacing = (260 - 115 - 60) / 7 ≈ 12px` — this is too narrow. The implementer should either:
+   - Reduce `noteStartX` and `endPad` for the compact case (e.g., `noteStartX: 50, endPad: 15` → spacing ≈ 28px), or
+   - Add a `compact` option to `computeLayout` that uses tighter geometry for small canvases.
+   - **Recommendation:** Add a `compact?: boolean` flag to `computeLayout` options. When `compact` is true: `noteStartX = 50`, `endPad = 10`, `clefFontSize = 80`, `clefX = 15`. This keeps the library generic.
+
+5. **Arpeggio section** — keep completely unchanged. It stays as text (`detail.arpeggioNotes` and `detail.arpeggioDescription`).
+
+### Files to change
+
+- `app/src/lib/practiceMethod.ts` — add `scaleKey` and `scaleMode` to `ScaleDetail`, populate in `getScaleDetail()`
+- `app/src/lib/musicStave.ts` — add `compact` flag to `computeLayout` with tighter geometry
+- `app/src/components/ui/ScaleDetailPanel.tsx` — replace Nuotit text with `MusicCanvas` + small text
+
+### Verification
+
+- Open Harjoittele tab, tap ⓘ on a scale → the Nuotit section shows a drawn staff with notes, not just text
+- Note names still visible as small text below the canvas
+- Arpeggio section unchanged
+- Desktop side panel: canvas fits within 300px panel
+- Mobile modal: canvas fits within the modal width
+- Compare the drawn notes visually against the text to confirm correctness
+
+---
+
+## Task 16: Add octave-aware note system and arpeggio drawing to musicStave library
+
+**Status:** done
+**Blocked by:** Task 13
+
+The current drawing system positions notes **relative to the scale root** — it doesn't know about absolute pitch or octaves. This task adds an octave-aware note representation and a `renderArpeggio()` function to `musicStave.ts` so that arpeggio notes (and later, arbitrary note sequences) can be drawn at their correct staff positions.
+
+**Scope limitation:** Support only the standard violin range: G3 (pieni/pikku g, avoin G-kieli) to B5 (kaksiviivainen h). Do not implement octaves outside this range yet.
+
+### Part 1: Oktaavijärjestelmän dokumentaatio (Octave system documentation)
+
+Add a JSDoc comment block at the top of `app/src/lib/musicStave.ts` (or in a new companion file `app/src/lib/noteOctave.ts` if cleaner) that documents the octave naming system used by the library:
+
+```
+/**
+ * Oktaavijärjestelmä / Octave system
+ *
+ * Tämä kirjasto käyttää SPN-numerointia (Scientific Pitch Notation) sisäisesti.
+ * Suomalaiset oktaavinimet perustuvat Helmholtzin merkintätapaan (1863),
+ * joka on peräisin saksalaisesta urkujenrakennusperinteestä.
+ *
+ * Finnish octave names originate from the Helmholtz pitch notation system (1863),
+ * itself derived from the German organ builders' pipe-labeling tradition.
+ *
+ * ┌─────────────────────────────────────┬────────────────┬────────────┬───────────┐
+ * │ Suomeksi (fin)                      │ Helmholtz      │ SPN (C..B) │ Viulu     │
+ * ├─────────────────────────────────────┼────────────────┼────────────┼───────────┤
+ * │ Subkontraoktaavi                    │ C„ – B„        │ C0 – B0    │ —         │
+ * │ Kontraoktaavi                       │ C, – B,        │ C1 – B1    │ —         │
+ * │ Suuri (iso) oktaavi                 │ C – B          │ C2 – B2    │ —         │
+ * │ Pieni (pikku) oktaavi               │ c – b          │ C3 – B3    │ G3 ↑     │
+ * │ Yksiviivainen (1-viivainen) oktaavi │ c' – b'        │ C4 – B4    │ koko     │
+ * │ Kaksiviivainen (2-viivainen) okt.   │ c'' – b''      │ C5 – B5    │ → B5     │
+ * │ Kolmiviivainen (3-viivainen) okt.   │ c''' – b'''    │ C6 – B6    │ —         │
+ * │ Neliviivainen (4-viivainen) okt.    │ c'''' – b''''  │ C7 – B7    │ —         │
+ * │ Viisiviivainen (5-viivainen) okt.   │ c'''''         │ C8         │ —         │
+ * └─────────────────────────────────────┴────────────────┴────────────┴───────────┘
+ *
+ * Nimeämisjärjestelmä (OCTAVE_NAMES_FI, noteOctave.ts) kattaa kaikki
+ * oktaavit 0–8. Piirtojärjestelmä tukee toistaiseksi vain viulun aluetta.
+ *
+ * Viulun tuettu alue tässä kirjastossa:
+ *   G3 (pieni g, avoin G-kieli) – B5 (kaksiviivainen h, E-kieli 3. asemassa)
+ *
+ * Nuottiviivaston kiinteät paikat (diskanttivain, treble clef):
+ *   Viiva 1 (alin)  = E4 (yksiviivainen e)
+ *   Viiva 2          = G4
+ *   Viiva 3          = B4
+ *   Viiva 4          = D5
+ *   Viiva 5 (ylin)   = F5
+ *   Keski-C (C4)     = apuviiva alapuolella
+ */
+```
+
+### Part 2: Tietotyypit ja vakiot (Types and constants)
+
+Place in a new file `app/src/lib/noteOctave.ts` — this is pure data/logic with no canvas or React dependency. Re-export from `musicStave.ts` for convenience.
+
+```ts
+// ── Tietotyypit (Types) ──
+
+/** A note with explicit octave — used for absolute staff positioning. */
+export interface NoteWithOctave {
+  /** Note letter: C, D, E, F, G, A, B */
+  letter: string
+  /** Accidental: '#', 'b', '##', 'bb', or null */
+  accidental: string | null
+  /** SPN octave number: 0–8. See OCTAVE_NAMES_FI for Finnish equivalents. */
+  octave: number
+}
+
+/** Diatonic step index for each letter (C=0, D=1, ..., B=6) */
+export const DIATONIC_INDEX: Record<string, number> = {
+  C: 0, D: 1, E: 2, F: 3, G: 4, A: 5, B: 6,
+}
+
+// ── Oktaavinimet kaikille oktaaveille (Octave names for ALL octaves) ──
+// Nämä kattavat koko pianon alueen ja sen yli. Piirtojärjestelmä
+// tukee toistaiseksi vain viulun aluetta (G3–B5), mutta nimeäminen
+// toimii kaikille oktaaveille.
+
+/**
+ * Suomenkieliset oktaavinimet SPN-numeron mukaan (0–8).
+ * Finnish octave names indexed by SPN octave number.
+ *
+ * Nämä nimet ovat vakiintuneet suomalaisessa musiikkiteoriassa ja
+ * perustuvat Helmholtzin järjestelmään. Mukana sekä viralliset
+ * (suuri, pieni) että puhekieliset (iso, pikku) muodot.
+ */
+export const OCTAVE_NAMES_FI: Record<number, {
+  /** Virallinen nimi (esim. "Pieni oktaavi") */
+  name: string
+  /** Puhekielinen / lyhyt nimi (esim. "pikku") */
+  shortName: string
+  /** Helmholtz-merkintätapa (esim. "c – b") */
+  helmholtz: string
+  /** Kuvaus englanniksi */
+  nameEn: string
+}> = {
+  0: { name: 'Subkontraoktaavi',            shortName: 'subkontra',      helmholtz: 'C„ – B„',     nameEn: 'Sub-contra octave' },
+  1: { name: 'Kontraoktaavi',               shortName: 'kontra',         helmholtz: 'C, – B,',     nameEn: 'Contra octave' },
+  2: { name: 'Suuri oktaavi',               shortName: 'iso',            helmholtz: 'C – B',       nameEn: 'Great octave' },
+  3: { name: 'Pieni oktaavi',               shortName: 'pikku',          helmholtz: 'c – b',       nameEn: 'Small octave' },
+  4: { name: 'Yksiviivainen oktaavi',       shortName: '1-viivainen',    helmholtz: "c' – b'",     nameEn: 'One-line octave' },
+  5: { name: 'Kaksiviivainen oktaavi',      shortName: '2-viivainen',    helmholtz: "c'' – b''",   nameEn: 'Two-line octave' },
+  6: { name: 'Kolmiviivainen oktaavi',      shortName: '3-viivainen',    helmholtz: "c''' – b'''", nameEn: 'Three-line octave' },
+  7: { name: 'Neliviivainen oktaavi',       shortName: '4-viivainen',    helmholtz: "c'''' – b''''", nameEn: 'Four-line octave' },
+  8: { name: 'Viisiviivainen oktaavi',      shortName: '5-viivainen',    helmholtz: "c'''''",      nameEn: 'Five-line octave' },
+}
+
+/**
+ * Muodosta nuotin suomenkielinen nimi oktaavin kanssa.
+ * Format a note's Finnish name with its octave designation.
+ *
+ * Esimerkit / Examples:
+ *   formatNoteFi({ letter: 'G', accidental: null, octave: 3 })  → "pieni g"
+ *   formatNoteFi({ letter: 'A', accidental: null, octave: 4 })  → "yksiviivainen a"
+ *   formatNoteFi({ letter: 'F', accidental: '#', octave: 5 })   → "kaksiviivainen fis"
+ *   formatNoteFi({ letter: 'B', accidental: 'b', octave: 3 })   → "pieni b"
+ *
+ * Huom: Suomalaisessa traditiossa H = B-natural ja B = Bb,
+ * mutta tämä kirjasto käyttää englanninkielisiä nimiä (B = B-natural)
+ * yhdenmukaisuuden vuoksi muun koodikannan kanssa.
+ * Jos halutaan saksalais-suomalainen perinne (H/B), lisätään
+ * erillinen formatNoteFinTradition() myöhemmin.
+ *
+ * @param note - NoteWithOctave
+ * @param useShortName - Jos true, käyttää lyhyttä muotoa ("pikku g" vs. "Pieni oktaavi: g")
+ * @returns Suomenkielinen nuottinimi
+ */
+export function formatNoteFi(note: NoteWithOctave, useShortName = true): string {
+  const octaveInfo = OCTAVE_NAMES_FI[note.octave]
+  if (!octaveInfo) return `${note.letter}${note.accidental ?? ''}${note.octave}`
+
+  // Suomeksi nuottikirjain on pienellä (lowercase)
+  const letterLower = note.letter.toLowerCase()
+  const accidentalSuffix = note.accidental
+    ? ({ '#': 'is', '##': 'isis', 'b': 'es', 'bb': 'eses' }[note.accidental] ?? '')
+    : ''
+
+  const prefix = useShortName ? octaveInfo.shortName : octaveInfo.name
+  return `${prefix} ${letterLower}${accidentalSuffix}`
+}
+
+/**
+ * Muodosta Helmholtz-merkintä nuotille.
+ * Format a note in Helmholtz notation.
+ *
+ * Esimerkit:
+ *   { letter: 'C', octave: 4 } → "c'"
+ *   { letter: 'G', octave: 3 } → "g"
+ *   { letter: 'A', octave: 2 } → "A"
+ *   { letter: 'D', octave: 5 } → "d''"
+ */
+export function formatNoteHelmholtz(note: NoteWithOctave): string {
+  const acc = note.accidental
+    ? ({ '#': 'is', '##': 'isis', 'b': 'es', 'bb': 'eses' }[note.accidental] ?? '')
+    : ''
+
+  if (note.octave <= 2) {
+    // Suuri/iso oktaavi ja alemmat: ISOT kirjaimet
+    const letter = note.letter.toUpperCase()
+    const subPrimes = note.octave < 2 ? ','.repeat(2 - note.octave) : ''
+    return `${letter}${acc}${subPrimes}`
+  }
+
+  // Pieni ja ylemmät: pienet kirjaimet + pilkut
+  const letter = note.letter.toLowerCase()
+  const primes = note.octave > 3 ? "'".repeat(note.octave - 3) : ''
+  return `${letter}${acc}${primes}`
+}
+
+/**
+ * Muodosta SPN-merkintä nuotille (esim. "G3", "F#5").
+ * Format a note in Scientific Pitch Notation.
+ */
+export function formatNoteSPN(note: NoteWithOctave): string {
+  return `${note.letter}${note.accidental ?? ''}${note.octave}`
+}
+
+// ── Viulun aluevakiot (Violin range constants) ──
+
+/**
+ * Viulun avointen kielien aloitusoktaavit 1. asemassa.
+ * Open-string starting octaves in 1st position.
+ */
+export const VIOLIN_OPEN_STRING_OCTAVES: Record<string, number> = {
+  G: 3,  // pieni g  (G3)
+  D: 4,  // yksiviivainen d (D4)
+  A: 4,  // yksiviivainen a (A4)
+  E: 5,  // kaksiviivainen e (E5)
+}
+
+/** Piirtojärjestelmän tuettu alue (Drawing system supported range). */
+export const DRAWING_RANGE = { min: { letter: 'G', octave: 3 }, max: { letter: 'B', octave: 5 } }
+```
+
+**Key design decision:** `noteOctave.ts` defines names and formatting for **all** octaves 0–8 (full piano range and beyond), so the naming system is complete and usable for display/logging/testing everywhere. Only the drawing functions in `musicStave.ts` are limited to G3–B5. This separation means future tasks can extend the drawing range without touching the naming layer.
+
+### Part 3: Absoluuttinen nuottipaikka (Absolute note positioning)
+
+Add a function to compute the Y-coordinate of a note from its absolute pitch:
+
+```ts
+/**
+ * Calculate the Y-coordinate for a note at a specific octave on a treble clef staff.
+ * Reference point: E4 (yksiviivainen e) sits on the bottom staff line (staffLineYs[4]).
+ * Each diatonic step = half the line spacing (12.5px for standard 25px line spacing).
+ *
+ * @param note - The note with octave info
+ * @param staffLineYs - Y-positions of the 5 staff lines (index 0 = top, index 4 = bottom)
+ * @returns Y-coordinate on the canvas
+ */
+export function getAbsoluteNoteY(
+  note: NoteWithOctave,
+  staffLineYs: number[]
+): number {
+  const lineSpacing = staffLineYs[1] - staffLineYs[0]  // 25px
+  const stepSize = lineSpacing / 2  // 12.5px
+
+  // E4 diatonic position = 4*7 + 2 = 30
+  const e4Position = 4 * 7 + DIATONIC_INDEX['E']  // = 30
+  const notePosition = note.octave * 7 + DIATONIC_INDEX[note.letter]
+
+  // Bottom line (staffLineYs[4]) = E4; each step up = -stepSize
+  return staffLineYs[4] - (notePosition - e4Position) * stepSize
+}
+```
+
+**Verification formula** (implementer should add these as unit tests):
+- `G3 (3*7+4=25)` → `y = 195 - (25-30)*12.5 = 195 + 62.5 = 257.5` (2 apuviivaa alapuolella)
+- `E4 (4*7+2=30)` → `y = 195 - 0 = 195` (alin viiva ✓)
+- `G4 (4*7+4=32)` → `y = 195 - 25 = 170` (viiva 2 ✓)
+- `B4 (4*7+6=34)` → `y = 195 - 50 = 145` (viiva 3 ✓)
+- `F5 (5*7+3=38)` → `y = 195 - 100 = 95` (viiva 5 ✓)
+- `B5 (5*7+6=41)` → `y = 195 - 137.5 = 57.5` (2 apuviivaa yläpuolella)
+
+### Part 4: Arpeggion nuottien laskenta (Arpeggio note generation)
+
+Add to `app/src/lib/practiceMethod.ts` (or a new `arpeggioNotes.ts`):
+
+```ts
+/**
+ * Build arpeggio notes with correct octaves for violin.
+ * A 1-octave tonic triad arpeggio = root, 3rd, 5th, octave-root (4 notes).
+ *
+ * @param scaleNotes - The 8-note scale from getScale() (indices 0-7)
+ * @param rootKey - The root key letter (e.g., 'G', 'D')
+ * @returns Array of NoteWithOctave for the arpeggio
+ */
+export function buildArpeggioNotesWithOctave(
+  scaleNotes: string[],
+  rootKey: string
+): NoteWithOctave[]
+```
+
+Logic:
+1. Determine starting octave from `VIOLIN_OPEN_STRING_OCTAVES` based on root key letter. For keys not starting on an open string (e.g., F, Bb, Eb), find the nearest lower open string and compute: e.g., F starts on D-string → octave 4; Bb starts on A-string but one step up → octave 4; C starts on G-string but up → still octave 3 for C (wait, C in 1st position on G-string: G3, A3, B3, C4 — so C is actually octave 4).
+2. Actually, a cleaner approach: define a const map `SCALE_ROOT_OCTAVE` for each key used in the practice method:
+   ```ts
+   const SCALE_ROOT_OCTAVE: Record<string, number> = {
+     'G': 3, 'A': 3, 'Bb': 3,        // G-kieli alue
+     'C': 4, 'D': 4, 'E': 4, 'F': 4, // D/A-kieli alue
+     'F#': 4, 'Ab': 4, 'Eb': 4, 'B': 3,
+   }
+   ```
+   (The implementer must verify each key's starting octave against standard violin fingering charts.)
+3. Parse each arpeggio note letter from `scaleNotes[0]`, `scaleNotes[2]`, `scaleNotes[4]`, `scaleNotes[7]`.
+4. Assign octaves: start from root octave, and increment octave when the diatonic index wraps past B→C.
+5. Return `NoteWithOctave[]`.
+
+### Part 5: renderArpeggio-piirtofunktio (Arpeggio rendering function)
+
+Add to `app/src/lib/musicStave.ts`:
+
+```ts
+/**
+ * Render arpeggio notes on a single staff.
+ * Draws staff lines, treble clef, and the given notes at their absolute positions.
+ *
+ * @param ctx - Canvas 2D context
+ * @param notes - Array of NoteWithOctave to draw
+ * @param layout - StaveLayout (should be staves=1)
+ */
+export function renderArpeggio(
+  ctx: CanvasRenderingContext2D,
+  notes: NoteWithOctave[],
+  layout: StaveLayout
+): void
+```
+
+Implementation:
+1. Clear canvas, draw staff lines, draw treble clef (reuse existing functions).
+2. Compute note X positions: evenly spaced from `layout.noteStartX` to near the end. For 4 notes: `spacing = (endX - noteStartX) / 3`.
+3. For each note, call `getAbsoluteNoteY(note, staffLineYs)` to get Y.
+4. Draw note head (ellipse), stem, ledger lines, accidental — reuse existing drawing primitives but with absolute Y instead of the relative `getNoteY`.
+5. This means extracting the note-head/stem/accidental drawing from the current `drawNote()` into a lower-level `drawNoteAt(ctx, x, y, accidental, accidentalFontSize, staffLineYs)` function, which both `drawNote()` and `renderArpeggio()` can call.
+
+### Part 6: MusicCanvas-komponentin laajennus (MusicCanvas extension)
+
+Extend `MusicCanvas.tsx` props:
+
+```ts
+interface MusicCanvasProps {
+  // ... existing props ...
+  /** If provided, renders an arpeggio instead of a scale */
+  arpeggioNotes?: NoteWithOctave[]
+}
+```
+
+When `arpeggioNotes` is provided, call `renderArpeggio()` instead of `renderScale()`.
+
+### Files to create / change
+
+- `app/src/lib/noteOctave.ts` — **new file**: `NoteWithOctave`, `OCTAVE_NAMES_FI` (all octaves 0–8), `DIATONIC_INDEX`, `VIOLIN_OPEN_STRING_OCTAVES`, `DRAWING_RANGE`, `formatNoteFi()`, `formatNoteHelmholtz()`, `formatNoteSPN()`
+- `app/src/lib/musicStave.ts` — add documentation block (Part 1), import and re-export from `noteOctave.ts`, add `getAbsoluteNoteY()`, `drawNoteAt()` (extracted from `drawNote()`), `renderArpeggio()`
+- `app/src/lib/practiceMethod.ts` — add `SCALE_ROOT_OCTAVE`, `buildArpeggioNotesWithOctave()`
+- `app/src/components/ui/MusicCanvas.tsx` — add `arpeggioNotes` prop, conditional rendering
+- Tests: `app/src/__tests__/noteOctave.test.ts` — unit tests for:
+  - `getAbsoluteNoteY` (the 6 Y-position verification cases above)
+  - `buildArpeggioNotesWithOctave` (G-duuri, A-molli)
+  - `formatNoteFi` — verify all octaves produce correct Finnish names:
+    - `{ letter: 'C', accidental: null, octave: 0 }` → `"subkontra c"`
+    - `{ letter: 'G', accidental: null, octave: 3 }` → `"pikku g"`
+    - `{ letter: 'A', accidental: null, octave: 4 }` → `"1-viivainen a"`
+    - `{ letter: 'F', accidental: '#', octave: 5 }` → `"2-viivainen fis"`
+    - `{ letter: 'C', accidental: null, octave: 8 }` → `"5-viivainen c"`
+  - `formatNoteHelmholtz` — verify:
+    - `{ letter: 'C', octave: 2 }` → `"C"` (suuri)
+    - `{ letter: 'G', octave: 3 }` → `"g"` (pieni)
+    - `{ letter: 'A', octave: 4 }` → `"a'"` (yksiviivainen)
+    - `{ letter: 'D', octave: 5 }` → `"d''"` (kaksiviivainen)
+    - `{ letter: 'C', octave: 1 }` → `"C,"` (kontra)
+
+### Verification
+
+- **Nimeämisjärjestelmä (all octaves):** unit tests pass for `formatNoteFi`, `formatNoteHelmholtz`, `formatNoteSPN` across octaves 0–8
+- **Y-position calculations:** unit tests pass for the 6 verification cases
+- **Piirtojärjestelmä (violin range):** G-duuri arpeggio (G3, B3, D4, G4) renders: G3 below staff with ledger lines, B3 just below staff, D4 on space below line 1, G4 on line 2
+- A-molli arpeggio (A3, C4, E4, A4) renders correctly
+- Notes within violin range (G3–B5) position correctly
+- Notes outside the drawing range should log a warning (but not crash)
+- `OCTAVE_NAMES_FI` has entries for all octaves 0–8 with `name`, `shortName`, `helmholtz`, `nameEn`
+
+---
+
+## Task 17: Show arpeggio as MusicCanvas in the info panel
+
+**Status:** done
+**Blocked by:** Task 16
+
+Replace the text-only arpeggio display in the scale info panel with a drawn `MusicCanvas` showing the arpeggio notes on a staff, followed by the note names and description as small text below.
+
+### What changes
+
+1. **Extend `ScaleDetail`** — add `arpeggioNotesWithOctave: NoteWithOctave[]` to the `ScaleDetail` interface. Populate it in `getScaleDetail()` by calling `buildArpeggioNotesWithOctave(notes, scale.key)` from Task 16.
+
+2. **Update `ScaleDetailPanel.tsx`** — replace the Arpeggio section:
+   - **Before:** `<p className="font-mono ...">{detail.arpeggioNotes}</p>` + description text
+   - **After:**
+     1. `<MusicCanvas arpeggioNotes={detail.arpeggioNotesWithOctave} width={260} height={130} staves={1} />` — compact canvas showing the arpeggio notes at correct pitches.
+     2. `<p className="text-xs text-[#8B4513] mt-1">{detail.arpeggioNotes}</p>` — note names in small text.
+     3. `<p className="text-xs text-[#8B4513]">{detail.arpeggioDescription}</p>` — description text.
+
+3. **Canvas sizing** — same approach as Task 15: fixed 260px width, 130px height. The `compact` layout from Task 15 applies here too. For 4 arpeggio notes the spacing will be wider than for 8 scale notes, which is visually correct (arpeggio notes should feel "spread out").
+
+4. **Arpeggio-specific layout** — `renderArpeggio()` in `musicStave.ts` computes its own note spacing based on the number of notes (typically 4 for a 1-octave triad). The `computeLayout()` compact mode provides the staff geometry; the arpeggio renderer handles horizontal spacing internally.
+
+### Files to change
+
+- `app/src/lib/practiceMethod.ts` — add `arpeggioNotesWithOctave` to `ScaleDetail`, populate in `getScaleDetail()`
+- `app/src/components/ui/ScaleDetailPanel.tsx` — replace Arpeggio section with `MusicCanvas` + small text
+
+### Verification
+
+- Open Harjoittele tab, tap ⓘ on G-duuri (taso 1) → Arpeggio section shows drawn notes G3–B3–D4–G4 on a staff
+- Tap ⓘ on D-molli (taso 1) → Arpeggio shows D4–F4–A4–D5
+- Notes with accidentals render correctly (e.g., F#-molli: F#4–A4–C#5–F#5)
+- Note names still visible as small text below the canvas
+- Description text ("yhden oktaavin toonika-arpeggio, neljäsosanuoteilla") still visible
+- Both desktop side panel and mobile modal display correctly
+
+---
+
+## Task 18: Replace NOTE_TO_STAFF_POSITION with octave-aware note positioning
+
+**Status:** pending
+**Blocked by:** —
+
+### The problem
+
+`getNoteY()` in `musicScale.ts` uses `NOTE_TO_STAFF_POSITION` — a hardcoded map of note letter → canvas Y coordinate (e.g. `G: 180`, `A: 168`). This works only for one specific octave. When the same letter appears in a different octave (e.g. G3 vs G4), it still gets the same Y, causing arpeggios and multi-octave scales to place notes on wrong staff lines. The arpeggio currently compensates with a separate `SCALE_ROOT_OCTAVE` map, creating a second source of truth that can drift out of sync with the scale drawing.
+
+### The fix
+
+1. **Reverse-engineer the correct starting octave for every scale** currently in `SCALES` (in `practiceMethod.ts`). The scale canvas already draws all notes at visually correct positions. Read those positions back: `getNoteY` for the root note of each key/mode pair determines which octave maps to `NOTE_TO_STAFF_POSITION[rootLetter]`. Encode this as a constant map `SCALE_START_OCTAVE` (similar to the existing `SCALE_ROOT_OCTAVE` but verified against what is actually drawn).
+
+2. **Migrate `renderScale` to use `getAbsoluteNoteY`**. Replace `drawNote` → `getNoteY` with `drawNoteAt` → `getAbsoluteNoteY`, supplying the correct starting octave and incrementing octave as the scale ascends (same logic already implemented in `buildArpeggioNotesWithOctave`). Delete `NOTE_TO_STAFF_POSITION`, `calculateStaffSteps`, and `getNoteY` once nothing imports them.
+
+3. **Align arpeggio start octave with scale start octave**. Replace `SCALE_ROOT_OCTAVE` in `practiceMethod.ts` with a reference to the new `SCALE_START_OCTAVE` constant so both scale and arpeggio always start from the same note. The arpeggio root note must land on the same staff line as the scale root note.
+
+4. All existing visual output for scales must remain identical. Add unit tests comparing Y values before and after migration for at least G-duuri, D-molli, and A-duuri.

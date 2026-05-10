@@ -12,6 +12,7 @@
  */
 
 import { getScale } from './musicScale'
+import { type NoteWithOctave, DIATONIC_INDEX } from './noteOctave'
 
 export interface ScaleEntry {
   key: string
@@ -30,6 +31,8 @@ export interface ScaleEntry {
  */
 export interface ScaleDetail {
   label: string
+  scaleKey: string
+  scaleMode: string
   notes: string[]
   positionLabel: string
   octaves: number
@@ -37,6 +40,7 @@ export interface ScaleDetail {
   shiftRoutine: string[] | null
   arpeggioNotes: string
   arpeggioDescription: string
+  arpeggioNotesWithOctave: NoteWithOctave[]
 }
 
 export const SCALES: ScaleEntry[] = [
@@ -371,6 +375,49 @@ function buildArpeggioNotes(scaleNotes: string[], mode: 'ionian' | 'aeolian'): s
   return `${root} – ${third} – ${fifth} – ${octave} (${triadType}kolmisointu)`
 }
 
+const SCALE_ROOT_OCTAVE: Record<string, number> = {
+  'G': 3, 'A': 3, 'B': 3, 'Bb': 3,
+  'C': 4, 'D': 4, 'E': 4, 'F': 4,
+  'F#': 4, 'Ab': 4, 'Eb': 4,
+}
+
+function parseNoteLetter(note: string): { letter: string; accidental: string | null } {
+  const m = note.match(/^([A-G])(bb|##|b|#)?$/)
+  if (m) return { letter: m[1], accidental: m[2] ?? null }
+  return { letter: note, accidental: null }
+}
+
+export function buildArpeggioNotesWithOctave(
+  scaleNotes: string[],
+  rootKey: string
+): NoteWithOctave[] {
+  const rootLetter = rootKey.replace(/[#b].*$/, '')
+  const startOctave = SCALE_ROOT_OCTAVE[rootKey] ?? SCALE_ROOT_OCTAVE[rootLetter] ?? 4
+
+  const arpeggioIndices = [0, 2, 4, 7]
+  const result: NoteWithOctave[] = []
+  let currentOctave = startOctave
+  let prevDiatonic = DIATONIC_INDEX[rootLetter]
+
+  for (const idx of arpeggioIndices) {
+    const parsed = parseNoteLetter(scaleNotes[idx])
+    const diatonic = DIATONIC_INDEX[parsed.letter]
+
+    if (result.length > 0 && diatonic < prevDiatonic) {
+      currentOctave++
+    }
+    prevDiatonic = diatonic
+
+    result.push({
+      letter: parsed.letter,
+      accidental: parsed.accidental,
+      octave: currentOctave,
+    })
+  }
+
+  return result
+}
+
 /**
  * Generate full detail info for a ScaleEntry using musicScale.ts for note generation.
  */
@@ -389,12 +436,15 @@ export function getScaleDetail(scale: ScaleEntry): ScaleDetail {
   }
 
   const arpeggioNotes = buildArpeggioNotes(notes, scale.mode)
+  const arpeggioNotesWithOctave = buildArpeggioNotesWithOctave(notes, scale.key)
   const octaveWord = scale.arpeggioOctaves === 1 ? 'yhden oktaavin' : 'kahden oktaavin'
   const noteValue = scale.level >= 3 ? 'kahdeksasosanuoteilla' : 'neljäsosanuoteilla'
   const arpeggioDescription = `${octaveWord} toonika-arpeggio, ${noteValue}`
 
   return {
     label,
+    scaleKey: scale.key,
+    scaleMode: scale.mode,
     notes,
     positionLabel,
     octaves: scale.octaves,
@@ -402,5 +452,6 @@ export function getScaleDetail(scale: ScaleEntry): ScaleDetail {
     shiftRoutine,
     arpeggioNotes,
     arpeggioDescription,
+    arpeggioNotesWithOctave,
   }
 }

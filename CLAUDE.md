@@ -8,7 +8,7 @@
 | `docs/todo.md` | Task list with statuses and dependencies |
 | `docs/log.md` | Completed task log |
 | `docs/prompt.md` | Prompt for implementing the next pending task |
-| `docs/architecture.md` | Music theory implementation, React app architecture, Zustand data flow, canvas layout, responsive design, deployment |
+| `docs/architecture.md` | Music theory implementation, octave-aware note system, arpeggio rendering, React app architecture, Zustand data flow, canvas layout, responsive design, deployment |
 | `docs/deployment.md` | Local build step, `dist/` folder convention, and how the CI/CD workflow deploys to Azure Static Storage |
 | `docs/ux-spec.md` | UX specification: screen layouts (ASCII), interaction rules, visual palette, component usage — **read before any screen or UI change** |
 | `docs/ui-components.md` | HomeCard, ScreenHeader, and AccordionSection components: props, design decisions, and usage |
@@ -22,7 +22,7 @@ app/          # React 19 + Vite + TypeScript + Tailwind — the active applicati
     screens/  # Full-page views (Home, Kirkkosavellajit, Harjoittelu)
     components/ui/  # Shared UI primitives (Button, Chip, ScreenHeader, SectionCard, etc.)
     stores/   # Zustand stores (musicStore, practiceStore — both with persist middleware)
-    lib/      # Pure logic (musicScale.ts, practiceMethod.ts — no React)
+    lib/      # Pure logic (musicScale.ts, musicStave.ts, noteOctave.ts, practiceMethod.ts — no React)
 ```
 
 **App:** Mobile-only music scale visualizer (Finnish church modes / Kirkkosävellajit). Renders a centered ~390px viewport on desktop. Users pick a root key and mode; the app draws the scale on an HTML5 canvas.

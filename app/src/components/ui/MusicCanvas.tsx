@@ -1,22 +1,16 @@
 import { useRef, useEffect } from 'react'
-import { computeLayout, renderScale } from '../../lib/musicStave'
+import { computeLayout, renderScale, renderArpeggio, type NoteWithOctave } from '../../lib/musicStave'
 
 interface MusicCanvasProps {
-  /** The root key (e.g., 'C', 'G', 'F#') */
-  scaleKey: string
-  /** The mode (e.g., 'ionian', 'dorian', 'aeolian (Molli)') */
-  mode: string
-  /** Canvas width in pixels */
+  scaleKey?: string
+  mode?: string
   width: number
-  /** Canvas height in pixels */
   height: number
-  /** Number of staves: 1 = ascending only, 2 = ascending + descending */
   staves?: 1 | 2
-  /** Mobile mode: larger accidentals, adjusted clef size */
   mobile?: boolean
-  /** Optional CSS class for the canvas element */
+  compact?: boolean
+  arpeggioNotes?: NoteWithOctave[]
   className?: string
-  /** Optional inline style for the canvas element */
   style?: React.CSSProperties
 }
 
@@ -31,6 +25,8 @@ export function MusicCanvas({
   height,
   staves = 2,
   mobile = false,
+  compact = false,
+  arpeggioNotes,
   className,
   style,
 }: MusicCanvasProps) {
@@ -39,13 +35,17 @@ export function MusicCanvas({
   useEffect(() => {
     const canvas = canvasRef.current
     if (!canvas) return
-    
+
     const ctx = canvas.getContext('2d')
     if (!ctx) return
-    
-    const layout = computeLayout({ width, height, staves, mobile })
-    renderScale(ctx, scaleKey, mode, layout)
-  }, [scaleKey, mode, width, height, staves, mobile])
+
+    const layout = computeLayout({ width, height, staves, mobile, compact })
+    if (arpeggioNotes) {
+      renderArpeggio(ctx, arpeggioNotes, layout)
+    } else if (scaleKey && mode) {
+      renderScale(ctx, scaleKey, mode, layout)
+    }
+  }, [scaleKey, mode, width, height, staves, mobile, compact, arpeggioNotes])
 
   return (
     <canvas

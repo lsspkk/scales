@@ -104,7 +104,7 @@ App bar shown at the top of non-hub screens. Provides a back button and the scre
 **File:** `app/src/components/ui/ScaleDetailPanel.tsx`
 
 ### Purpose
-Renders detailed practice guidance for a single scale: notes (via `musicScale.ts`), shift exercise, 4-step practice routine, and arpeggio info. Used in both the desktop side panel and mobile modal.
+Renders detailed practice guidance for a single scale. The Nuotit section shows a compact `MusicCanvas` (260×130, single stave) with note names as small helper text below. Also displays shift exercise, 4-step practice routine, and arpeggio info. Used in both the desktop side panel and mobile modal.
 
 ### Props
 | Prop | Type | Description |
