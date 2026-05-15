@@ -16,6 +16,7 @@
 | `docs/ui-components.md` | HomeCard, ScreenHeader, and AccordionSection components: props, design decisions, and usage |
 | `docs/scale-practice-method.md` | Violin scale practice method: skill levels, key progression, shifts, arpeggios — data source for Harjoittelu |
 | `docs/soittohetki.md` | Soittohetki screen: URL params, layout, scale/arpeggio toggle, countdown timer hook |
+| `docs/animations.md` | Pelican timer + time-up celebration animations: variants, CSS keyframe wiring, pause/reset model, anatomical pivots, debug routes |
 
 ## Project Structure
 

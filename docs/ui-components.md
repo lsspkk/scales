@@ -80,6 +80,7 @@ App bar shown at the top of non-hub screens. Provides a back button and the scre
 | `subtitle` | `string?` | Optional smaller text below the title |
 | `onBack` | `() => void` | Called when the back button is tapped |
 | `color` | `'brown' \| 'red'` | Background palette (default `'brown'`) |
+| `action` | `{ icon: ReactNode; label: string; onClick: () => void }?` | Optional trailing action button on the right edge (e.g. info link). 44×44px touch target, `aria-label` from `label`. |
 
 ### Design decisions (Task 6)
 - **Chevron icon:** inline SVG `<polyline points="15 18 9 12 15 6">` replaces the `←` text character — standard thin-stroke chevron-left used on iOS/Android.
@@ -87,6 +88,7 @@ App bar shown at the top of non-hub screens. Provides a back button and the scre
 - **Left-aligned title:** placed immediately to the right of the chevron (Android convention); no centered title.
 - **Header height:** `min-h-[52px]` keeps the bar in the 48–56px range across all content lengths.
 - **Hub screen:** the root "Home" screen has no `ScreenHeader` — it shows its own branding title instead.
+- **Trailing action:** kept to a single optional icon button so the header stays scannable. Use it for navigation to a sibling/sub screen (e.g. Harjoittelu → Tietoa harjoittelusta), not for primary actions on the current screen.
 
 ### Usage example
 ```tsx
@@ -94,6 +96,13 @@ App bar shown at the top of non-hub screens. Provides a back button and the scre
   title="Sävellajit"
   color="brown"
   onBack={() => setScreen('home')}
+/>
+
+<ScreenHeader
+  title="Harjoittelu"
+  color="red"
+  onBack={() => navigate('/')}
+  action={{ icon: InfoIcon, label: 'Tietoa harjoittelusta', onClick: () => navigate('/harjoittelu/tietoa') }}
 />
 ```
 

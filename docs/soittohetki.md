@@ -16,12 +16,13 @@ Registered in `app/src/App.tsx` as `path="/soittohetki"`, lazy-loaded like the o
 
 ### Query parameters
 
-| Param     | Type                   | Default     | Notes                                                                 |
-|-----------|------------------------|-------------|-----------------------------------------------------------------------|
-| `root`    | letter `[A-G]` + opt. `#`/`b` | `C`         | Passed through verbatim — no validation against a key list.           |
-| `mode`    | `ionian` \| `aeolian`  | `ionian`    | Matches the internal `ScaleEntry.mode` values; readable and parseable. |
-| `octaves` | `1` \| `2` \| `3`      | `2`         | Used only for the header label.                                       |
-| `min`     | `1` \| `3` \| `5` \| `10` | `3`       | Selected duration; written back with `replace: true` so back-nav stays clean. |
+| Param     | Type                          | Default              | Notes                                                                                                                                                      |
+| --------- | ----------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `root`    | letter `[A-G]` + opt. `#`/`b` | `C`                  | Passed through verbatim — no validation against a key list.                                                                                                |
+| `mode`    | `ionian` \| `aeolian`         | `ionian`             | Matches the internal `ScaleEntry.mode` values; readable and parseable.                                                                                     |
+| `octaves` | `1` \| `2` \| `3`             | `2`                  | Used only for the header label.                                                                                                                            |
+| `min`     | `1` \| `3` \| `5` \| `10`     | `3`                  | Selected duration; written back with `replace: true` so back-nav stays clean.                                                                              |
+| `anim`    | `walking` \| `flying`         | random on first open | Selects the pelican timer animation variant (Task 21). When opened from Harjoittelu, one of the two variants is picked at random and written into the URL. |
 
 Invalid values fall back to defaults — no error screen, no redirect.
 
@@ -60,12 +61,17 @@ const { remainingMs, isRunning, start, pause, reset } = useCountdownTimer(durati
 ```
 
 - Drift-free: records `performance.now()` at start, subtracts elapsed wall-clock time inside a `setInterval` tick (~10 Hz) — surviving tab throttling and not accumulating per-tick error.
-- `onComplete` fires once when `remainingMs` hits zero. Task 22 will hook the celebration animation here.
+- `onComplete` fires once when `remainingMs` hits zero. The celebration then stays on its final frame until the user presses a screen button (for example Reset, a duration chip, or a view toggle) or leaves the screen.
 - Changing `durationMs` while the timer is **not running** snaps `remainingMs` to the new value; mid-run changes are ignored (and the chips are disabled in the UI anyway).
 - Cleans up its interval on unmount.
 
+## Timer animation
+
+Procedural CSS pelican rendered by `app/src/components/animations/PelicanTimer.tsx` (see [animations.md](animations.md)). Driven by `--duration` set from `durationMs`. Pausing toggles `animation-play-state` via an `is-paused` class. Reset and duration changes remount the component via a `runId` key (`<PelicanTimer key={`${variant}-${durationMs}-${runId}`} ... />`), which rewinds every CSS animation to frame 0.
+
+Two variants share the same rig: **walking** and **flying**. Harjoittelu picks one at random when opening Soittohetki, and direct links without `anim` are normalised to a random variant once and then kept stable in the URL. A hidden test route `#/dev/animation/timer` is documented in `animations.md`.
+
 ## Out of scope (handled by future tasks)
 
-- **Task 21:** procedural CSS/SVG animation in the placeholder box.
 - **Task 22:** time-up celebration animation, triggered via the `onComplete` callback.
 - Drone/metronome audio, persisting completed sessions, scale variations.

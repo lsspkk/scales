@@ -59,10 +59,14 @@ export function MusicCanvas({
       }
     }
 
-    draw()
     const ro = new ResizeObserver(draw)
     ro.observe(wrapper)
-    return () => ro.disconnect()
+    const t = setTimeout(draw, 200)
+    const io = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) draw()
+    })
+    io.observe(wrapper)
+    return () => { ro.disconnect(); io.disconnect(); clearTimeout(t) }
   }, [scaleKey, mode, staves, arpeggioNotes])
 
   return (

@@ -1,4 +1,4 @@
-@import "tailwindcss";
+@import 'tailwindcss';
 
 /* Mobile shell: center a ~390px viewport on desktop */
 body {
@@ -9,4 +9,847 @@ body {
 /* MedievalSharp font for app title */
 .font-medieval {
   font-family: 'MedievalSharp', 'Times New Roman', Times, serif;
+}
+
+/* ===== Pelican timer animations (Task 21) =====
+   All animations are driven by `animation-duration` set inline
+   from the timer's durationMs. Pausing toggles
+   `animation-play-state` via the .is-paused class on the scene root.
+   Resetting remounts the component via a parent key prop. */
+
+.pelican-scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 1rem;
+  isolation: isolate;
+}
+
+.pelican-scene.is-paused,
+.pelican-scene.is-paused * {
+  animation-play-state: paused !important;
+}
+
+.pelican-scene__content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation:
+    pelican-scene-color-release-slow var(--shade-early-duration, 40000ms) linear forwards,
+    pelican-scene-color-release-fast var(--shade-release-duration, 20000ms) cubic-bezier(0.2, 0.75, 0.25, 1) forwards;
+  animation-delay: 0s, var(--shade-early-duration, 40000ms);
+}
+
+.pelican-scene__shade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom, rgba(90, 45, 12, 0.56), rgba(90, 45, 12, 0.26));
+  mix-blend-mode: multiply;
+  pointer-events: none;
+  animation:
+    pelican-scene-shade-release-slow var(--shade-early-duration, 40000ms) linear forwards,
+    pelican-scene-shade-release-fast var(--shade-release-duration, 20000ms) cubic-bezier(0.2, 0.75, 0.25, 1) forwards;
+  animation-delay: 0s, var(--shade-early-duration, 40000ms);
+}
+
+@keyframes pelican-scene-color-release-slow {
+  from {
+    filter: sepia(0.7) saturate(0.62) brightness(0.92) hue-rotate(-18deg);
+  }
+  to {
+    filter: sepia(0.38) saturate(0.82) brightness(0.96) hue-rotate(-8deg);
+  }
+}
+
+@keyframes pelican-scene-color-release-fast {
+  from {
+    filter: sepia(0.38) saturate(0.82) brightness(0.96) hue-rotate(-8deg);
+  }
+  to {
+    filter: sepia(0) saturate(1) brightness(1) hue-rotate(0deg);
+  }
+}
+
+@keyframes pelican-scene-shade-release-slow {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0.42;
+  }
+}
+
+@keyframes pelican-scene-shade-release-fast {
+  from {
+    opacity: 0.42;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+.pelican-part {
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+
+/* Anatomical pivots — overrides for parts whose rotation point is not the centre */
+.pelican-leg {
+  transform-origin: 50% 0%;
+} /* hip pivot at top */
+.pelican-pouch {
+  transform-origin: 50% 0%;
+} /* hangs from bill */
+.pelican-bill {
+  transform-origin: 0% 50%;
+} /* attaches to head on left */
+.pelican-wing {
+  transform-origin: 100% 50%;
+} /* pivot at shoulder (right edge for flying pose) */
+
+/* --- Walking variant --- */
+
+.pelican-scene--walking {
+  background: linear-gradient(to bottom, #d6efff 0%, #d6efff 65%, #c2c98f 65%, #a8b574 100%);
+}
+
+.pelican-scene--walking .sun {
+  position: absolute;
+  top: 12%;
+  right: 12%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffe17a, #f5b134);
+  box-shadow: 0 0 20px rgba(245, 177, 52, 0.45);
+}
+
+.pelican-scene--walking .ground-strip {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 35%;
+  background:
+    radial-gradient(circle at 20% 60%, #8da55a 0 6px, transparent 7px),
+    radial-gradient(circle at 50% 80%, #8da55a 0 4px, transparent 5px),
+    radial-gradient(circle at 80% 50%, #8da55a 0 5px, transparent 6px),
+    radial-gradient(circle at 35% 30%, #8da55a 0 3px, transparent 4px), linear-gradient(to bottom, #c2c98f, #a8b574);
+  background-size: 80px 100%;
+  background-repeat: repeat-x;
+  animation: ground-scroll 0.8s linear infinite;
+}
+
+@keyframes ground-scroll {
+  from {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  to {
+    background-position:
+      -80px 0,
+      -80px 0,
+      -80px 0,
+      -80px 0,
+      -80px 0;
+  }
+}
+
+.pelican-scene--walking .pelican {
+  position: absolute;
+  left: 5%;
+  bottom: 18%;
+  width: 42%;
+  max-width: 180px;
+  aspect-ratio: 2 / 1;
+  animation: pelican-walk-across var(--duration, 60s) linear forwards;
+}
+
+@keyframes pelican-walk-across {
+  from {
+    transform: translateX(0) translateY(0);
+  }
+  to {
+    transform: translateX(140%) translateY(0);
+  }
+}
+
+@keyframes pelican-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.pelican-scene--walking .pelican-svg {
+  width: 100%;
+  height: 100%;
+  animation: pelican-bob 0.6s ease-in-out infinite;
+}
+
+@keyframes pelican-body-waddle {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+.pelican-scene--walking .pelican-body-group {
+  animation: pelican-body-waddle 0.6s ease-in-out infinite;
+}
+
+@keyframes pelican-leg-swing-front {
+  0%,
+  100% {
+    transform: rotate(22deg);
+  }
+  50% {
+    transform: rotate(-22deg);
+  }
+}
+
+@keyframes pelican-leg-swing-back {
+  0%,
+  100% {
+    transform: rotate(-22deg);
+  }
+  50% {
+    transform: rotate(22deg);
+  }
+}
+
+.pelican-scene--walking .pelican-leg--front {
+  animation: pelican-leg-swing-front 0.6s ease-in-out infinite;
+}
+.pelican-scene--walking .pelican-leg--back {
+  animation: pelican-leg-swing-back 0.6s ease-in-out infinite;
+}
+
+@keyframes pelican-pouch-swing {
+  0%,
+  100% {
+    transform: rotate(6deg) scaleY(1);
+  }
+  50% {
+    transform: rotate(-6deg) scaleY(0.93);
+  }
+}
+
+.pelican-scene--walking .pelican-pouch {
+  animation: pelican-pouch-swing 0.6s ease-in-out infinite;
+}
+
+@keyframes pelican-bill-bob {
+  0%,
+  100% {
+    transform: rotate(2deg);
+  }
+  50% {
+    transform: rotate(-2deg);
+  }
+}
+
+.pelican-scene--walking .pelican-bill {
+  animation: pelican-bill-bob 1.2s ease-in-out infinite;
+}
+
+/* --- Flying variant --- */
+
+.pelican-scene--flying {
+  background: linear-gradient(to bottom, #a4d8f5 0%, #d6efff 58%, #5a8cb2 62%, #2f5a85 100%);
+}
+
+.pelican-scene--flying .sun {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffe17a, #f5b134);
+  box-shadow: 0 0 28px rgba(245, 177, 52, 0.55);
+  top: 62%;
+  left: 12%;
+  animation: sun-rise-from-sea var(--duration, 60s) linear forwards;
+}
+
+@keyframes sun-rise-from-sea {
+  0% {
+    top: 62%;
+    left: 12%;
+    transform: scale(0.92);
+  }
+  18% {
+    top: 56%;
+    left: 18%;
+    transform: scale(0.96);
+  }
+  55% {
+    top: 28%;
+    left: 48%;
+    transform: scale(1);
+  }
+  100% {
+    top: 10%;
+    left: 74%;
+    transform: scale(1);
+  }
+}
+
+.pelican-scene--flying .cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50px;
+  box-shadow:
+    -14px 4px 0 -2px rgba(255, 255, 255, 0.85),
+    14px 4px 0 -2px rgba(255, 255, 255, 0.85),
+    0 -8px 0 -4px rgba(255, 255, 255, 0.85);
+  animation: cloud-drift var(--duration, 60s) linear forwards;
+}
+
+.pelican-scene--flying .cloud--a {
+  top: 18%;
+  width: 50px;
+  height: 16px;
+  animation-delay: 0s;
+}
+.pelican-scene--flying .cloud--b {
+  top: 38%;
+  width: 70px;
+  height: 20px;
+  animation-delay: calc(var(--duration, 60s) * -0.35);
+}
+.pelican-scene--flying .cloud--c {
+  top: 58%;
+  width: 40px;
+  height: 14px;
+  animation-delay: calc(var(--duration, 60s) * -0.65);
+}
+
+.pelican-scene--flying .water-line {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 40%;
+  background:
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.22), rgba(255, 255, 255, 0)),
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0 8px, transparent 8px 28px),
+    repeating-linear-gradient(0deg, rgba(255, 255, 255, 0.08) 0 2px, rgba(255, 255, 255, 0) 2px 12px),
+    linear-gradient(to bottom, #5a8cb2, #2f5a85);
+  background-size:
+    100% 100%,
+    120px 100%,
+    100% 48px,
+    100% 100%;
+  animation:
+    sea-shimmer 0.32s linear infinite,
+    sea-swell 0.58s ease-in-out infinite;
+}
+
+@keyframes sea-shimmer {
+  0% {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  100% {
+    background-position:
+      0 0,
+      -120px 0,
+      0 24px,
+      0 0;
+  }
+}
+
+@keyframes sea-swell {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@keyframes cloud-drift {
+  from {
+    transform: translateX(120%);
+  }
+  to {
+    transform: translateX(-260%);
+  }
+}
+
+.pelican-scene--flying .pelican {
+  position: absolute;
+  left: 10%;
+  top: 26%;
+  width: 38%;
+  max-width: 160px;
+  aspect-ratio: 2 / 1;
+  animation: pelican-fly-arc var(--duration, 60s) linear forwards;
+}
+
+@keyframes pelican-fly-arc {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(40%, -18px);
+  }
+  50% {
+    transform: translate(80%, 6px);
+  }
+  75% {
+    transform: translate(120%, -14px);
+  }
+  100% {
+    transform: translate(160%, 4px);
+  }
+}
+
+.pelican-scene--flying .pelican-svg {
+  width: 100%;
+  height: 100%;
+  animation: pelican-soar 2.2s ease-in-out infinite;
+}
+
+@keyframes pelican-soar {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+}
+
+@keyframes pelican-wing-flap {
+  0%,
+  100% {
+    transform: rotate(-12deg);
+  }
+  50% {
+    transform: rotate(-38deg);
+  }
+}
+
+.pelican-scene--flying .pelican-wing {
+  animation: pelican-wing-flap 1.4s ease-in-out infinite;
+}
+
+/* ===== Pelican celebration animations (Task 22) =====
+   Triggered when the Soittohetki countdown hits zero. Two variants pair
+   with the two timer variants. Driven by `--celebration-duration`. */
+
+/* --- Walking celebration: proud bounce + confetti --- */
+
+.pelican-scene--celebration-walking {
+  background: linear-gradient(to bottom, #d6efff 0%, #d6efff 65%, #c2c98f 65%, #a8b574 100%);
+}
+
+.pelican-scene--celebration-walking .sun {
+  position: absolute;
+  top: 12%;
+  right: 12%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffe17a, #f5b134);
+  box-shadow: 0 0 28px rgba(245, 177, 52, 0.55);
+  animation: sun-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes sun-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+.pelican-scene--celebration-walking .ground-strip-static {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 35%;
+  background:
+    radial-gradient(circle at 20% 60%, #8da55a 0 6px, transparent 7px),
+    radial-gradient(circle at 50% 80%, #8da55a 0 4px, transparent 5px),
+    radial-gradient(circle at 80% 50%, #8da55a 0 5px, transparent 6px), linear-gradient(to bottom, #c2c98f, #a8b574);
+  background-size: 80px 100%;
+}
+
+.pelican-scene--celebration-walking .pelican {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  width: 42%;
+  max-width: 180px;
+  aspect-ratio: 2 / 1;
+  margin-left: -21%;
+  animation: pelican-proud-bounce 0.5s ease-in-out infinite;
+}
+
+@keyframes pelican-proud-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-12px);
+  }
+}
+
+.pelican-scene--celebration-walking .pelican-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.pelican-scene--celebration-walking .pelican-pouch {
+  animation: pelican-pouch-swing 0.5s ease-in-out infinite;
+}
+
+.pelican-scene--celebration-walking .pelican-bill {
+  animation: pelican-bill-bob 0.8s ease-in-out infinite;
+}
+
+.confetti {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+}
+
+.confetti-piece {
+  position: absolute;
+  top: -12px;
+  width: 8px;
+  height: 12px;
+  border-radius: 1px;
+  animation: confetti-fall var(--celebration-duration, 3000ms) ease-in forwards;
+}
+
+.confetti-piece--0 {
+  left: 6%;
+  background: #f5b134;
+  animation-delay: 0s;
+}
+.confetti-piece--1 {
+  left: 14%;
+  background: #8b2500;
+  animation-delay: 0.08s;
+}
+.confetti-piece--2 {
+  left: 22%;
+  background: #e8820a;
+  animation-delay: 0.16s;
+}
+.confetti-piece--3 {
+  left: 30%;
+  background: #5a2d0c;
+  animation-delay: 0.24s;
+}
+.confetti-piece--4 {
+  left: 38%;
+  background: #f5b134;
+  animation-delay: 0.05s;
+}
+.confetti-piece--5 {
+  left: 46%;
+  background: #8b2500;
+  animation-delay: 0.12s;
+}
+.confetti-piece--6 {
+  left: 54%;
+  background: #e8820a;
+  animation-delay: 0.2s;
+}
+.confetti-piece--7 {
+  left: 62%;
+  background: #f5b134;
+  animation-delay: 0.28s;
+}
+.confetti-piece--8 {
+  left: 70%;
+  background: #5a2d0c;
+  animation-delay: 0.1s;
+}
+.confetti-piece--9 {
+  left: 78%;
+  background: #8b2500;
+  animation-delay: 0.18s;
+}
+.confetti-piece--10 {
+  left: 86%;
+  background: #e8820a;
+  animation-delay: 0.26s;
+}
+.confetti-piece--11 {
+  left: 94%;
+  background: #f5b134;
+  animation-delay: 0.34s;
+}
+
+@keyframes confetti-fall {
+  0% {
+    transform: translateY(0) rotate(0deg);
+    opacity: 1;
+  }
+  85% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(320px) rotate(720deg);
+    opacity: 0;
+  }
+}
+
+.celebration-text {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  transform: translateX(-50%);
+  font-family: 'MedievalSharp', 'Times New Roman', Times, serif;
+  font-size: clamp(1.5rem, 7vw, 2.4rem);
+  font-weight: 700;
+  color: #8b2500;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.18),
+    0 0 8px rgba(255, 225, 122, 0.5);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  animation: celebration-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes celebration-pop {
+  0% {
+    transform: translateX(-50%) scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(-50%) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+/* --- Flying celebration: glide → dive → splash → surface --- */
+
+.pelican-scene--celebration-flying {
+  background: linear-gradient(to bottom, #a4d8f5 0%, #d6efff 55%, #5a8cb2 60%, #2f5a85 100%);
+}
+
+.pelican-scene--celebration-flying .sun {
+  position: absolute;
+  top: 10%;
+  right: 14%;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffe17a, #f5b134);
+  box-shadow: 0 0 24px rgba(245, 177, 52, 0.5);
+}
+
+.pelican-scene--celebration-flying .cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50px;
+  box-shadow:
+    -14px 4px 0 -2px rgba(255, 255, 255, 0.85),
+    14px 4px 0 -2px rgba(255, 255, 255, 0.85),
+    0 -8px 0 -4px rgba(255, 255, 255, 0.85);
+}
+
+.pelican-scene--celebration-flying .cloud--a {
+  top: 18%;
+  left: 15%;
+  width: 60px;
+  height: 18px;
+}
+.pelican-scene--celebration-flying .cloud--b {
+  top: 30%;
+  left: 60%;
+  width: 48px;
+  height: 14px;
+}
+
+.pelican-scene--celebration-flying .water-line {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 40%;
+  background:
+    repeating-linear-gradient(90deg, rgba(255, 255, 255, 0.18) 0 8px, transparent 8px 28px),
+    linear-gradient(to bottom, #5a8cb2, #2f5a85);
+}
+
+.pelican-scene--celebration-flying .pelican {
+  position: absolute;
+  left: 60%;
+  top: 12%;
+  width: 38%;
+  max-width: 160px;
+  aspect-ratio: 2 / 1;
+  animation: pelican-dive-sequence var(--celebration-duration, 3000ms) ease-in forwards;
+}
+
+@keyframes pelican-dive-sequence {
+  0% {
+    transform: translate(0, 0) rotate(-4deg);
+  }
+  25% {
+    transform: translate(-25%, 6%) rotate(15deg);
+  }
+  55% {
+    transform: translate(-60%, 90%) rotate(75deg);
+  }
+  68% {
+    transform: translate(-62%, 130%) rotate(85deg);
+  }
+  82% {
+    transform: translate(-60%, 84%) rotate(18deg);
+  }
+  100% {
+    transform: translate(-56%, 70%) rotate(-4deg);
+  }
+}
+
+.pelican-scene--celebration-flying .pelican-fish {
+  position: absolute;
+  left: 89%;
+  top: 48%;
+  width: 22%;
+  height: auto;
+  transform-origin: 12% 50%;
+  opacity: 0;
+  animation: pelican-fish-catch var(--celebration-duration, 3000ms) ease-out forwards;
+}
+
+@keyframes pelican-fish-catch {
+  0%,
+  66% {
+    transform: translate(-8%, 30%) scale(0.2) rotate(40deg);
+    opacity: 0;
+  }
+  74% {
+    transform: translate(-4%, 10%) scale(0.92) rotate(18deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1) rotate(8deg);
+    opacity: 1;
+  }
+}
+
+.pelican-scene--celebration-flying .pelican-wing {
+  animation: pelican-wing-fold var(--celebration-duration, 3000ms) ease-in-out forwards;
+}
+
+@keyframes pelican-wing-fold {
+  0%,
+  20% {
+    transform: rotate(-12deg);
+  }
+  45% {
+    transform: rotate(-65deg);
+  }
+  60% {
+    transform: rotate(-85deg);
+  }
+  80% {
+    transform: rotate(-20deg);
+  }
+  100% {
+    transform: rotate(-12deg);
+  }
+}
+
+.pelican-scene--celebration-flying .pelican-pouch {
+  animation: pelican-pouch-inflate var(--celebration-duration, 3000ms) ease-out forwards;
+}
+
+@keyframes pelican-pouch-inflate {
+  0%,
+  60% {
+    transform: scale(1, 1);
+  }
+  74% {
+    transform: scale(1.6, 2);
+  }
+  100% {
+    transform: scale(1.5, 1.8);
+  }
+}
+
+.pelican-scene--celebration-flying .splash {
+  position: absolute;
+  left: 36%;
+  bottom: 28%;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.75);
+  opacity: 0;
+  animation: splash-burst var(--celebration-duration, 3000ms) ease-out forwards;
+}
+
+@keyframes splash-burst {
+  0%,
+  62% {
+    transform: translate(-50%, 0) scale(0);
+    opacity: 0;
+  }
+  68% {
+    transform: translate(-50%, 0) scale(0.8);
+    opacity: 1;
+  }
+  85% {
+    transform: translate(-50%, 0) scale(2);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(2.4);
+    opacity: 0;
+  }
+}
+
+.pelican-scene--celebration-flying .celebration-text {
+  color: #ffe17a;
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    0 0 12px rgba(245, 177, 52, 0.6);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pelican-scene *,
+  .pelican-scene {
+    animation: none !important;
+  }
+  /* Static fallback: keep `Valmis!` text visible and centred even without the
+     pop animation. The default styles above already render it correctly. */
+  .celebration-text {
+    transform: translateX(-50%);
+    opacity: 1;
+  }
 }

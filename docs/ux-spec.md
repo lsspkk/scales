@@ -82,34 +82,27 @@ Mobile (<=768px)                Desktop (>768px)
 
 ## Screen: Harjoittelu (practice)
 
-**Purpose:** Violin scale practice guide and interactive routine with two sub-views.
+**Purpose:** Interactive practice routine. Reference material lives on a sibling screen at `/harjoittelu/tietoa`, reached via an info icon in the header.
 
 ```
 Mobile (<=768px)                Desktop (>768px)
 +---------------------------+   +------------------------------------------+
-| < Harjoittelu             |   | < Harjoittelu                            |
+| < Harjoittelu        [i] |   | < Harjoittelu                       [i] |
 |---------------------------|   |------------------------------------------|
-| [Tietoa] [Harjoittele]   |   |                                          |
-|                           |   |     +-- max 700px, centered ----------+  |
-| (tab content, scrollable) |   |     | [Tietoa] [Harjoittele]         |  |
+|                           |   |     +-- max 900px, centered ----------+  |
+| (practice list,           |   |     | (practice list + sticky side    |  |
+|  scrollable)              |   |     |  panel, scrollable)             |  |
 |                           |   |     |                                 |  |
-+---------------------------+   |     | (tab content, scrollable)       |  |
-                                |     |                                 |  |
-                                |     +---------------------------------+  |
++---------------------------+   |     +---------------------------------+  |
                                 +------------------------------------------+
 ```
 
-- **Mobile:** tabs span full width (viewport _is_ the container), content below with `px-4 py-4`
-- **Desktop:** tabs sit inside the `max-w-[700px]` centered content container, not at full viewport width. This keeps tabs visually connected to the content they control.
+- **No tabs.** The practice list is the screen's only content; the info icon in the `ScreenHeader` `action` slot navigates to `/harjoittelu/tietoa`.
+- **Mobile:** content below the header with `px-4 pt-3 pb-4`.
+- **Desktop:** content sits inside a `max-w-[900px]` centered container so the two-column practice list + side panel fit comfortably.
 
-### Sub-view: Tietoa (info page)
-- Scrollable content from `docs/scale-practice-method.md`, in Finnish
-- Mobile: collapsible accordion sections, >=16px body text
-- Desktop: max-width 700px centered, sections default expanded
-- Uses `AccordionSection` for grouping
-
-### Sub-view: Harjoittele (practice routine)
-- Skill level selector at top
+### Practice routine (the screen body)
+- Skill level selector at top (when no session is active)
 - Scrollable checklist of randomized scales
 - Each item >=44px height, tap to mark done, info button on trailing edge
 - Progress indicator: "7 / 24 harjoiteltu"
@@ -117,10 +110,21 @@ Mobile (<=768px)                Desktop (>768px)
 - Completion: congratulations message + two buttons (repeat same order / roll new)
 - State persisted in `practiceStore` (Zustand + localStorage)
 
-#### Info button and detail view
+#### Per-row info button and detail view
 - Each practice item has a circled "i" icon button (44px touch target) at the trailing edge
 - **Desktop:** tapping opens a sticky side panel to the right of the list (two-column layout, max-w 900px). Panel shows notes, shift exercise, practice routine, and arpeggio. Empty state: "Valitse asteikko nähdäksesi tiedot"
 - **Mobile:** tapping opens a fullscreen modal overlay with close button and browser-back support. Modal header shows scale name and positions.
+
+---
+
+## Screen: HarjoitteluTietoa (practice info)
+
+**Purpose:** Reference material backing the practice routine — the Flesch/Galamian method, level breakdowns, position/shift technique, arpeggios, sources. Reached from the `[i]` action in the Harjoittelu header.
+
+- Title: "Tietoa harjoittelusta", red `ScreenHeader`. Back navigates to `/harjoittelu`.
+- Content rendered as `AccordionSection`s; first section (`Harjoitusmenetelmä`) defaults open.
+- Mobile: full-width sections, >=16px body text, accordions collapsed by default below the first.
+- Desktop: `max-w-[700px]` centered content container.
 
 ---
 

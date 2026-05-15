@@ -43,7 +43,8 @@
 | `src/screens/Kirkkosavellajit.tsx` | Scale visualizer with UI controls, uses MusicCanvas for rendering |
 | `src/lib/practiceMethod.ts` | Practice method data: 36 scales across 3 levels, shuffle/format helpers |
 | `src/stores/practiceStore.ts` | Zustand store for practice session (selected levels, practice set, progress) |
-| `src/screens/Harjoittelu.tsx` | Practice screen with Tietoa/Harjoittele tabs, info page + interactive routine |
+| `src/screens/Harjoittelu.tsx` | Practice screen — interactive routine (level selector, randomized checklist, info side panel/modal) |
+| `src/screens/HarjoitteluTietoa.tsx` | Practice info screen at `/harjoittelu/tietoa` — method, levels, positions, shifts, arpeggios, sources |
 | `src/screens/Home.tsx` | Navigation hub with HomeCard components |
 | `src/components/ui/` | Reusable UI primitives (Button, Chip, ScreenHeader, SectionCard, etc.) |
 

@@ -1,13 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { MusicCanvas } from '../components/ui/MusicCanvas'
+import { PelicanTimer, type PelicanTimerVariant } from '../components/animations/PelicanTimer'
+import { PelicanCelebration } from '../components/animations/PelicanCelebration'
 import { useCountdownTimer } from '../lib/useCountdownTimer'
 import { getScale } from '../lib/musicScale'
 import { buildArpeggioNotesWithOctave } from '../lib/practiceMethod'
+import { Pause, Play, RotateCcw } from 'lucide-react'
 
 type Mode = 'ionian' | 'aeolian'
 type View = 'scale' | 'arpeggio'
+
+function parseAnimation(value: string | null): PelicanTimerVariant {
+  return value === 'flying' ? 'flying' : 'walking'
+}
+
+function pickRandomAnimationVariant(): PelicanTimerVariant {
+  return Math.random() < 0.5 ? 'walking' : 'flying'
+}
 
 const DURATION_PRESETS_MIN = [1, 3, 5, 10] as const
 const DEFAULT_DURATION_MIN = 3
@@ -35,36 +46,11 @@ function formatTime(ms: number): string {
   return `${min}:${sec.toString().padStart(2, '0')}`
 }
 
-function PlayIcon() {
-  return (
-    <svg width='28' height='28' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
-      <polygon points='7,5 19,12 7,19' />
-    </svg>
-  )
-}
-
-function PauseIcon() {
-  return (
-    <svg width='28' height='28' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
-      <rect x='6' y='5' width='4' height='14' rx='1' />
-      <rect x='14' y='5' width='4' height='14' rx='1' />
-    </svg>
-  )
-}
-
-function ResetIcon() {
-  return (
-    <svg width='26' height='26' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round' aria-hidden='true'>
-      <path d='M3 12a9 9 0 1 0 3-6.7L3 8' />
-      <polyline points='3,3 3,8 8,8' />
-    </svg>
-  )
-}
-
 export function Soittohetki() {
   const navigate = useNavigate()
   const [searchParams, setSearchParams] = useSearchParams()
   const [view, setView] = useState<View>('scale')
+  const animationParam = searchParams.get('anim')
 
   const root = searchParams.get('root') ?? 'C'
   const mode = parseMode(searchParams.get('mode'))
@@ -80,13 +66,44 @@ export function Soittohetki() {
     return (DURATION_PRESETS_MIN as readonly number[]).includes(n) ? n : DEFAULT_DURATION_MIN
   })()
   const durationMs = durationMin * 60_000
+  const animationVariant = parseAnimation(animationParam)
 
-  const { remainingMs, isRunning, start, pause, reset } = useCountdownTimer(durationMs)
+  const [showCelebration, setShowCelebration] = useState(false)
+
+  useEffect(() => {
+    if (animationParam) return
+    const next = new URLSearchParams(searchParams)
+    next.set('anim', pickRandomAnimationVariant())
+    setSearchParams(next, { replace: true })
+  }, [animationParam, searchParams, setSearchParams])
+
+  const { remainingMs, isRunning, start, pause, reset } = useCountdownTimer(durationMs, () => {
+    setShowCelebration(true)
+  })
+
+  const [runId, setRunId] = useState(0)
+  const bumpRun = () => setRunId((n) => n + 1)
+  const dismissCelebration = () => setShowCelebration(false)
 
   const setDurationMin = (m: number) => {
+    if (m !== durationMin) {
+      bumpRun()
+      dismissCelebration()
+    }
     const next = new URLSearchParams(searchParams)
     next.set('min', String(m))
     setSearchParams(next, { replace: true })
+  }
+
+  const handleReset = () => {
+    reset()
+    dismissCelebration()
+    bumpRun()
+  }
+
+  const handleStart = () => {
+    dismissCelebration()
+    start()
   }
 
   const isInitial = !isRunning && remainingMs === durationMs
@@ -95,106 +112,151 @@ export function Soittohetki() {
     <div className='flex flex-col h-full bg-[#fffbe9]'>
       <ScreenHeader title={label} color='red' onBack={() => navigate('/harjoittelu')} />
 
-      <div className='flex-1 overflow-y-auto'>
-        <div className='flex flex-col items-center gap-4 px-4 py-4 max-w-[520px] mx-auto'>
-          {/* Scale / Arpeggio toggle */}
-          <div className='w-full flex rounded-xl overflow-hidden border-2 border-[#c9a96e]'>
-            <button
-              onClick={() => setView('scale')}
-              className={`flex-1 min-h-[44px] text-base font-semibold transition-colors ${
-                view === 'scale' ? 'bg-[#8B2500] text-white' : 'bg-[#fffbe9] text-[#5a2d0c] active:bg-[#f0dbb8]'
-              }`}
-              aria-pressed={view === 'scale'}
-            >
-              Asteikko
-            </button>
-            <button
-              onClick={() => setView('arpeggio')}
-              className={`flex-1 min-h-[44px] text-base font-semibold transition-colors border-l-2 border-[#c9a96e] ${
-                view === 'arpeggio' ? 'bg-[#8B2500] text-white' : 'bg-[#fffbe9] text-[#5a2d0c] active:bg-[#f0dbb8]'
-              }`}
-              aria-pressed={view === 'arpeggio'}
-            >
-              Arpeggio
-            </button>
-          </div>
+      {/* Outer flex-col: fills remaining screen on mobile, auto height on desktop */}
+      <div className='flex-1 min-h-0 flex flex-col px-4 py-4 w-full max-w-130 mx-auto md:flex-none md:min-h-fit'>
+        {/* Row 1: Canvas — fixed by content */}
+        <div className='w-full shrink-0'>
+          {view === 'scale' ? (
+            <>
+              <MusicCanvas
+                scaleKey={root}
+                mode={mode}
+                staves={1}
+                className='w-full aspect-4/1 bg-[#fff3c9] rounded-lg'
+              />
+              <p className='text-sm text-[#8B4513] mt-2 text-center'>{scaleNotes.join(' – ')}</p>
+            </>
+          ) : (
+            <>
+              <MusicCanvas
+                arpeggioNotes={arpeggioNotes}
+                staves={1}
+                className='w-full aspect-4/1 bg-[#fff3c9] rounded-lg'
+              />
+              <p className='text-sm text-[#8B4513] mt-2 text-center'>
+                {arpeggioNotes.map((n) => `${n.letter}${n.accidental ?? ''}`).join(' – ')}
+              </p>
+            </>
+          )}
+        </div>
 
-          {/* Music canvas */}
-          <div className='w-full'>
-            {view === 'scale' ? (
-              <>
-                <MusicCanvas scaleKey={root} mode={mode} staves={1} className='w-full aspect-[4/1] bg-[#fff3c9] rounded-lg' />
-                <p className='text-sm text-[#8B4513] mt-2 text-center'>{scaleNotes.join(' – ')}</p>
-              </>
-            ) : (
-              <>
-                <MusicCanvas arpeggioNotes={arpeggioNotes} staves={1} className='w-full aspect-[4/1] bg-[#fff3c9] rounded-lg' />
-                <p className='text-sm text-[#8B4513] mt-2 text-center'>
-                  {arpeggioNotes.map((n) => `${n.letter}${n.accidental ?? ''}`).join(' – ')}
-                </p>
-              </>
-            )}
-          </div>
-
-          {/* Timer label + display */}
-          <h2 className='text-sm font-bold text-[#5a2d0c] mt-2'>Ajastettu soittohetki</h2>
-          <div className='text-[#5a2d0c] text-4xl font-bold tabular-nums' aria-live='polite'>
-            {formatTime(remainingMs)}
-          </div>
-
-          {/* Animation placeholder — Task 21 fills this with the countdown animation */}
-          <div className='w-full aspect-square max-w-[260px] rounded-2xl border-2 border-dashed border-[#c9a96e] bg-[#faf3d8] flex items-center justify-center'>
-            <span className='text-[#8B4513] text-xs italic'>Animaatio (tehtävä 21)</span>
-          </div>
-
-          {/* Duration picker + play/reset controls — single row */}
-          <div className='flex gap-2 items-center flex-wrap justify-center'>
-            {DURATION_PRESETS_MIN.map((m) => {
-              const selected = durationMin === m
-              return (
-                <button
-                  key={m}
-                  onClick={() => setDurationMin(m)}
-                  disabled={isRunning}
-                  className={`w-12 h-12 rounded-full border-2 text-base font-bold transition-colors ${
-                    selected
-                      ? 'bg-[#8B2500] border-[#8B2500] text-white'
-                      : 'bg-[#fffbe9] border-[#c9a96e] text-[#5a2d0c] active:bg-[#f0dbb8]'
-                  } disabled:opacity-40 disabled:pointer-events-none`}
-                  aria-pressed={selected}
-                  aria-label={`${m} minuuttia`}
-                >
-                  {m}
-                </button>
-              )
-            })}
-            {isRunning ? (
+        {/* Row 2: fills remaining vertical space on mobile */}
+        <div className='flex-1 min-h-0 flex flex-col gap-3 pt-4 w-full'>
+          {/* subrow 1: Title + view toggle — fixed by content */}
+          <div className='flex flex-row w-full justify-between items-center gap-2 shrink-0'>
+            <h2 className='text-sm font-bold text-[#5a2d0c] leading-tight'>Ajastettu soittohetki</h2>
+            <div className='flex gap-1'>
               <button
-                onClick={pause}
-                className='w-14 h-14 rounded-full bg-[#a0563f] text-white flex items-center justify-center active:bg-[#7a3f2e]'
-                aria-label='Tauko'
+                onClick={() => {
+                  dismissCelebration()
+                  setView('scale')
+                }}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                  view === 'scale' ? 'bg-[#8B2500] text-white' : 'bg-[#f0dbb8] text-[#5a2d0c] active:bg-[#e0c590]'
+                }`}
+                aria-pressed={view === 'scale'}
+                aria-label='Asteikko'
               >
-                <PauseIcon />
+                <svg width='22' height='22' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+                  <circle cx='4' cy='18' r='2.2' />
+                  <circle cx='10' cy='13' r='2.2' />
+                  <circle cx='16' cy='8' r='2.2' />
+                  <circle cx='22' cy='3' r='2.2' />
+                </svg>
               </button>
-            ) : (
               <button
-                onClick={start}
-                disabled={remainingMs === 0}
-                className='w-14 h-14 rounded-full bg-[#8B2500] text-white flex items-center justify-center active:bg-[#5a1700] disabled:opacity-40 disabled:pointer-events-none'
-                aria-label='Aloita'
+                onClick={() => {
+                  dismissCelebration()
+                  setView('arpeggio')
+                }}
+                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
+                  view === 'arpeggio' ? 'bg-[#8B2500] text-white' : 'bg-[#f0dbb8] text-[#5a2d0c] active:bg-[#e0c590]'
+                }`}
+                aria-pressed={view === 'arpeggio'}
+                aria-label='Arpeggio'
               >
-                <PlayIcon />
+                <svg width='22' height='22' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+                  <rect x='3' y='17' width='4' height='7' rx='0.5' />
+                  <rect x='9' y='12' width='4' height='12' rx='0.5' />
+                  <rect x='15' y='7' width='4' height='17' rx='0.5' />
+                </svg>
               </button>
-            )}
-            {!isInitial && (
-              <button
-                onClick={reset}
-                className='w-12 h-12 rounded-full border-2 border-[#5a2d0c] text-[#5a2d0c] flex items-center justify-center active:bg-[#f0dbb8]'
-                aria-label='Alusta'
-              >
-                <ResetIcon />
-              </button>
-            )}
+            </div>
+          </div>
+
+          {/* subrow 2: Timer — grows to fill leftover space, adds gaps above/below text */}
+          <div className='flex-1 min-h-0 flex items-center justify-center'>
+            <div className='text-[#5a2d0c] text-4xl font-bold tabular-nums' aria-live='polite'>
+              {formatTime(remainingMs)}
+            </div>
+          </div>
+
+          {/* subrow 3: Animation + controls — fixed (animation sized to viewport) */}
+          <div className='flex flex-col gap-2 min-w-0 shrink-0'>
+            <div className='w-full h-[35svh] min-h-45 max-h-90 rounded-2xl overflow-hidden bg-[#faf3d8]'>
+              {showCelebration ? (
+                <PelicanCelebration variant={animationVariant} />
+              ) : (
+                <PelicanTimer
+                  key={`${animationVariant}-${durationMs}-${runId}`}
+                  variant={animationVariant}
+                  durationMs={durationMs}
+                  isRunning={isRunning}
+                />
+              )}
+            </div>
+            <div className='flex items-center justify-between'>
+              <div className='flex gap-1'>
+                {DURATION_PRESETS_MIN.map((m) => {
+                  const selected = durationMin === m
+                  return (
+                    <button
+                      key={m}
+                      onClick={() => setDurationMin(m)}
+                      disabled={isRunning}
+                      className={`w-10 h-10 rounded-full border-2 text-sm font-bold transition-colors ${
+                        selected
+                          ? 'bg-[#8B2500] border-[#8B2500] text-white'
+                          : 'bg-[#fffbe9] border-[#c9a96e] text-[#5a2d0c] active:bg-[#f0dbb8]'
+                      } disabled:opacity-40 disabled:pointer-events-none`}
+                      aria-pressed={selected}
+                      aria-label={`${m} minuuttia`}
+                    >
+                      {m}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className='flex gap-1 items-center'>
+                {!isInitial && (
+                  <button
+                    onClick={handleReset}
+                    className='w-10 h-10 rounded-full border-2 border-[#5a2d0c] text-[#5a2d0c] flex items-center justify-center active:bg-[#f0dbb8]'
+                    aria-label='Alusta'
+                  >
+                    <RotateCcw size={18} />
+                  </button>
+                )}
+                {isRunning ? (
+                  <button
+                    onClick={pause}
+                    className='w-12 h-12 rounded-full bg-[#a0563f] text-white flex items-center justify-center active:bg-[#7a3f2e]'
+                    aria-label='Tauko'
+                  >
+                    <Pause size={24} />
+                  </button>
+                ) : (
+                  <button
+                    onClick={handleStart}
+                    disabled={remainingMs === 0}
+                    className='w-12 h-12 rounded-full bg-[#8B2500] text-white flex items-center justify-center active:bg-[#5a1700] disabled:opacity-40 disabled:pointer-events-none'
+                    aria-label='Aloita'
+                  >
+                    <Play size={24} />
+                  </button>
+                )}
+              </div>
+            </div>
           </div>
         </div>
       </div>

@@ -37,6 +37,8 @@ export interface StaveLayout {
   noteSpacing: number
   clefFontSize: number
   clefX: number
+  /** Horizontal scale applied to the clef glyph. Wider on desktop-sized canvases. */
+  clefScaleX: number
   accidentalFontSize: number
   noteHeadRadiusX: number
   noteHeadRadiusY: number
@@ -51,27 +53,27 @@ export interface StaveLayout {
  * Staff geometry scales with `height` (so the staff always fills the
  * available vertical space) and note spacing scales with `width`.
  */
-export function computeLayout(options: {
-  width: number
-  height: number
-  staves?: 1 | 2
-}): StaveLayout {
+export function computeLayout(options: { width: number; height: number; staves?: 1 | 2 }): StaveLayout {
   const { width, height, staves = 2 } = options
 
   // Vertical layout
   // - Two staves: upper at top 19%, gap 44% of height, lower below; line spacing = height/20.
   // - One staff: center it in the available height; line spacing = height/8 (caps at width/20
   //   so the staff doesn't dominate wide-and-short canvases).
+  // Line spacing and staff top are snapped to whole pixels so the 5 staff
+  // lines land at uniformly-spaced integer Ys. Without this, fractional
+  // positions round inconsistently in `crispY` and one gap ends up ±1px,
+  // which the eye reads as "that line is thicker."
   let lineSpacing: number
   let staffTop: number
   let staffGap: number
   if (staves === 2) {
-    lineSpacing = height / 20
-    staffTop = height * 0.19
-    staffGap = height * 0.44
+    lineSpacing = Math.max(2, Math.round(height / 22))
+    staffTop = Math.round(height * 0.19)
+    staffGap = Math.round(height * 0.44)
   } else {
-    lineSpacing = Math.min(height / 8, width / 20)
-    staffTop = height / 2 - 2 * lineSpacing
+    lineSpacing = Math.max(2, Math.round(Math.min(height / 14, width / 26)))
+    staffTop = Math.round(height / 2 - 2 * lineSpacing)
     staffGap = 0
   }
   const staffLines = [0, 1, 2, 3, 4].map((i) => staffTop + i * lineSpacing)
@@ -80,13 +82,16 @@ export function computeLayout(options: {
   const staffStartX = 5
   const staffEndX = width - 5
   const noteStartX = Math.max(40, width * 0.115)
-  const endPad = Math.max(20, width * 0.06)
+  const endPad = Math.max(30, width * 0.06)
   const noteSpacing = (width - noteStartX - endPad) / 7
 
   // Symbol sizes — anchored to lineSpacing so they keep their proportion
   const clefFontSize = lineSpacing * 5
   const clefX = Math.max(12, lineSpacing * 0.9)
-  const accidentalFontSize = lineSpacing * 1.45
+  // Mobile canvases sit inside the 390px MobileShell; anything wider is desktop
+  // and gets a 1.4× wider clef so the glyph doesn't look pinched.
+  const clefScaleX = width > 500 ? 0.75 * 1.4 : 0.75
+  const accidentalFontSize = lineSpacing * 1.85
   const noteHeadRadiusX = lineSpacing * 0.52
   const noteHeadRadiusY = lineSpacing * 0.34
   const stemLength = lineSpacing * 2.8
@@ -106,6 +111,7 @@ export function computeLayout(options: {
     noteSpacing,
     clefFontSize,
     clefX,
+    clefScaleX,
     accidentalFontSize,
     noteHeadRadiusX,
     noteHeadRadiusY,
@@ -123,10 +129,7 @@ function crispY(y: number): number {
 /**
  * Draw the 5 staff lines for one or two staves.
  */
-export function drawStaffLines(
-  ctx: CanvasRenderingContext2D,
-  layout: StaveLayout
-): void {
+export function drawStaffLines(ctx: CanvasRenderingContext2D, layout: StaveLayout): void {
   ctx.strokeStyle = '#000'
   ctx.lineWidth = 1
 
@@ -152,10 +155,7 @@ export function drawStaffLines(
 /**
  * Draw the treble clef (𝄞) for one or two staves.
  */
-export function drawTrebleClef(
-  ctx: CanvasRenderingContext2D,
-  layout: StaveLayout
-): void {
+export function drawTrebleClef(ctx: CanvasRenderingContext2D, layout: StaveLayout): void {
   ctx.fillStyle = '#000'
   ctx.font = `${layout.clefFontSize}px serif`
   ctx.textAlign = 'center'
@@ -165,15 +165,16 @@ export function drawTrebleClef(
   // Move the clef baseline up by 3 staff steps (D → G = 1.5 line spacings)
   // from just below the bottom staff line.
   const baselineOffset = layout.lineSpacing * 0.4 - layout.lineSpacing * 1.5
-  const yPositions = layout.staves === 2
-    ? [layout.staffLines[4] + baselineOffset, layout.staffLines[4] + layout.staffGap + baselineOffset]
-    : [layout.staffLines[4] + baselineOffset]
+  const yPositions =
+    layout.staves === 2
+      ? [layout.staffLines[4] + baselineOffset, layout.staffLines[4] + layout.staffGap + baselineOffset]
+      : [layout.staffLines[4] + baselineOffset]
 
   for (const clefY of yPositions) {
     const anchorY = clefY - layout.clefFontSize * 0.8
     ctx.save()
     ctx.translate(layout.clefX, anchorY)
-    ctx.scale(0.75, 1.3)
+    ctx.scale(layout.clefScaleX, 1.3)
     ctx.translate(-layout.clefX, -anchorY)
     ctx.fillText('𝄞', layout.clefX, clefY)
     ctx.restore()
@@ -188,7 +189,7 @@ export function drawLedgerLines(
   x: number,
   y: number,
   staffLineYs: number[],
-  halfWidth: number
+  halfWidth: number,
 ): void {
   const top = staffLineYs[0]
   const bottom = staffLineYs[4]
@@ -225,7 +226,7 @@ export function drawAccidental(
   x: number,
   y: number,
   accidental: string,
-  fontSize: number
+  fontSize: number,
 ): void {
   ctx.fillStyle = '#000'
   ctx.font = `bold ${fontSize}px serif`
@@ -252,7 +253,7 @@ export function drawNoteAt(
   x: number,
   note: NoteWithOctave,
   staffLineYs: number[],
-  layout: StaveLayout
+  layout: StaveLayout,
 ): void {
   if (!isInDrawingRange(note)) {
     console.error(`Note out of range: ${formatNoteSPN(note)} (allowed G3–G6)`)
@@ -291,12 +292,7 @@ export function drawNoteAt(
  * Uses octave-aware absolute positioning so the root note lands on the same
  * staff line as the matching arpeggio root.
  */
-export function renderScale(
-  ctx: CanvasRenderingContext2D,
-  key: string,
-  mode: string,
-  layout: StaveLayout
-): void {
+export function renderScale(ctx: CanvasRenderingContext2D, key: string, mode: string, layout: StaveLayout): void {
   ctx.clearRect(0, 0, layout.width, layout.height)
 
   drawStaffLines(ctx, layout)
@@ -310,25 +306,23 @@ export function renderScale(
   const upperStaffLines = layout.staffLines
   const lowerStaffLines = layout.staffLines.map((y) => y + layout.staffGap)
 
+  const ascShift = notes[0]?.accidental ? layout.accidentalOffsetX : 0
   notes.forEach((note, i) => {
-    const x = layout.noteStartX + i * layout.noteSpacing
+    const x = layout.noteStartX + ascShift + i * layout.noteSpacing
     drawNoteAt(ctx, x, note, upperStaffLines, layout)
   })
 
   if (layout.staves === 2) {
     const reversed = [...notes].reverse()
+    const descShift = reversed[0]?.accidental ? layout.accidentalOffsetX : 0
     reversed.forEach((note, i) => {
-      const x = layout.noteStartX + i * layout.noteSpacing
+      const x = layout.noteStartX + descShift + i * layout.noteSpacing
       drawNoteAt(ctx, x, note, lowerStaffLines, layout)
     })
   }
 }
 
-export function renderArpeggio(
-  ctx: CanvasRenderingContext2D,
-  notes: NoteWithOctave[],
-  layout: StaveLayout
-): void {
+export function renderArpeggio(ctx: CanvasRenderingContext2D, notes: NoteWithOctave[], layout: StaveLayout): void {
   ctx.clearRect(0, 0, layout.width, layout.height)
 
   drawStaffLines(ctx, layout)
@@ -339,10 +333,11 @@ export function renderArpeggio(
   if (noteCount === 0) return
 
   const endX = layout.staffEndX - Math.max(20, layout.width * 0.06)
-  const spacing = noteCount > 1 ? (endX - layout.noteStartX) / (noteCount - 1) : 0
+  const startX = notes[0]?.accidental ? layout.noteStartX + layout.accidentalOffsetX : layout.noteStartX
+  const spacing = noteCount > 1 ? (endX - startX) / (noteCount - 1) : 0
 
   for (let i = 0; i < noteCount; i++) {
-    const x = layout.noteStartX + i * spacing
+    const x = startX + i * spacing
     drawNoteAt(ctx, x, notes[i], staffLineYs, layout)
   }
 }
