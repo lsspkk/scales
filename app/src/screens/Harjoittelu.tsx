@@ -366,6 +366,7 @@ function LevelSelector({ selectedLevel, onSelect }: { selectedLevel: number; onS
 
 function PracticeTab({ selectedScale, onSelectScale }: { selectedScale: ScaleEntry | null; onSelectScale: (scale: ScaleEntry | null) => void }) {
   const { isDesktop } = useViewport()
+  const navigateToSoittohetki = useNavigate()
   const selectedLevel = usePracticeStore((s) => s.selectedLevel)
   const practiceSet = usePracticeStore((s) => s.practiceSet)
   const active = usePracticeStore((s) => s.active)
@@ -511,6 +512,31 @@ function PracticeTab({ selectedScale, onSelectScale }: { selectedScale: ScaleEnt
                 <text x='10' y='14.5' textAnchor='middle' fill='currentColor' fontSize='12' fontWeight='600' fontFamily='serif'>
                   i
                 </text>
+              </svg>
+            </button>
+
+            {/* Soittohetki button */}
+            <button
+              onClick={(e) => {
+                e.stopPropagation()
+                const params = new URLSearchParams({
+                  root: item.scale.key,
+                  mode: item.scale.mode,
+                  octaves: String(item.scale.octaves),
+                })
+                navigateToSoittohetki(`/soittohetki?${params.toString()}`)
+              }}
+              className='flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-[#8B4513] hover:bg-[#f0dbb8] transition-colors'
+              aria-label='Aloita soittohetki'
+            >
+              <svg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'>
+                <circle cx='10' cy='10' r='9' stroke='currentColor' strokeWidth='1.5' />
+                <circle cx='10' cy='5.5' r='1.7' fill='currentColor' />
+                <line x1='10' y1='7.5' x2='10' y2='12.5' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' />
+                <line x1='10' y1='9' x2='6.8' y2='10.8' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' />
+                <line x1='10' y1='9' x2='13.2' y2='10.8' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' />
+                <line x1='10' y1='12.5' x2='7.5' y2='15.5' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' />
+                <line x1='10' y1='12.5' x2='12.5' y2='15.5' stroke='currentColor' strokeWidth='1.5' strokeLinecap='round' />
               </svg>
             </button>
           </div>

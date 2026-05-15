@@ -10,9 +10,10 @@
 5. Returns 7 notes + octave (8 total)
 
 **Note positioning:**
-- Each note letter has a fixed staff position relative to the root
-- `getNoteY()` calculates Y-coordinate from staff position offset and ledger line logic
+- Notes are positioned by absolute pitch via `getAbsoluteNoteY()` (`noteOctave.ts`), keyed off `E4 = bottom staff line`
+- Every scale and arpeggio starts from `SCALE_START_OCTAVE[key]` (octave 4 for all currently-defined roots), so a scale's root note lands on the same staff line as its arpeggio's root
 - Upper staff = notes ascending, lower staff = notes descending
+- Drawing is hard-bounded to `DRAWING_RANGE` = [G3, G6]. `drawNoteAt()` skips and `console.error`s any out-of-range note
 
 **Accidentals:**
 - Sizes adapt to screen width (larger on mobile)
@@ -60,21 +61,31 @@ User interacts with UI (Kirkkosavellajit screen)
 The drawing logic is extracted into a pure TypeScript module with no React dependencies:
 
 **Key functions:**
-- `computeLayout(options)` — returns a `StaveLayout` config from high-level inputs (`width`, `height`, `staves: 1 | 2`, `mobile`)
-- `drawStaffLines(ctx, layout)` — draws 5 staff lines for 1 or 2 staves
+- `computeLayout(options)` — returns a `StaveLayout` config from the canvas's measured CSS size (`width`, `height`, `staves: 1 | 2`). All geometry (line spacing, clef size, note-head radius, stem length, accidental size) scales with the measured size — no `mobile`/`compact` flags
+- `drawStaffLines(ctx, layout)` — draws 5 staff lines for 1 or 2 staves; uses `Math.round(y) + 0.5` for crisp 1px strokes
 - `drawTrebleClef(ctx, layout)` — draws 𝄞 clef at configured size/position
-- `drawLedgerLines(ctx, x, y, staffLineYs)` — ledger lines for notes above/below staff
+- `drawLedgerLines(ctx, x, y, staffLineYs, halfWidth)` — ledger lines for notes above/below staff
 - `drawAccidental(ctx, x, y, accidental, fontSize)` — ♯, ♭, 𝄪, 𝄫 symbols
-- `drawNote(ctx, x, note, staff, ...)` — complete note with head, stem, ledger lines, accidental
-- `renderScale(ctx, key, mode, layout)` — orchestrates full scale render
+- `drawNoteAt(ctx, x, note, staffLineYs, layout)` — complete note (head, stem, ledger lines, accidental) at absolute pitch; enforces the `DRAWING_RANGE` [G3, G6] bound
+- `renderScale(ctx, key, mode, layout)` — orchestrates full scale render using `SCALE_START_OCTAVE` + `assignAscendingOctaves`
+- `renderArpeggio(ctx, notes, layout)` — renders arpeggio notes spaced across the staff
 
-**Design principle:** All geometry is passed via the `StaveLayout` object — no module-level constants. This allows the same code to render both:
-- Full 1000×500 two-stave canvas (Kirkkosavellajit)
-- Compact single-stave preview canvases (Harjoittelu detail panels)
+**Design principle:** All geometry derives from the canvas's actual CSS-pixel size, scaled by `lineSpacing` (`= height / 20` for two staves, centered for one). The same code renders cleanly at any size from a 260×65 compact panel to a 1200×600 desktop canvas — there are no fixed pixel constants tied to a 1000×500 layout.
+
+## Canvas Bitmap Sizing (`MusicCanvas.tsx`)
+
+`MusicCanvas` observes its wrapper with a `ResizeObserver` and renders the canvas at its **true on-screen size**:
+
+1. The caller gives the wrapper a definite size via CSS (e.g. `w-full aspect-[2/1]`).
+2. On every measurement, the component sets `canvas.style.width/height` to the measured CSS pixels, and `canvas.width/height` (the bitmap) to `cssSize × window.devicePixelRatio`.
+3. `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` lets all drawing code keep using CSS-pixel coordinates.
+4. `computeLayout({ width: cssW, height: cssH, staves })` derives all geometry from the measured size, then `renderScale` / `renderArpeggio` draws.
+
+This avoids two pitfalls of the old fixed-bitmap + CSS-scale approach: fading 1px staff lines at fractional scale factors, and blurry strokes on HiDPI displays.
 
 ## Octave-Aware Note System (`noteOctave.ts`)
 
-`noteOctave.ts` provides absolute pitch representation and Finnish/Helmholtz/SPN formatting for all octaves 0–8. The drawing system supports only the violin range G3–B5.
+`noteOctave.ts` provides absolute pitch representation and Finnish/Helmholtz/SPN formatting for all octaves 0–8. The drawing system supports only the violin range **G3–G6** (one octave below middle C up to the G a minor third above the 3rd-finger G on the E string).
 
 **Key types and functions:**
 - `NoteWithOctave` — `{ letter, accidental, octave }` for absolute pitch
@@ -83,20 +94,23 @@ The drawing logic is extracted into a pure TypeScript module with no React depen
 - `getAbsoluteNoteY(note, staffLineYs)` — computes canvas Y from absolute pitch. Reference: E4 = bottom staff line (staffLineYs[4])
 - `formatNoteFi()`, `formatNoteHelmholtz()`, `formatNoteSPN()` — note name formatting
 - `VIOLIN_OPEN_STRING_OCTAVES`, `DRAWING_RANGE` — violin-specific constants
+- `SCALE_START_OCTAVE` — single source of truth for the starting octave of each scale root; consumed by both `renderScale` and `buildArpeggioNotesWithOctave`
+- `isInDrawingRange(note)` — returns true if note is within [G3, G6]
+- `assignAscendingOctaves(noteStrings, startOctave)` — assigns octaves to a sequence of letter-only note strings, incrementing the octave whenever the letter wraps past B → C
 
-**Arpeggio rendering:**
-- `buildArpeggioNotesWithOctave(scaleNotes, rootKey)` in `practiceMethod.ts` — builds `NoteWithOctave[]` from scale degrees 1, 3, 5, 8
-- `renderArpeggio(ctx, notes, layout)` in `musicStave.ts` — draws arpeggio notes at absolute Y positions using `getAbsoluteNoteY()`
-- `drawNoteAt(ctx, x, y, accidental, fontSize, staffLineYs)` — low-level note drawing at an absolute position (extracted from `drawNote()`)
+**Scale and arpeggio rendering:**
+- `buildArpeggioNotesWithOctave(scaleNotes, rootKey)` in `practiceMethod.ts` — builds `NoteWithOctave[]` from scale degrees 1, 3, 5, 8, anchored on `SCALE_START_OCTAVE[rootKey]`
+- `renderScale(ctx, key, mode, layout)` — builds octave-aware `NoteWithOctave[]` via `assignAscendingOctaves`, then draws each via `drawNoteAt`
+- `renderArpeggio(ctx, notes, layout)` — draws arpeggio notes at absolute Y positions using `drawNoteAt`
 - `MusicCanvas` accepts `arpeggioNotes?: NoteWithOctave[]` — when provided, renders arpeggio instead of scale
 
 ## Canvas Layout
 
-- Size: 1000×500 px
-- Two staves separated by `STAFF_GAP` (220 px)
-- Staff lines: 5 per staff at 25 px intervals; drawn from x=5 to x=995 (5px margins)
-- Treble clef: 126px serif font, centered at x=25, y=153 (upper) and y=153+STAFF_GAP (lower)
-- Notes start at x=115 with 123 px spacing; last note lands at x=976, ~19px from staff end
+Layout is fully proportional to the measured CSS size; see `computeLayout` in `musicStave.ts` for the exact formulas. For reference, at the canonical desktop size (1000×500, two staves):
+- Line spacing: 25 px (= `height / 20`)
+- Upper staff lines: y ≈ 95, 120, 145, 170, 195; staff gap 220 px
+- Note start x ≈ 115 (= `width × 0.115`), with `(width − noteStartX − endPad) / 7` spacing
+- Treble clef ≈ 125 px serif; accidentals ≈ 36 px
 
 ## Responsive Design
 

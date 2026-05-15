@@ -5,21 +5,24 @@
 | File | Contents |
 |------|----------|
 | `docs/react-instructions.md` | React 19 conventions, Zustand, local storage, lazy loading, Vitest testing rules — **read before any work in `app/src/`** |
-| `docs/todo.md` | Task list with statuses and dependencies |
-| `docs/log.md` | Completed task log |
+| `docs/todo.md` | Active task list with statuses and dependencies |
+| `docs/completed-tasks.md` | Archive of full specs for finished tasks |
+| `docs/ideas.md` | Unprioritised bucket of future ideas (not yet planned) |
+| `docs/log.md` | One-line summary per completed task |
 | `docs/prompt.md` | Prompt for implementing the next pending task |
 | `docs/architecture.md` | Music theory implementation, octave-aware note system, arpeggio rendering, React app architecture, Zustand data flow, canvas layout, responsive design, deployment |
 | `docs/deployment.md` | Local build step, `dist/` folder convention, and how the CI/CD workflow deploys to Azure Static Storage |
 | `docs/ux-spec.md` | UX specification: screen layouts (ASCII), interaction rules, visual palette, component usage — **read before any screen or UI change** |
 | `docs/ui-components.md` | HomeCard, ScreenHeader, and AccordionSection components: props, design decisions, and usage |
 | `docs/scale-practice-method.md` | Violin scale practice method: skill levels, key progression, shifts, arpeggios — data source for Harjoittelu |
+| `docs/soittohetki.md` | Soittohetki screen: URL params, layout, scale/arpeggio toggle, countdown timer hook |
 
 ## Project Structure
 
 ```
 app/          # React 19 + Vite + TypeScript + Tailwind — the active application
   src/
-    screens/  # Full-page views (Home, Kirkkosavellajit, Harjoittelu)
+    screens/  # Full-page views (Home, Kirkkosavellajit, Harjoittelu, Soittohetki)
     components/ui/  # Shared UI primitives (Button, Chip, ScreenHeader, SectionCard, etc.)
     stores/   # Zustand stores (musicStore, practiceStore — both with persist middleware)
     lib/      # Pure logic (musicScale.ts, musicStave.ts, noteOctave.ts, practiceMethod.ts — no React)

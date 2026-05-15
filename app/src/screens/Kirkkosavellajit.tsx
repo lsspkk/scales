@@ -152,11 +152,8 @@ export function Kirkkosavellajit() {
             <MusicCanvas
               scaleKey={currentKey}
               mode={currentMode}
-              width={1000}
-              height={500}
               staves={2}
-              mobile={false}
-              className="block max-w-full h-auto"
+              className="w-full max-w-[1200px] aspect-[2/1]"
             />
           </div>
         </div>
@@ -235,15 +232,12 @@ export function Kirkkosavellajit() {
       )}
 
       {/* Canvas */}
-      <div className="flex-1 overflow-hidden relative bg-[#fff3c9] aspect-[2/1]">
+      <div className="flex-1 overflow-hidden relative bg-[#fff3c9]">
         <MusicCanvas
           scaleKey={currentKey}
           mode={currentMode}
-          width={1000}
-          height={500}
           staves={2}
-          mobile={true}
-          className="w-full h-full block"
+          className="w-full aspect-[2/1] bg-[#fff3c9]"
         />
       </div>
     </div>

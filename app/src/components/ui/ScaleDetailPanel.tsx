@@ -12,9 +12,12 @@ export function ScaleDetailPanel({ detail }: ScaleDetailPanelProps) {
       {/* Nuotit (Notes) */}
       <section>
         <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Nuotit</h3>
-        <div className='w-full aspect-[4/1] bg-[#fff3c9]'>
-          <MusicCanvas scaleKey={detail.scaleKey} mode={detail.scaleMode} width={1000} height={300} staves={1} mobile className='w-full h-full block' />
-        </div>
+        <MusicCanvas
+          scaleKey={detail.scaleKey}
+          mode={detail.scaleMode}
+          staves={1}
+          className='w-full aspect-[4/1] bg-[#fff3c9]'
+        />
         <p className='text-xs text-[#8B4513] mt-1'>{detail.notes.join(' – ')}</p>
         <p className='text-sm text-[#8B4513] mt-1'>
           {detail.octaves} oktaavia, {detail.positionLabel}
@@ -44,9 +47,11 @@ export function ScaleDetailPanel({ detail }: ScaleDetailPanelProps) {
       {/* Arpeggio */}
       <section>
         <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Arpeggio</h3>
-        <div className='w-full aspect-[4/1] bg-[#fff3c9]'>
-          <MusicCanvas arpeggioNotes={detail.arpeggioNotesWithOctave} width={1000} height={300} staves={1} mobile className='w-full h-full block' />
-        </div>
+        <MusicCanvas
+          arpeggioNotes={detail.arpeggioNotesWithOctave}
+          staves={1}
+          className='w-full aspect-[4/1] bg-[#fff3c9]'
+        />
         <p className='text-xs text-[#8B4513] mt-1'>{detail.arpeggioNotes}</p>
         <p className='text-xs text-[#8B4513]'>{detail.arpeggioDescription}</p>
       </section>

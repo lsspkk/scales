@@ -12,7 +12,7 @@
  */
 
 import { getScale } from './musicScale'
-import { type NoteWithOctave, DIATONIC_INDEX } from './noteOctave'
+import { type NoteWithOctave, DIATONIC_INDEX, SCALE_START_OCTAVE } from './noteOctave'
 
 export interface ScaleEntry {
   key: string
@@ -375,12 +375,6 @@ function buildArpeggioNotes(scaleNotes: string[], mode: 'ionian' | 'aeolian'): s
   return `${root} – ${third} – ${fifth} – ${octave} (${triadType}kolmisointu)`
 }
 
-const SCALE_ROOT_OCTAVE: Record<string, number> = {
-  'G': 3, 'A': 3, 'B': 3, 'Bb': 3,
-  'C': 4, 'D': 4, 'E': 4, 'F': 4,
-  'F#': 4, 'Ab': 4, 'Eb': 4,
-}
-
 function parseNoteLetter(note: string): { letter: string; accidental: string | null } {
   const m = note.match(/^([A-G])(bb|##|b|#)?$/)
   if (m) return { letter: m[1], accidental: m[2] ?? null }
@@ -392,7 +386,7 @@ export function buildArpeggioNotesWithOctave(
   rootKey: string
 ): NoteWithOctave[] {
   const rootLetter = rootKey.replace(/[#b].*$/, '')
-  const startOctave = SCALE_ROOT_OCTAVE[rootKey] ?? SCALE_ROOT_OCTAVE[rootLetter] ?? 4
+  const startOctave = SCALE_START_OCTAVE[rootKey] ?? SCALE_START_OCTAVE[rootLetter] ?? 4
 
   const arpeggioIndices = [0, 2, 4, 7]
   const result: NoteWithOctave[] = []

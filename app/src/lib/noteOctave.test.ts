@@ -4,6 +4,9 @@ import {
   formatNoteFi,
   formatNoteHelmholtz,
   formatNoteSPN,
+  isInDrawingRange,
+  assignAscendingOctaves,
+  SCALE_START_OCTAVE,
 } from './noteOctave'
 import { buildArpeggioNotesWithOctave } from './practiceMethod'
 import { getScale } from './musicScale'
@@ -92,26 +95,26 @@ describe('formatNoteSPN', () => {
   })
 })
 
-describe('buildArpeggioNotesWithOctave', () => {
-  it('G-duuri: G3, B3, D4, G4', () => {
+describe('buildArpeggioNotesWithOctave (aligned with scale-start octave)', () => {
+  it('G-duuri: G4, B4, D5, G5 (root on staff line 2 = same as scale root)', () => {
     const scale = getScale('G', 'ionian')
     const arp = buildArpeggioNotesWithOctave(scale, 'G')
     expect(arp).toEqual([
-      { letter: 'G', accidental: null, octave: 3 },
-      { letter: 'B', accidental: null, octave: 3 },
-      { letter: 'D', accidental: null, octave: 4 },
       { letter: 'G', accidental: null, octave: 4 },
+      { letter: 'B', accidental: null, octave: 4 },
+      { letter: 'D', accidental: null, octave: 5 },
+      { letter: 'G', accidental: null, octave: 5 },
     ])
   })
 
-  it('A-molli: A3, C4, E4, A4', () => {
+  it('A-molli: A4, C5, E5, A5', () => {
     const scale = getScale('A', 'aeolian')
     const arp = buildArpeggioNotesWithOctave(scale, 'A')
     expect(arp).toEqual([
-      { letter: 'A', accidental: null, octave: 3 },
-      { letter: 'C', accidental: null, octave: 4 },
-      { letter: 'E', accidental: null, octave: 4 },
       { letter: 'A', accidental: null, octave: 4 },
+      { letter: 'C', accidental: null, octave: 5 },
+      { letter: 'E', accidental: null, octave: 5 },
+      { letter: 'A', accidental: null, octave: 5 },
     ])
   })
 
@@ -124,5 +127,72 @@ describe('buildArpeggioNotesWithOctave', () => {
       { letter: 'A', accidental: null, octave: 4 },
       { letter: 'D', accidental: null, octave: 5 },
     ])
+  })
+})
+
+describe('isInDrawingRange (G3..G6 inclusive)', () => {
+  it('G3 is in range', () => {
+    expect(isInDrawingRange({ letter: 'G', accidental: null, octave: 3 })).toBe(true)
+  })
+
+  it('F#3 is out of range (below G3)', () => {
+    expect(isInDrawingRange({ letter: 'F', accidental: '#', octave: 3 })).toBe(false)
+  })
+
+  it('G6 is in range', () => {
+    expect(isInDrawingRange({ letter: 'G', accidental: null, octave: 6 })).toBe(true)
+  })
+
+  it('G#6 is in range (accidental ignored for range check, still on G letter)', () => {
+    expect(isInDrawingRange({ letter: 'G', accidental: '#', octave: 6 })).toBe(true)
+  })
+
+  it('A6 is out of range (above G6)', () => {
+    expect(isInDrawingRange({ letter: 'A', accidental: null, octave: 6 })).toBe(false)
+  })
+})
+
+describe('assignAscendingOctaves', () => {
+  it('G major scale starting at octave 4 → G4..G5', () => {
+    const scale = getScale('G', 'ionian')
+    const notes = assignAscendingOctaves(scale, 4)
+    expect(notes.map(formatNoteSPN)).toEqual(['G4', 'A4', 'B4', 'C5', 'D5', 'E5', 'F#5', 'G5'])
+  })
+
+  it('A minor scale starting at octave 4 → A4..A5', () => {
+    const scale = getScale('A', 'aeolian')
+    const notes = assignAscendingOctaves(scale, 4)
+    expect(notes.map(formatNoteSPN)).toEqual(['A4', 'B4', 'C5', 'D5', 'E5', 'F5', 'G5', 'A5'])
+  })
+
+  it('D major scale at octave 4 → D4..D5', () => {
+    const scale = getScale('D', 'ionian')
+    const notes = assignAscendingOctaves(scale, 4)
+    expect(notes.map(formatNoteSPN)).toEqual(['D4', 'E4', 'F#4', 'G4', 'A4', 'B4', 'C#5', 'D5'])
+  })
+})
+
+describe('Scale root Y position matches arpeggio root Y position', () => {
+  it('G root lands at y=170 (staff line 2 of [95,120,145,170,195])', () => {
+    const scaleNotes = assignAscendingOctaves(getScale('G', 'ionian'), SCALE_START_OCTAVE.G)
+    const arpNotes = buildArpeggioNotesWithOctave(getScale('G', 'ionian'), 'G')
+    const scaleRootY = getAbsoluteNoteY(scaleNotes[0], STAFF_LINES)
+    const arpRootY = getAbsoluteNoteY(arpNotes[0], STAFF_LINES)
+    expect(scaleRootY).toBe(170)
+    expect(arpRootY).toBe(170)
+  })
+
+  it('D root lands at y=207.5', () => {
+    const scaleNotes = assignAscendingOctaves(getScale('D', 'ionian'), SCALE_START_OCTAVE.D)
+    const arpNotes = buildArpeggioNotesWithOctave(getScale('D', 'ionian'), 'D')
+    expect(getAbsoluteNoteY(scaleNotes[0], STAFF_LINES)).toBe(207.5)
+    expect(getAbsoluteNoteY(arpNotes[0], STAFF_LINES)).toBe(207.5)
+  })
+
+  it('A root lands at y=157.5', () => {
+    const scaleNotes = assignAscendingOctaves(getScale('A', 'ionian'), SCALE_START_OCTAVE.A)
+    const arpNotes = buildArpeggioNotesWithOctave(getScale('A', 'ionian'), 'A')
+    expect(getAbsoluteNoteY(scaleNotes[0], STAFF_LINES)).toBe(157.5)
+    expect(getAbsoluteNoteY(arpNotes[0], STAFF_LINES)).toBe(157.5)
   })
 })

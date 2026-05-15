@@ -105,7 +105,28 @@ export const VIOLIN_OPEN_STRING_OCTAVES: Record<string, number> = {
   E: 5,
 }
 
-export const DRAWING_RANGE = { min: { letter: 'G', octave: 3 }, max: { letter: 'B', octave: 5 } }
+/**
+ * Hard drawing bounds.
+ *   min = G3 (pieni g, avoin G-kieli — note one octave below middle C / C4)
+ *   max = G6 (one octave + minor third above violin's open E string;
+ *             i.e. the G a minor third higher than 3rd-finger G5 on the E-string)
+ */
+export const DRAWING_RANGE = { min: { letter: 'G', octave: 3 }, max: { letter: 'G', octave: 6 } }
+
+function diatonicPosition(letter: string, octave: number): number {
+  return octave * 7 + DIATONIC_INDEX[letter]
+}
+
+/**
+ * True if the note lies within the allowed drawing range [G3, G6] inclusive.
+ * Accidentals are ignored — only the diatonic letter+octave position is checked.
+ */
+export function isInDrawingRange(note: NoteWithOctave): boolean {
+  const pos = diatonicPosition(note.letter, note.octave)
+  const minPos = diatonicPosition(DRAWING_RANGE.min.letter, DRAWING_RANGE.min.octave)
+  const maxPos = diatonicPosition(DRAWING_RANGE.max.letter, DRAWING_RANGE.max.octave)
+  return pos >= minPos && pos <= maxPos
+}
 
 export function getAbsoluteNoteY(
   note: NoteWithOctave,
@@ -118,4 +139,45 @@ export function getAbsoluteNoteY(
   const notePosition = note.octave * 7 + DIATONIC_INDEX[note.letter]
 
   return staffLineYs[4] - (notePosition - e4Position) * stepSize
+}
+
+/**
+ * Starting octave for each scale root currently used in the practice method.
+ *
+ * Reverse-engineered from the existing canvas rendering (NOTE_TO_STAFF_POSITION):
+ * every scale root in the visualizer lands at octave 4. For sharp/flat roots
+ * (F#, Bb, Eb, Ab) the base letter determines the octave.
+ *
+ * This map is the single source of truth for the starting octave of both the
+ * drawn scale (renderScale) and the drawn arpeggio (buildArpeggioNotesWithOctave),
+ * so the two always align on the same staff line.
+ */
+export const SCALE_START_OCTAVE: Record<string, number> = {
+  C: 4, D: 4, E: 4, F: 4, G: 4, A: 4, B: 4,
+  'C#': 4, 'D#': 4, 'F#': 4, 'G#': 4, 'A#': 4,
+  'Db': 4, 'Eb': 4, 'Gb': 4, 'Ab': 4, 'Bb': 4,
+}
+
+/**
+ * Assign ascending octaves to a sequence of note letter strings (e.g. ['G','A','B','C','D','E','F#','G']),
+ * starting from the given octave. The octave increments whenever the diatonic letter
+ * wraps past B back to C.
+ */
+export function assignAscendingOctaves(
+  noteStrings: string[],
+  startOctave: number
+): NoteWithOctave[] {
+  const out: NoteWithOctave[] = []
+  let octave = startOctave
+  let prev = -1
+  for (const raw of noteStrings) {
+    const m = raw.match(/^([A-G])(bb|##|b|#)?$/)
+    const letter = m ? m[1] : raw[0]
+    const accidental = m && m[2] ? m[2] : null
+    const d = DIATONIC_INDEX[letter]
+    if (prev !== -1 && d < prev) octave++
+    prev = d
+    out.push({ letter, accidental, octave })
+  }
+  return out
 }

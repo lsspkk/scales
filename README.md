@@ -1,4 +1,4 @@
-# Kirkkosävellajit
+# Scales App
 
 A mobile-first web app for visualizing Finnish church modes (kirkkosävellajit) and practicing violin scales.
 

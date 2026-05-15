@@ -124,6 +124,38 @@ Mobile (<=768px)                Desktop (>768px)
 
 ---
 
+## Screen: Soittohetki (timed practice moment)
+
+**Purpose:** Kid-friendly countdown timer for practicing a single scale. Opened from a row in Harjoittelu's practice list.
+
+```
+Mobile (<=768px)                Desktop (>768px)
++---------------------------+   +------------------------------------------+
+| < D-duuri, 2 oktaavia    |   | < D-duuri, 2 oktaavia                   |
+|---------------------------|   |------------------------------------------|
+| [Asteikko] [Arpeggio]    |   |     +-- max 520px, centered ---------+   |
+| +-----------------------+ |   |     | [Asteikko] [Arpeggio]         |   |
+| |  music canvas 4:1     | |   |     | +-------------------------+   |   |
+| +-----------------------+ |   |     | |  music canvas 4:1       |   |   |
+| C - D - E - F - G - A    |   |     | +-------------------------+   |   |
+|                           |   |     | Ajastettu soittohetki         |   |
+| Ajastettu soittohetki    |   |     |    3:00                       |   |
+|     3:00                  |   |     | +-------------------------+   |   |
+| +-----------------------+ |   |     | | animation placeholder   |   |   |
+| | animation placeholder | |   |     | +-------------------------+   |   |
+| +-----------------------+ |   |     | [1][3][5][10] [>] [reset]    |   |
+| [1][3][5][10] [>] [reset]|   |     +-------------------------------+   |
++---------------------------+   +------------------------------------------+
+```
+
+- `ScreenHeader` (red), title = scale label (e.g. "D-duuri, 2 oktaavia"). Back navigates to `/harjoittelu`.
+- URL: `#/soittohetki?root=D&mode=ionian&octaves=2&min=3` — see `docs/soittohetki.md` for the param spec.
+- **Asteikko / Arpeggio toggle:** local state, swaps the canvas between scale notes (`getScale()`) and tonic arpeggio (`buildArpeggioNotesWithOctave()`).
+- **Note text** under the canvas: scale notes joined with " – ", or arpeggio note letters + accidentals (octave dropped).
+- **Duration chips:** circular buttons (48px), numeric only (1 / 3 / 5 / 10). Disabled while running.
+- **Play / Pause / Reset:** icon-only round buttons in the same row as the chips. Play swaps to Pause while running. Reset appears once the timer has moved off its initial state.
+- **Animation placeholder:** square dashed box reserved for Task 21's procedural animation. The square sits below the time display, before the controls row.
+
 ## Shared Components
 
 | Component | When to use | Key rules |

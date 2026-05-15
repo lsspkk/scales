@@ -4,11 +4,7 @@ import { computeLayout, renderScale, renderArpeggio, type NoteWithOctave } from 
 interface MusicCanvasProps {
   scaleKey?: string
   mode?: string
-  width: number
-  height: number
   staves?: 1 | 2
-  mobile?: boolean
-  compact?: boolean
   arpeggioNotes?: NoteWithOctave[]
   className?: string
   style?: React.CSSProperties
@@ -16,44 +12,62 @@ interface MusicCanvasProps {
 
 /**
  * Reusable canvas component for rendering music scales.
- * Uses the pure musicStave drawing library.
+ *
+ * The canvas always renders at its true on-screen size. The parent must give
+ * the wrapper a definite width and height (via Tailwind utility classes or
+ * inline styles — e.g. `w-full aspect-[2/1]`). The component observes that
+ * size, sets the canvas bitmap to `cssSize × devicePixelRatio`, and feeds
+ * the measured CSS size into `computeLayout`. No CSS stretching of a fixed
+ * bitmap — all geometry follows the container.
  */
 export function MusicCanvas({
   scaleKey,
   mode,
-  width,
-  height,
   staves = 2,
-  mobile = false,
-  compact = false,
   arpeggioNotes,
   className,
   style,
 }: MusicCanvasProps) {
+  const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
+    const wrapper = wrapperRef.current
     const canvas = canvasRef.current
-    if (!canvas) return
+    if (!wrapper || !canvas) return
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const layout = computeLayout({ width, height, staves, mobile, compact })
-    if (arpeggioNotes) {
-      renderArpeggio(ctx, arpeggioNotes, layout)
-    } else if (scaleKey && mode) {
-      renderScale(ctx, scaleKey, mode, layout)
+    const draw = () => {
+      const rect = wrapper.getBoundingClientRect()
+      const cssW = Math.max(1, Math.round(rect.width))
+      const cssH = Math.max(1, Math.round(rect.height))
+      const dpr = window.devicePixelRatio || 1
+
+      canvas.style.width = `${cssW}px`
+      canvas.style.height = `${cssH}px`
+      canvas.width = Math.round(cssW * dpr)
+      canvas.height = Math.round(cssH * dpr)
+      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+
+      const layout = computeLayout({ width: cssW, height: cssH, staves })
+      if (arpeggioNotes) {
+        renderArpeggio(ctx, arpeggioNotes, layout)
+      } else if (scaleKey && mode) {
+        renderScale(ctx, scaleKey, mode, layout)
+      }
     }
-  }, [scaleKey, mode, width, height, staves, mobile, compact, arpeggioNotes])
+
+    draw()
+    const ro = new ResizeObserver(draw)
+    ro.observe(wrapper)
+    return () => ro.disconnect()
+  }, [scaleKey, mode, staves, arpeggioNotes])
 
   return (
-    <canvas
-      ref={canvasRef}
-      width={width}
-      height={height}
-      className={className}
-      style={style}
-    />
+    <div ref={wrapperRef} className={className} style={style}>
+      <canvas ref={canvasRef} style={{ display: 'block' }} />
+    </div>
   )
 }

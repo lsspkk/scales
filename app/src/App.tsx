@@ -6,6 +6,7 @@ import { useViewport } from './lib/useViewport'
 const Home = lazy(() => import('./screens/Home').then(m => ({ default: m.Home })))
 const Kirkkosavellajit = lazy(() => import('./screens/Kirkkosavellajit').then(m => ({ default: m.Kirkkosavellajit })))
 const Harjoittelu = lazy(() => import('./screens/Harjoittelu').then(m => ({ default: m.Harjoittelu })))
+const Soittohetki = lazy(() => import('./screens/Soittohetki').then(m => ({ default: m.Soittohetki })))
 
 function LoadingSpinner() {
   return (
@@ -24,6 +25,7 @@ export function App() {
         <Route path="/" element={<Home />} />
         <Route path="/moodit" element={<Kirkkosavellajit />} />
         <Route path="/harjoittelu" element={<Harjoittelu />} />
+        <Route path="/soittohetki" element={<Soittohetki />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Suspense>

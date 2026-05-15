@@ -93,37 +93,3 @@ export function getScale(currentKey: string, currentMode: string): string[] {
   return scale
 }
 
-export interface NoteInfo {
-  noteName: string
-  accidental: string | null
-  octave: number
-}
-
-export function getNoteInfo(note: string): NoteInfo {
-  const m = note.match(/^([A-G])(bb|##|b|#)?$/)
-  if (m) return { noteName: m[1], accidental: m[2] ?? null, octave: 5 }
-  return { noteName: note, accidental: null, octave: 5 }
-}
-
-export function calculateStaffSteps(keyLetter: string, noteLetter: string, scaleIndex: number): number {
-  const startIndex = LETTER_NAMES.indexOf(keyLetter as typeof LETTER_NAMES[number])
-  const currentIndex = LETTER_NAMES.indexOf(noteLetter as typeof LETTER_NAMES[number])
-  if (scaleIndex === 7) return 7
-  if (scaleIndex === 0) return 0
-  let steps = (currentIndex - startIndex + 7) % 7
-  if (currentIndex < startIndex) steps = currentIndex + (7 - startIndex)
-  return steps
-}
-
-const NOTE_TO_STAFF_POSITION: Record<string, number> = {
-  C: 230, D: 218, E: 205, F: 193, G: 180, A: 168, B: 155,
-}
-const STAFF_GAP = 220
-
-export function getNoteY(noteName: string, _octave: number, staff: 'upper' | 'lower', scaleIndex: number, currentKey: string): number {
-  const baseNoteName = noteName.replace(/[#b]/g, '')[0]
-  const keyBaseLetter = currentKey.replace(/[#b].*$/, '')
-  const startY = NOTE_TO_STAFF_POSITION[keyBaseLetter] + (staff === 'lower' ? STAFF_GAP : 0)
-  const staffSteps = calculateStaffSteps(keyBaseLetter, baseNoteName, scaleIndex)
-  return startY - staffSteps * 12.5 - 10
-}
