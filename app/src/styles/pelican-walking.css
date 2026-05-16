@@ -1,0 +1,653 @@
+/* Walking pelican timer + celebration scenes. */
+
+.pelican-scene--walking .pelican-scene__backdrop {
+  background: linear-gradient(to bottom, #d6efff 0%, #d6efff 65%, transparent 65%, transparent 100%);
+}
+
+.pelican-scene--walking .sun {
+  position: absolute;
+  top: 12%;
+  right: 12%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffe17a, #f5b134);
+  box-shadow: 0 0 20px rgba(245, 177, 52, 0.45);
+}
+
+.pelican-scene--walking .pelican-scene__backdrop::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 35%;
+  width: 100%;
+  height: 22px;
+  pointer-events: none;
+  z-index: 0;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='22' viewBox='0 0 800 22'><g fill='none' stroke='%239bb39a' stroke-width='1.5' stroke-linejoin='round' stroke-linecap='round'><path d='M0 21 H800'/><path d='M20 21 L50 13 L80 17 L100 7 L130 16 L150 15 L180 21'/><path d='M430 21 L455 16 L480 18 L515 9 L545 16 L570 14 L590 11 L600 21'/></g></svg>");
+  background-size: 800px 22px;
+  background-repeat: repeat-x;
+  animation: horizon-scroll 30s linear infinite;
+}
+
+@keyframes horizon-scroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -800px 0;
+  }
+}
+
+.pelican-scene--walking .ground-strip {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 35%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%236f8548' stroke-width='1.5' stroke-linejoin='round' stroke-linecap='round'><path d='M10 50 L13 43 L16 49 L19 41 L22 50'/><path d='M48 30 L51 24 L54 30 L57 26 L60 30'/><path d='M85 55 L88 47 L91 54 L94 45 L97 53 L100 55'/><path d='M128 20 L131 14 L134 20 L137 16 L140 20'/><path d='M165 45 L168 38 L171 44 L174 36 L177 43 L180 45'/></g></svg>");
+  background-size: 200px 100%;
+  background-repeat: repeat-x;
+  animation: ground-scroll 1.6s linear infinite;
+}
+
+@keyframes ground-scroll {
+  from {
+    background-position: 0 0;
+  }
+  to {
+    background-position: -200px 0;
+  }
+}
+
+.pelican-scene--walking .pelican-scene__backdrop::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 80px;
+  width: 100%;
+  height: 35%;
+  pointer-events: none;
+  z-index: -1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%236f8548' stroke-width='1.5' stroke-linejoin='round' stroke-linecap='round'><path d='M10 50 L13 43 L16 49 L19 41 L22 50'/><path d='M48 30 L51 24 L54 30 L57 26 L60 30'/><path d='M85 55 L88 47 L91 54 L94 45 L97 53 L100 55'/><path d='M128 20 L131 14 L134 20 L137 16 L140 20'/><path d='M165 45 L168 38 L171 44 L174 36 L177 43 L180 45'/></g></svg>");
+  background-size: 80px 40%;
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+  animation: ground-scroll-back 1.47s linear infinite;
+}
+
+@keyframes ground-scroll-back {
+  from {
+    background-position: 0 100%;
+  }
+  to {
+    background-position: -80px 100%;
+  }
+}
+
+/* Each palm has a 32s cycle, but only *moves* during the first ~22%
+ * (≈7s — moderate crossing). For the remaining ~25s it stays parked
+ * offscreen-left. Three palms with staggered delays (gaps 8s, 11s, 13s
+ * that sum to 32s) take turns crossing, so the loop has clear empty
+ * stretches between palm appearances. */
+.pelican-scene--walking .palm {
+  position: absolute;
+  bottom: 28%;
+  height: 18%;
+  aspect-ratio: 80 / 160;
+  right: -25%;
+  pointer-events: none;
+  animation: palm-drift 32s linear infinite;
+}
+
+.pelican-scene--walking .palm-svg {
+  width: 100%;
+  height: 100%;
+}
+
+.pelican-scene--walking .palm--a {
+  animation-delay: -0.5s;
+}
+
+.pelican-scene--walking .palm--b {
+  animation-delay: -8.5s;
+}
+
+.pelican-scene--walking .palm--c {
+  animation-delay: -19.5s;
+}
+
+@keyframes palm-drift {
+  0% {
+    right: -25%;
+  }
+  22% {
+    right: 125%;
+  }
+  100% {
+    right: 125%;
+  }
+}
+
+/* Ground shadow at the foot of each palm. The sun sits at upper-right,
+ * so when a palm enters from the right (right≈0%) it's roughly under
+ * the sun → short shadow. As the palm walks left of the sun, the
+ * shadow stretches and skews further left. Synced to palm-drift's
+ * 32s cycle with the same 22% movement window. */
+.pelican-scene--walking .palm-shadow-ground {
+  position: absolute;
+  bottom: -7%;
+  left: 30%;
+  width: 220%;
+  height: 7%;
+  margin-left: -110%;
+  background: radial-gradient(ellipse at center, rgba(0, 0, 0, 0.32), transparent 70%);
+  transform-origin: 50% 0%;
+  pointer-events: none;
+  animation: palm-shadow-sweep 32s linear infinite;
+}
+
+.pelican-scene--walking .palm--a .palm-shadow-ground {
+  animation-delay: -0.5s;
+}
+
+.pelican-scene--walking .palm--b .palm-shadow-ground {
+  animation-delay: -8.5s;
+}
+
+.pelican-scene--walking .palm--c .palm-shadow-ground {
+  animation-delay: -19.5s;
+}
+
+@keyframes palm-shadow-sweep {
+  0% {
+    transform: rotate(-6deg) skewX(20deg) scaleX(0.35);
+  }
+  22% {
+    transform: rotate(-6deg) skewX(-55deg) scaleX(0.95);
+  }
+  100% {
+    transform: rotate(-6deg) skewX(-55deg) scaleX(0.95);
+  }
+}
+
+.pelican-scene--walking .pelican {
+  position: absolute;
+  left: 5%;
+  bottom: 18%;
+  width: 42%;
+  max-width: 180px;
+  aspect-ratio: 2 / 1;
+  animation: pelican-walk-across var(--duration, 60s) linear forwards;
+}
+
+@keyframes pelican-walk-across {
+  from {
+    transform: translateX(0) translateY(0);
+  }
+  to {
+    transform: translateX(140%) translateY(0);
+  }
+}
+
+@keyframes pelican-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-4px);
+  }
+}
+
+.pelican-scene--walking .pelican-svg {
+  width: 100%;
+  height: 100%;
+  animation: pelican-bob 0.6s ease-in-out infinite;
+}
+
+@keyframes pelican-shadow-counter-bob {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(4px);
+  }
+}
+
+.pelican-scene--walking .pelican-shadow {
+  animation: pelican-shadow-counter-bob 0.6s ease-in-out infinite;
+}
+
+@keyframes pelican-body-waddle {
+  0%,
+  100% {
+    transform: rotate(-2deg);
+  }
+  50% {
+    transform: rotate(2deg);
+  }
+}
+
+.pelican-scene--walking .pelican-body-group {
+  animation: pelican-body-waddle 0.6s ease-in-out infinite;
+}
+
+@keyframes pelican-leg-swing-front {
+  0%,
+  100% {
+    transform: rotate(22deg);
+  }
+  50% {
+    transform: rotate(-22deg);
+  }
+}
+
+@keyframes pelican-leg-swing-back {
+  0%,
+  100% {
+    transform: rotate(-22deg);
+  }
+  50% {
+    transform: rotate(22deg);
+  }
+}
+
+.pelican-scene--walking .pelican-leg--front {
+  animation: pelican-leg-swing-front 0.6s ease-in-out infinite;
+}
+
+.pelican-scene--walking .pelican-leg--back {
+  animation: pelican-leg-swing-back 0.6s ease-in-out infinite;
+}
+
+@keyframes pelican-pouch-swing {
+  0%,
+  100% {
+    transform: rotate(6deg) scaleY(1);
+  }
+  50% {
+    transform: rotate(-6deg) scaleY(0.93);
+  }
+}
+
+.pelican-scene--walking .pelican-pouch {
+  animation: pelican-pouch-swing 0.6s ease-in-out infinite;
+}
+
+@keyframes pelican-bill-bob {
+  0%,
+  100% {
+    transform: rotate(2deg);
+  }
+  50% {
+    transform: rotate(-2deg);
+  }
+}
+
+.pelican-scene--walking .pelican-bill {
+  animation: pelican-bill-bob 1.2s ease-in-out infinite;
+}
+
+.pelican-scene--celebration-walking .pelican-scene__backdrop {
+  background: linear-gradient(to bottom, #d6efff 0%, #d6efff 65%, transparent 65%, transparent 100%);
+}
+
+.pelican-scene--celebration-walking .pelican-scene__backdrop::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 35%;
+  width: 100%;
+  height: 22px;
+  pointer-events: none;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='800' height='22' viewBox='0 0 800 22'><g fill='none' stroke='%239bb39a' stroke-width='1.5' stroke-linejoin='round' stroke-linecap='round'><path d='M0 21 H800'/><path d='M20 21 L50 13 L80 17 L100 7 L130 16 L150 15 L180 21'/><path d='M430 21 L455 16 L480 18 L515 9 L545 16 L570 14 L590 11 L600 21'/></g></svg>");
+  background-size: 800px 22px;
+  background-repeat: repeat-x;
+}
+
+.pelican-scene--celebration-walking .ground-strip {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 35%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%236f8548' stroke-width='1.5' stroke-linejoin='round' stroke-linecap='round'><path d='M10 50 L13 43 L16 49 L19 41 L22 50'/><path d='M48 30 L51 24 L54 30 L57 26 L60 30'/><path d='M85 55 L88 47 L91 54 L94 45 L97 53 L100 55'/><path d='M128 20 L131 14 L134 20 L137 16 L140 20'/><path d='M165 45 L168 38 L171 44 L174 36 L177 43 L180 45'/></g></svg>");
+  background-size: 200px 100%;
+  background-repeat: repeat-x;
+}
+
+/* Coconut drops — fall from above, bounce on impact, then sway.
+ * .coconut is a vertical "track" from top of scene down to just above
+ * the ground (bottom: 18%, near pelican's feet). .coconut-drop animates
+ * its top position from -25% to 85% to simulate falling + bouncing.
+ * .coconut-svg spins continuously during the fall, then sways. The
+ * .coconut-ground-shadow pops in on impact. */
+.pelican-scene--celebration-walking .coconut-shadow-layer {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.45;
+}
+
+.pelican-scene--celebration-walking .coconut {
+  position: absolute;
+  top: 0;
+  bottom: 18%;
+  width: 9%;
+  pointer-events: none;
+}
+
+/* --roll-x: how far each coconut rolls after impact (in % of coconut width).
+ * --roll-rotate: matching rotation added on top of the 720° fall spin. */
+.pelican-scene--celebration-walking .coconut--1 {
+  left: 14%;
+  --roll-x: 150%;
+  --roll-rotate: 160deg;
+}
+
+.pelican-scene--celebration-walking .coconut--2 {
+  left: 76%;
+  --roll-x: -100%;
+  --roll-rotate: -110deg;
+}
+
+.pelican-scene--celebration-walking .coconut--3 {
+  left: 28%;
+  width: 6%;
+  --roll-x: 70%;
+  --roll-rotate: 75deg;
+}
+
+.pelican-scene--celebration-walking .coconut-drop {
+  position: absolute;
+  left: 0;
+  bottom: 110%;
+  width: 100%;
+  aspect-ratio: 1;
+  animation:
+    coconut-fall var(--celebration-duration, 3000ms) linear forwards,
+    coconut-roll var(--celebration-duration, 3000ms) linear forwards;
+}
+
+.pelican-scene--celebration-walking .coconut-svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+  animation: coconut-spin-then-roll var(--celebration-duration, 3000ms) linear forwards;
+}
+
+.pelican-scene--celebration-walking .coconut-ground-shadow {
+  position: absolute;
+  bottom: -3%;
+  left: 12.5%;
+  width: 75%;
+  height: 6%;
+  background: rgb(0, 0, 0);
+  border-radius: 50%;
+  opacity: 0;
+  transform: scaleX(0.3);
+  animation:
+    coconut-shadow-land var(--celebration-duration, 3000ms) linear forwards,
+    coconut-shadow-roll var(--celebration-duration, 3000ms) linear forwards;
+}
+
+.pelican-scene--celebration-walking .coconut--2 .coconut-drop,
+.pelican-scene--celebration-walking .coconut--2 .coconut-svg,
+.pelican-scene--celebration-walking .coconut--2 .coconut-ground-shadow {
+  animation-delay: 0.25s;
+}
+
+.pelican-scene--celebration-walking .coconut--3 .coconut-drop,
+.pelican-scene--celebration-walking .coconut--3 .coconut-svg,
+.pelican-scene--celebration-walking .coconut--3 .coconut-ground-shadow {
+  animation-delay: 0.6s;
+}
+
+@keyframes coconut-fall {
+  0% {
+    bottom: 110%;
+    animation-timing-function: cubic-bezier(0.55, 0, 0.8, 0.2);
+  }
+  35% {
+    bottom: 0%;
+    animation-timing-function: ease-out;
+  }
+  40% {
+    bottom: 9%;
+    animation-timing-function: ease-in;
+  }
+  46% {
+    bottom: 0%;
+    animation-timing-function: ease-out;
+  }
+  50% {
+    bottom: 4%;
+    animation-timing-function: ease-in;
+  }
+  54% {
+    bottom: 0%;
+  }
+  100% {
+    bottom: 0%;
+  }
+}
+
+@keyframes coconut-spin-then-roll {
+  0% {
+    transform: rotate(0deg);
+  }
+  35% {
+    transform: rotate(720deg);
+  }
+  100% {
+    transform: rotate(calc(720deg + var(--roll-rotate, 0deg)));
+  }
+}
+
+@keyframes coconut-roll {
+  0%,
+  35% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(var(--roll-x, 0%));
+  }
+}
+
+/* Shadow rolls with its coconut. .coconut-ground-shadow `left` is in
+ * % of .coconut width (same reference as the coconut-drop's translateX),
+ * so reusing --roll-x produces matching horizontal travel. */
+@keyframes coconut-shadow-roll {
+  0%,
+  35% {
+    left: 12.5%;
+  }
+  100% {
+    left: calc(12.5% + var(--roll-x, 0%));
+  }
+}
+
+@keyframes coconut-shadow-land {
+  0%,
+  30% {
+    opacity: 0;
+    transform: scaleX(0.3);
+  }
+  35% {
+    opacity: 0.95;
+    transform: scaleX(1.2);
+  }
+  40% {
+    opacity: 0.75;
+    transform: scaleX(0.95);
+  }
+  46% {
+    opacity: 0.95;
+    transform: scaleX(1.15);
+  }
+  54% {
+    opacity: 0.9;
+    transform: scaleX(1.05);
+  }
+  100% {
+    opacity: 0.9;
+    transform: scaleX(1.05);
+  }
+}
+
+.pelican-scene--celebration-walking .palm--celebration {
+  position: absolute;
+  bottom: 28%;
+  height: 18%;
+  aspect-ratio: 80 / 160;
+  right: 8%;
+  pointer-events: none;
+}
+
+.pelican-scene--celebration-walking .palm--celebration .palm-svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* Big foreground palm: tall trunk that begins ~5% from the scene bottom
+ * and extends past the scene top, with only a tiny strip of fronds peeking
+ * in. Sized via height > scene height so the crown sits above the scene
+ * (scene's overflow:hidden clips it). */
+.pelican-scene--celebration-walking .palm--celebration-big {
+  position: absolute;
+  bottom: 5%;
+  left: 70%;
+  transform: translateX(-80%);
+  width: 168%;
+  max-width: 720px;
+  aspect-ratio: 80 / 160;
+  pointer-events: none;
+  z-index: 5;
+}
+
+.pelican-scene--celebration-walking .palm--celebration-big .palm-svg {
+  width: 100%;
+  height: 100%;
+  transform: scaleX(-1);
+}
+
+/* Custom shadow for the big celebration palm: a sharp skewed trunk
+ * shadow anchored exactly at the trunk base (palm container bottom)
+ * and stretching down-left, plus three thin leaf-shaped shadows
+ * scattered near the trunk shadow's tip. Sun is upper-right, so all
+ * shadows lean strongly to the lower-left. */
+.pelican-scene--celebration-walking .palm--celebration-big .palm-big-shadow {
+  position: absolute;
+  background: rgba(0, 0, 0, 0.42);
+  pointer-events: none;
+}
+
+.pelican-scene--celebration-walking .palm--celebration-big .palm-big-shadow--trunk {
+  left: 45%;
+  bottom: -7%;
+  width: 8%;
+  height: 7%;
+  margin-left: -3%;
+  transform: skewX(-65deg);
+  transform-origin: top center;
+}
+
+.pelican-scene--celebration-walking .palm--celebration-big .palm-big-shadow--leaf {
+  width: 16%;
+  height: 1.1%;
+  border-radius: 50% 6% 50% 6%;
+}
+
+.pelican-scene--celebration-walking .palm--celebration-big .palm-big-shadow--leaf-1 {
+  left: 12%;
+  bottom: -8%;
+  transform: rotate(-22deg);
+  transform-origin: right center;
+}
+
+.pelican-scene--celebration-walking .palm--celebration-big .palm-big-shadow--leaf-2 {
+  left: 6%;
+  bottom: -6%;
+  width: 13%;
+  transform: rotate(-40deg);
+  transform-origin: right center;
+}
+
+.pelican-scene--celebration-walking .palm--celebration-big .palm-big-shadow--leaf-3 {
+  left: 16%;
+  bottom: -9%;
+  width: 11%;
+  transform: rotate(-6deg);
+  transform-origin: right center;
+}
+
+.pelican-scene--celebration-walking .sun {
+  position: absolute;
+  top: 12%;
+  right: 12%;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffe17a, #f5b134);
+  box-shadow: 0 0 28px rgba(245, 177, 52, 0.55);
+  animation: sun-pulse 1.2s ease-in-out infinite;
+}
+
+@keyframes sun-pulse {
+  0%,
+  100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.12);
+  }
+}
+
+.pelican-scene--celebration-walking .pelican {
+  position: absolute;
+  left: 50%;
+  bottom: 18%;
+  width: 42%;
+  max-width: 180px;
+  aspect-ratio: 2 / 1;
+  animation: pelican-proud-bounce 0.5s ease-in-out infinite;
+}
+
+@keyframes pelican-proud-bounce {
+  0%,
+  100% {
+    transform: translateX(-50%) translateY(0);
+  }
+  50% {
+    transform: translateX(-50%) translateY(-12px);
+  }
+}
+
+.pelican-scene--celebration-walking .pelican-svg {
+  width: 100%;
+  height: 100%;
+}
+
+@keyframes pelican-shadow-counter-proud-bounce {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(12px);
+  }
+}
+
+.pelican-scene--celebration-walking .pelican-shadow {
+  animation: pelican-shadow-counter-proud-bounce 0.5s ease-in-out infinite;
+}
+
+.pelican-scene--celebration-walking .pelican-pouch {
+  animation: pelican-pouch-swing 0.5s ease-in-out infinite;
+}
+
+.pelican-scene--celebration-walking .pelican-bill {
+  animation: pelican-bill-bob 0.8s ease-in-out infinite;
+}

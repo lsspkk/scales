@@ -1,0 +1,531 @@
+/* Flying pelican timer + celebration scenes. */
+
+@property --sky-top {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #1a1b3a;
+}
+@property --sky-mid {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #2a1e4a;
+}
+@property --sky-horizon {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: #3a2350;
+}
+@property --dusk-glow {
+  syntax: '<color>';
+  inherits: false;
+  initial-value: rgba(255, 150, 120, 0.55);
+}
+@property --dusk-x {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 12%;
+}
+@property --dusk-y {
+  syntax: '<percentage>';
+  inherits: false;
+  initial-value: 62%;
+}
+
+.pelican-scene--flying .pelican-scene__backdrop {
+  --sky-top: #1a1b3a;
+  --sky-mid: #2a1e4a;
+  --sky-horizon: #3a2350;
+  --dusk-glow: rgba(255, 150, 120, 0.55);
+  --dusk-x: 12%;
+  --dusk-y: 62%;
+  background:
+    radial-gradient(ellipse 65% 45% at var(--dusk-x) var(--dusk-y), var(--dusk-glow), rgba(255, 150, 120, 0) 70%),
+    linear-gradient(to bottom, var(--sky-top) 0%, var(--sky-mid) 40%, var(--sky-horizon) 58%, #5a8cb2 62%, #2f5a85 100%);
+  animation: sky-dusk-shift var(--duration, 60s) linear forwards;
+}
+
+@keyframes sky-dusk-shift {
+  0% {
+    --sky-top: #1a1b3a;
+    --sky-mid: #2a1e4a;
+    --sky-horizon: #3a2350;
+    --dusk-glow: rgba(255, 150, 120, 0.55);
+    --dusk-x: 12%;
+    --dusk-y: 62%;
+  }
+  35% {
+    --sky-top: #7a5a8a;
+    --sky-mid: #c97a8a;
+    --sky-horizon: #e3a3a0;
+    --dusk-glow: rgba(255, 180, 170, 0.5);
+    --dusk-x: 32%;
+    --dusk-y: 42%;
+  }
+  70% {
+    --sky-top: #a8d0ee;
+    --sky-mid: #dce8f4;
+    --sky-horizon: #d8eaf0;
+    --dusk-glow: rgba(255, 220, 200, 0.15);
+    --dusk-x: 60%;
+    --dusk-y: 20%;
+  }
+  100% {
+    --sky-top: #a4d8f5;
+    --sky-mid: #d6efff;
+    --sky-horizon: #d6efff;
+    --dusk-glow: rgba(255, 230, 180, 0);
+    --dusk-x: 74%;
+    --dusk-y: 10%;
+  }
+}
+
+.pelican-scene--flying .sun {
+  position: absolute;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffe17a, #f5b134);
+  box-shadow: 0 0 28px rgba(245, 177, 52, 0.55);
+  top: 62%;
+  left: 12%;
+  animation: sun-rise-from-sea var(--duration, 60s) linear forwards;
+}
+
+@keyframes sun-rise-from-sea {
+  0% {
+    top: 62%;
+    left: 12%;
+    transform: scale(0.92);
+  }
+  18% {
+    top: 56%;
+    left: 18%;
+    transform: scale(0.96);
+  }
+  55% {
+    top: 28%;
+    left: 48%;
+    transform: scale(1);
+  }
+  100% {
+    top: 10%;
+    left: 74%;
+    transform: scale(1);
+  }
+}
+
+.pelican-scene--flying .cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50px;
+  box-shadow:
+    -14px 4px 0 -2px rgba(255, 255, 255, 0.85),
+    14px 4px 0 -2px rgba(255, 255, 255, 0.85),
+    0 -8px 0 -4px rgba(255, 255, 255, 0.85);
+  animation: cloud-drift var(--duration, 60s) linear forwards;
+}
+
+.pelican-scene--flying .cloud--a {
+  top: 18%;
+  width: 50px;
+  height: 16px;
+  animation-delay: 0s;
+}
+
+.pelican-scene--flying .cloud--b {
+  top: 38%;
+  width: 70px;
+  height: 20px;
+  animation-delay: calc(var(--duration, 60s) * -0.35);
+}
+
+.pelican-scene--flying .cloud--c {
+  top: 58%;
+  width: 40px;
+  height: 14px;
+  animation-delay: calc(var(--duration, 60s) * -0.65);
+}
+
+.pelican-scene--flying .water-line {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 40%;
+  background: #fffbe9;
+}
+
+.pelican-scene--flying .water-line::before,
+.pelican-scene--flying .water-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  background-repeat: repeat-x;
+}
+
+.pelican-scene--flying .water-line::before {
+  bottom: -10px;
+  height: 100%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%232f5a85' stroke-width='1.05' stroke-linecap='round'><path d='M5 50 q 6 -3 12 0 t 12 0'/><path d='M48 30 q 6 -2.5 12 0 t 12 0'/><path d='M85 55 q 6 -3 12 0 t 12 0 t 12 0'/><path d='M128 20 q 6 -2.5 12 0 t 12 0'/><path d='M160 45 q 6 -3 12 0 t 12 0 t 12 0'/></g></svg>");
+  background-size: 200px 100%;
+  background-position: 0 100%;
+  animation: sea-wave-scroll 1.6s linear infinite;
+}
+
+.pelican-scene--flying .water-line::after {
+  bottom: 90px;
+  height: 60%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%23355f88' stroke-width='1.05' stroke-linecap='round'><path d='M5 50 q 6 -3 12 0 t 12 0'/><path d='M48 30 q 6 -2.5 12 0 t 12 0'/><path d='M85 55 q 6 -3 12 0 t 12 0 t 12 0'/><path d='M128 20 q 6 -2.5 12 0 t 12 0'/><path d='M160 45 q 6 -3 12 0 t 12 0 t 12 0'/></g></svg>");
+  background-size: 140px 40%;
+  background-position: 0 100%;
+  opacity: 0.8;
+  animation: sea-wave-scroll-back 1.44s linear infinite;
+}
+
+@keyframes sea-wave-scroll {
+  from {
+    background-position: 0 100%;
+  }
+  to {
+    background-position: -200px 100%;
+  }
+}
+
+@keyframes sea-wave-scroll-back {
+  from {
+    background-position: 0 100%;
+  }
+  to {
+    background-position: -140px 100%;
+  }
+}
+
+@keyframes sea-grass-scroll {
+  from {
+    background-position: 0 100%;
+  }
+  to {
+    background-position: -200px 100%;
+  }
+}
+
+@keyframes sea-grass-scroll-back {
+  from {
+    background-position: 0 100%;
+  }
+  to {
+    background-position: -80px 100%;
+  }
+}
+
+@keyframes sea-shimmer {
+  0% {
+    background-position:
+      0 0,
+      0 0,
+      0 0,
+      0 0;
+  }
+  100% {
+    background-position:
+      0 0,
+      -120px 0,
+      0 24px,
+      0 0;
+  }
+}
+
+@keyframes sea-swell {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(2px);
+  }
+}
+
+@keyframes cloud-drift {
+  from {
+    transform: translateX(120%);
+  }
+  to {
+    transform: translateX(-260%);
+  }
+}
+
+.pelican-scene--flying .pelican {
+  position: absolute;
+  left: 10%;
+  top: 26%;
+  width: 38%;
+  max-width: 160px;
+  aspect-ratio: 2 / 1;
+  animation: pelican-fly-arc var(--duration, 60s) linear forwards;
+}
+
+@keyframes pelican-fly-arc {
+  0% {
+    transform: translate(0, 0);
+  }
+  25% {
+    transform: translate(40%, -18px);
+  }
+  50% {
+    transform: translate(80%, 6px);
+  }
+  75% {
+    transform: translate(120%, -14px);
+  }
+  100% {
+    transform: translate(160%, 4px);
+  }
+}
+
+.pelican-scene--flying .pelican-svg {
+  width: 100%;
+  height: 100%;
+  animation: pelican-soar 2.2s ease-in-out infinite;
+}
+
+@keyframes pelican-soar {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+  50% {
+    transform: translateY(-3px) rotate(2deg);
+  }
+}
+
+@keyframes pelican-wing-flap {
+  0%,
+  100% {
+    transform: rotate(-12deg);
+  }
+  50% {
+    transform: rotate(-38deg);
+  }
+}
+
+.pelican-scene--flying .pelican-wing {
+  animation: pelican-wing-flap 1.4s ease-in-out infinite;
+}
+
+.pelican-scene--celebration-flying {
+  background: linear-gradient(to bottom, #a4d8f5 0%, #d6efff 55%, #5a8cb2 60%, #2f5a85 100%);
+}
+
+.pelican-scene--celebration-flying .sun {
+  position: absolute;
+  top: 10%;
+  right: 14%;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 30% 30%, #ffe17a, #f5b134);
+  box-shadow: 0 0 24px rgba(245, 177, 52, 0.5);
+}
+
+.pelican-scene--celebration-flying .cloud {
+  position: absolute;
+  background: rgba(255, 255, 255, 0.85);
+  border-radius: 50px;
+  box-shadow:
+    -14px 4px 0 -2px rgba(255, 255, 255, 0.85),
+    14px 4px 0 -2px rgba(255, 255, 255, 0.85),
+    0 -8px 0 -4px rgba(255, 255, 255, 0.85);
+}
+
+.pelican-scene--celebration-flying .cloud--a {
+  top: 18%;
+  left: 15%;
+  width: 60px;
+  height: 18px;
+}
+
+.pelican-scene--celebration-flying .cloud--b {
+  top: 30%;
+  left: 60%;
+  width: 48px;
+  height: 14px;
+}
+
+.pelican-scene--celebration-flying .water-line {
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  width: 100%;
+  height: 40%;
+  background: #fffbe9;
+}
+
+.pelican-scene--celebration-flying .water-line::before,
+.pelican-scene--celebration-flying .water-line::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  width: 100%;
+  pointer-events: none;
+  background-repeat: repeat-x;
+}
+
+.pelican-scene--celebration-flying .water-line::before {
+  bottom: -10px;
+  height: 100%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%232f5a85' stroke-width='1.05' stroke-linecap='round'><path d='M5 50 q 6 -3 12 0 t 12 0'/><path d='M48 30 q 6 -2.5 12 0 t 12 0'/><path d='M85 55 q 6 -3 12 0 t 12 0 t 12 0'/><path d='M128 20 q 6 -2.5 12 0 t 12 0'/><path d='M160 45 q 6 -3 12 0 t 12 0 t 12 0'/></g></svg>");
+  background-size: 200px 100%;
+  background-position: 0 100%;
+  animation: sea-wave-scroll 3.2s linear infinite;
+}
+
+.pelican-scene--celebration-flying .water-line::after {
+  bottom: 90px;
+  height: 60%;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%23355f88' stroke-width='1.05' stroke-linecap='round'><path d='M5 50 q 6 -3 12 0 t 12 0'/><path d='M48 30 q 6 -2.5 12 0 t 12 0'/><path d='M85 55 q 6 -3 12 0 t 12 0 t 12 0'/><path d='M128 20 q 6 -2.5 12 0 t 12 0'/><path d='M160 45 q 6 -3 12 0 t 12 0 t 12 0'/></g></svg>");
+  background-size: 140px 40%;
+  background-position: 0 100%;
+  opacity: 0.8;
+  animation: sea-wave-scroll-back 2.88s linear infinite;
+}
+
+.pelican-scene--celebration-flying .pelican {
+  position: absolute;
+  left: 60%;
+  top: 12%;
+  width: 38%;
+  max-width: 160px;
+  aspect-ratio: 2 / 1;
+  animation: pelican-dive-sequence var(--celebration-duration, 3000ms) ease-in forwards;
+}
+
+@keyframes pelican-dive-sequence {
+  0% {
+    transform: translate(0, 0) rotate(-4deg);
+  }
+  25% {
+    transform: translate(-25%, 6%) rotate(15deg);
+  }
+  55% {
+    transform: translate(-60%, 90%) rotate(75deg);
+  }
+  68% {
+    transform: translate(-62%, 130%) rotate(85deg);
+  }
+  82% {
+    transform: translate(-60%, 84%) rotate(18deg);
+  }
+  100% {
+    transform: translate(-56%, 70%) rotate(-4deg);
+  }
+}
+
+.pelican-scene--celebration-flying .pelican-fish {
+  position: absolute;
+  left: 89%;
+  top: 48%;
+  width: 22%;
+  height: auto;
+  transform-origin: 12% 50%;
+  opacity: 0;
+  animation: pelican-fish-catch var(--celebration-duration, 3000ms) ease-out forwards;
+}
+
+@keyframes pelican-fish-catch {
+  0%,
+  66% {
+    transform: translate(-8%, 30%) scale(0.2) rotate(40deg);
+    opacity: 0;
+  }
+  74% {
+    transform: translate(-4%, 10%) scale(0.92) rotate(18deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translate(0, 0) scale(1) rotate(8deg);
+    opacity: 1;
+  }
+}
+
+.pelican-scene--celebration-flying .pelican-wing {
+  animation:
+    pelican-wing-fold var(--celebration-duration, 3000ms) ease-in-out forwards,
+    pelican-wing-flap 1.4s ease-in-out var(--celebration-duration, 3000ms) infinite;
+}
+
+@keyframes pelican-wing-fold {
+  0%,
+  20% {
+    transform: rotate(-12deg);
+  }
+  45% {
+    transform: rotate(-65deg);
+  }
+  60% {
+    transform: rotate(-85deg);
+  }
+  80% {
+    transform: rotate(-20deg);
+  }
+  100% {
+    transform: rotate(-12deg);
+  }
+}
+
+.pelican-scene--celebration-flying .pelican-pouch {
+  animation: pelican-pouch-inflate var(--celebration-duration, 3000ms) ease-out forwards;
+}
+
+@keyframes pelican-pouch-inflate {
+  0%,
+  60% {
+    transform: scale(1, 1);
+  }
+  74% {
+    transform: scale(1.6, 2);
+  }
+  100% {
+    transform: scale(1.5, 1.8);
+  }
+}
+
+.pelican-scene--celebration-flying .splash {
+  position: absolute;
+  left: 36%;
+  bottom: 28%;
+  width: 80px;
+  height: 80px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 255, 255, 0.75);
+  opacity: 0;
+  animation: splash-burst var(--celebration-duration, 3000ms) ease-out forwards;
+}
+
+@keyframes splash-burst {
+  0%,
+  62% {
+    transform: translate(-50%, 0) scale(0);
+    opacity: 0;
+  }
+  68% {
+    transform: translate(-50%, 0) scale(0.8);
+    opacity: 1;
+  }
+  85% {
+    transform: translate(-50%, 0) scale(2);
+    opacity: 0.4;
+  }
+  100% {
+    transform: translate(-50%, 0) scale(2.4);
+    opacity: 0;
+  }
+}
+
+.pelican-scene--celebration-flying .celebration-text {
+  color: #ffe17a;
+  text-shadow:
+    0 2px 6px rgba(0, 0, 0, 0.35),
+    0 0 12px rgba(245, 177, 52, 0.6);
+}

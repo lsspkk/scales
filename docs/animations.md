@@ -1,5 +1,7 @@
 # Soittohetki Animations
 
+> **Note:** The animations have since been refined manually in the code, and this document is out of date. Treat the details below as historical context rather than an accurate description of the current implementation.
+
 Procedural SVG/CSS animations used on the Soittohetki screen. Design concepts and the shared pelican rig blueprint live in [`animation-ideas.md`](animation-ideas.md); this document covers the actual implementation.
 
 ## Files
@@ -7,8 +9,9 @@ Procedural SVG/CSS animations used on the Soittohetki screen. Design concepts an
 - `app/src/components/animations/PelicanTimer.tsx` — the timer animation (Task 21). Exports `PelicanTimer`, the `PelicanTimerVariant` union, and the `WalkingPelicanSvg` / `FlyingPelicanSvg` rigs (reused by the celebration).
 - `app/src/components/animations/PelicanCelebration.tsx` — the time-up celebration (Task 22). Exports `PelicanCelebration` and the `PelicanCelebrationVariant` union.
 - `app/src/index.css` — all pelican keyframes and scene styles (timer + celebration). Custom `@keyframes` cannot be expressed as Tailwind utilities, so they live in the global stylesheet.
-- `app/src/screens/AnimationTest.tsx` — hidden debug screen at `#/dev/animation/timer`.
-- `app/src/screens/CelebrationAnimationTest.tsx` — hidden debug screen at `#/dev/animation/celebration`.
+- `app/src/screens/TestMenu.tsx` — shared internal landing page at `#/test` for visual test pages.
+- `app/src/screens/AnimationTest.tsx` — timer preview screen at `#/test/animation/timer`.
+- `app/src/screens/CelebrationAnimationTest.tsx` — celebration preview screen at `#/test/animation/celebration`.
 
 ## PelicanTimer component
 
@@ -68,13 +71,13 @@ Pelican glides across the sky on a gentle arc (`translate` keyframes) above a vi
 
 ## Hidden debug route
 
-`#/dev/animation/timer` — explicitly marked `DEBUG / TEST ROUTE` in `App.tsx` and `AnimationTest.tsx`. Not linked from anywhere in the UI. Lets you:
+`#/test` is the stable entry point for internal animation previews. From there, the timer preview lives at `#/test/animation/timer`. This keeps only one route easy to remember while still allowing direct deep links. The timer preview lets you:
 
 - Toggle between walking / flying variants.
 - Pick short durations (10 s, 30 s, …) for fast visual iteration.
 - Pause/resume and restart without leaving the page.
 
-Deep-link via query params: `#/dev/animation/timer?variant=flying&ms=15000`.
+Deep-link via query params: `#/test/animation/timer?variant=flying&ms=15000`.
 
 ## PelicanCelebration component
 
@@ -102,4 +105,4 @@ The shared `@media (prefers-reduced-motion: reduce)` rule disables every pelican
 
 ### Hidden debug route
 
-`#/dev/animation/celebration` — explicitly marked `DEBUG / TEST ROUTE` in `App.tsx` and `CelebrationAnimationTest.tsx`. Not linked from anywhere in the UI. Lets you toggle variant, change duration, and replay the animation. Deep-link via query params: `#/dev/animation/celebration?variant=flying&ms=5000`.
+The celebration preview is linked from `#/test` and also available directly at `#/test/animation/celebration`. It lets you toggle variant, change duration, and replay the animation. Deep-link via query params: `#/test/animation/celebration?variant=flying&ms=5000`.

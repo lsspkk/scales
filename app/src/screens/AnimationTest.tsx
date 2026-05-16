@@ -1,14 +1,14 @@
 /*
  * DEBUG / TEST ROUTE
  * Hidden preview route for the Soittohetki timer animation (Task 21).
- * Reachable only by typing `#/dev/animation/timer` in the URL bar — there
- * is intentionally no UI link to it from the rest of the app. The variant
- * is chosen via `?variant=walking` (default) or `?variant=flying`, and the
- * duration via `?ms=<milliseconds>` (default 60 000 = 1 min for quick visual
- * iteration). Both variants can also be flipped through the toggle below.
+ * Reach it from the shared `#/test` menu or directly via
+ * `#/test/animation/timer`. The variant is chosen via
+ * `?variant=walking` (default) or `?variant=flying`, and the duration via
+ * `?ms=<milliseconds>` (default 60 000 = 1 min for quick visual iteration).
+ * Both variants can also be flipped through the toggle below.
  */
 import { useState } from 'react'
-import { useSearchParams } from 'react-router-dom'
+import { Link, useSearchParams } from 'react-router-dom'
 import { PelicanTimer, type PelicanTimerVariant } from '../components/animations/PelicanTimer'
 
 function parseVariant(value: string | null): PelicanTimerVariant {
@@ -45,11 +45,18 @@ export function AnimationTest() {
 
   return (
     <div className='min-h-screen bg-[#fffbe9] p-4 flex flex-col items-center gap-4'>
-      <h1 className='text-[#5a2d0c] text-lg font-bold'>Pelican timer (debug)</h1>
+      <Link
+        to='/test'
+        className='flex min-h-[44px] items-center self-start rounded-xl border-2 border-[#5a2d0c] px-3 py-2 text-sm font-bold text-[#5a2d0c]'
+      >
+        ← Testisivut
+      </Link>
+
+      <h1 className='text-[#5a2d0c] text-lg font-bold'>Pelikaanin ajastinanimaatio</h1>
 
       {/* Demo container — same sizing rules as Soittohetki's animation slot */}
       <div className='w-full max-w-[520px]'>
-        <div className='w-full h-[35svh] min-h-[180px] max-h-[360px] rounded-2xl overflow-hidden bg-[#faf3d8]'>
+        <div className='w-full h-[35svh] min-h-[180px] max-h-[360px] rounded-2xl overflow-hidden bg-[#fffbe9]'>
           <PelicanTimer
             key={`${variant}-${durationMs}-${runId}`}
             variant={variant}
@@ -66,7 +73,7 @@ export function AnimationTest() {
             variant === 'walking' ? 'bg-[#8B2500] text-white' : 'bg-[#f0dbb8] text-[#5a2d0c]'
           }`}
         >
-          Walking
+          Kävely
         </button>
         <button
           onClick={() => setVariant('flying')}
@@ -74,7 +81,7 @@ export function AnimationTest() {
             variant === 'flying' ? 'bg-[#8B2500] text-white' : 'bg-[#f0dbb8] text-[#5a2d0c]'
           }`}
         >
-          Flying
+          Lento
         </button>
       </div>
 
@@ -97,16 +104,20 @@ export function AnimationTest() {
           onClick={() => setIsRunning((r) => !r)}
           className='px-4 h-10 rounded-lg bg-[#8B2500] text-white text-sm font-bold'
         >
-          {isRunning ? 'Pause' : 'Run'}
+          {isRunning ? 'Tauko' : 'Käynnistä'}
         </button>
-        <button onClick={restart} className='px-4 h-10 rounded-lg border-2 border-[#5a2d0c] text-[#5a2d0c] text-sm font-bold'>
-          Restart
+        <button
+          onClick={restart}
+          className='px-4 h-10 rounded-lg border-2 border-[#5a2d0c] text-[#5a2d0c] text-sm font-bold'
+        >
+          Aloita alusta
         </button>
       </div>
 
       <p className='text-xs text-[#8B4513] text-center max-w-[520px]'>
-        Hidden test route — not linked from the UI. Add <code>?variant=walking|flying</code> and{' '}
-        <code>?ms=&lt;duration&gt;</code> for direct deep-linking.
+        Tavallisin reitti tänne on <code>#/test</code>. Voit myös käyttää suoraa linkkiä{' '}
+        <code>#/test/animation/timer</code> ja lisätä perään <code>?variant=walking|flying</code> sekä{' '}
+        <code>?ms=&lt;kesto&gt;</code>.
       </p>
     </div>
   )

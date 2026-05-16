@@ -69,7 +69,7 @@ const { remainingMs, isRunning, start, pause, reset } = useCountdownTimer(durati
 
 Procedural CSS pelican rendered by `app/src/components/animations/PelicanTimer.tsx` (see [animations.md](animations.md)). Driven by `--duration` set from `durationMs`. Pausing toggles `animation-play-state` via an `is-paused` class. Reset and duration changes remount the component via a `runId` key (`<PelicanTimer key={`${variant}-${durationMs}-${runId}`} ... />`), which rewinds every CSS animation to frame 0.
 
-Two variants share the same rig: **walking** and **flying**. Harjoittelu picks one at random when opening Soittohetki, and direct links without `anim` are normalised to a random variant once and then kept stable in the URL. A hidden test route `#/dev/animation/timer` is documented in `animations.md`.
+Two variants share the same rig: **walking** and **flying**. Harjoittelu picks one at random when opening Soittohetki, and direct links without `anim` are normalised to a random variant once and then kept stable in the URL. The internal test menu lives at `#/test`, and the timer preview route is documented in `animations.md`.
 
 ## Out of scope (handled by future tasks)
 

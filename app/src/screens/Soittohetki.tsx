@@ -193,7 +193,7 @@ export function Soittohetki() {
 
           {/* subrow 3: Animation + controls — fixed (animation sized to viewport) */}
           <div className='flex flex-col gap-2 min-w-0 shrink-0'>
-            <div className='w-full h-[35svh] min-h-45 max-h-90 rounded-2xl overflow-hidden bg-[#faf3d8]'>
+            <div className='w-full h-[35svh] min-h-45 max-h-90 rounded-2xl overflow-hidden bg-[#fffbe9]'>
               {showCelebration ? (
                 <PelicanCelebration variant={animationVariant} />
               ) : (

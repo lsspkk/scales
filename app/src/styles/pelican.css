@@ -1,0 +1,120 @@
+/* Shared pelican animation primitives used by both walking and flying scenes. */
+
+.pelican-scene {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  border-radius: 1rem;
+  isolation: isolate;
+}
+
+.pelican-scene.is-paused,
+.pelican-scene.is-paused * {
+  animation-play-state: paused !important;
+}
+
+.pelican-scene__content {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  animation:
+    pelican-scene-color-release-slow var(--shade-early-duration, 40000ms) linear forwards,
+    pelican-scene-color-release-fast var(--shade-release-duration, 20000ms) cubic-bezier(0.2, 0.75, 0.25, 1) forwards;
+  animation-delay: 0s, var(--shade-early-duration, 40000ms);
+}
+
+.pelican-scene__backdrop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation:
+    pelican-scene-color-release-slow var(--shade-early-duration, 40000ms) linear forwards,
+    pelican-scene-color-release-fast var(--shade-release-duration, 20000ms) cubic-bezier(0.2, 0.75, 0.25, 1) forwards;
+  animation-delay: 0s, var(--shade-early-duration, 40000ms);
+}
+
+@keyframes pelican-scene-color-release-slow {
+  from {
+    filter: sepia(0.5) saturate(1.4) brightness(0.78) hue-rotate(-13deg);
+  }
+  to {
+    filter: sepia(0.28) saturate(1.2) brightness(0.92) hue-rotate(-6deg);
+  }
+}
+
+@keyframes pelican-scene-color-release-fast {
+  from {
+    filter: sepia(0.28) saturate(1.2) brightness(0.92) hue-rotate(-6deg);
+  }
+  to {
+    filter: sepia(0) saturate(1) brightness(1) hue-rotate(0deg);
+  }
+}
+
+.pelican-part {
+  transform-box: fill-box;
+  transform-origin: center;
+  will-change: transform;
+}
+
+.pelican-leg {
+  transform-origin: 50% 0%;
+}
+
+.pelican-pouch {
+  transform-origin: 50% 0%;
+}
+
+.pelican-bill {
+  transform-origin: 0% 50%;
+}
+
+.pelican-wing {
+  transform-origin: 100% 50%;
+}
+
+.celebration-text {
+  position: absolute;
+  top: 6%;
+  left: 50%;
+  z-index: 10;
+  transform: translateX(-50%);
+  font-family: 'MedievalSharp', 'Times New Roman', Times, serif;
+  font-size: clamp(1.5rem, 7vw, 2.4rem);
+  font-weight: 700;
+  color: #8b2500;
+  text-shadow:
+    0 2px 4px rgba(0, 0, 0, 0.18),
+    0 0 8px rgba(255, 225, 122, 0.5);
+  letter-spacing: 0.04em;
+  pointer-events: none;
+  animation: celebration-pop 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+@keyframes celebration-pop {
+  0% {
+    transform: translateX(-50%) scale(0);
+    opacity: 0;
+  }
+  60% {
+    transform: translateX(-50%) scale(1.2);
+    opacity: 1;
+  }
+  100% {
+    transform: translateX(-50%) scale(1);
+    opacity: 1;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pelican-scene *,
+  .pelican-scene {
+    animation: none !important;
+  }
+
+  .celebration-text {
+    transform: translateX(-50%);
+    opacity: 1;
+  }
+}

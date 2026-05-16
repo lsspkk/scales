@@ -27,38 +27,88 @@ export function PelicanTimer({ variant, durationMs, isRunning }: PelicanTimerPro
   if (variant === 'flying') {
     return (
       <div className={`pelican-scene pelican-scene--flying ${pausedClass}`} style={sceneStyle} aria-hidden='true'>
+        <div className='pelican-scene__backdrop' />
         <div className='pelican-scene__content'>
           <div className='sun' />
           <div className='cloud cloud--a' />
           <div className='cloud cloud--b' />
           <div className='cloud cloud--c' />
           <div className='water-line' />
-          <div className='pelican'>
-            <FlyingPelicanSvg />
-          </div>
         </div>
-        <div className='pelican-scene__shade' />
+        <div className='pelican'>
+          <FlyingPelicanSvg />
+        </div>
       </div>
     )
   }
 
   return (
     <div className={`pelican-scene pelican-scene--walking ${pausedClass}`} style={sceneStyle} aria-hidden='true'>
+      <div className='pelican-scene__backdrop' />
       <div className='pelican-scene__content'>
         <div className='sun' />
-        <div className='ground-strip' />
-        <div className='pelican'>
-          <WalkingPelicanSvg />
+        <div className='palm palm--a'>
+          <div className='palm-shadow-ground' />
+          <PalmSvg />
         </div>
+        <div className='palm palm--b'>
+          <div className='palm-shadow-ground' />
+          <PalmSvg />
+        </div>
+        <div className='palm palm--c'>
+          <div className='palm-shadow-ground' />
+          <PalmSvg />
+        </div>
+        <div className='ground-strip' />
       </div>
-      <div className='pelican-scene__shade' />
+      <div className='pelican'>
+        <WalkingPelicanSvg />
+      </div>
     </div>
+  )
+}
+
+export function PalmSvg() {
+  return (
+    <svg viewBox='0 0 80 160' className='palm-svg' xmlns='http://www.w3.org/2000/svg'>
+      {/* Trunk — slim, slightly curved */}
+      <path d='M42 160 Q36 120 39 80 Q41 55 44 32' stroke='#6b4226' strokeWidth='5' fill='none' strokeLinecap='round' />
+{/* Fronds — feathery, radiating from the crown */}
+      <g fill='#3d6b3a' stroke='#264d24' strokeWidth='0.5' strokeLinejoin='round'>
+        <ellipse cx='44' cy='30' rx='26' ry='4' transform='rotate(-12 44 30)' />
+        <ellipse cx='44' cy='30' rx='26' ry='4' transform='rotate(12 44 30)' />
+        <ellipse cx='44' cy='30' rx='24' ry='3.5' transform='rotate(-40 44 30)' />
+        <ellipse cx='44' cy='30' rx='24' ry='3.5' transform='rotate(40 44 30)' />
+        <ellipse cx='44' cy='30' rx='20' ry='3' transform='rotate(-70 44 30)' />
+        <ellipse cx='44' cy='30' rx='20' ry='3' transform='rotate(70 44 30)' />
+        <ellipse cx='44' cy='18' rx='6' ry='10' />
+      </g>
+      {/* Date cluster tucked under crown */}
+      <g fill='#7a4a18' opacity='0.85'>
+        <circle cx='40' cy='34' r='1.4' />
+        <circle cx='43' cy='35' r='1.4' />
+        <circle cx='46' cy='34' r='1.4' />
+        <circle cx='44' cy='37' r='1.4' />
+      </g>
+    </svg>
   )
 }
 
 export function WalkingPelicanSvg() {
   return (
     <svg viewBox='0 0 200 110' className='pelican-svg' xmlns='http://www.w3.org/2000/svg'>
+      {/* Ground shadow — sun is upper-right, shadow drifts lower-left.
+          Outer group counter-animates the .pelican-svg bob so the shadow stays put. */}
+      <g className='pelican-shadow'>
+        <g transform='translate(-6 89.5) scale(1 0.12)' opacity='0.25' fill='#000'>
+          <ellipse cx='85' cy='58' rx='38' ry='20' />
+          <ellipse cx='85' cy='50' rx='30' ry='11' />
+          <path d='M118,50 Q128,38 138,32' stroke='#000' strokeWidth='11' fill='none' strokeLinecap='round' />
+          <circle cx='143' cy='30' r='11' />
+          <polygon points='152,29.8 188,32.9 188,36.8 152,34.3' />
+        </g>
+      </g>
+
       {/* Tail */}
       <polygon points='50,52 38,46 50,62' fill='#f5f0e8' stroke='#d8cdb5' strokeWidth='0.6' />
 
