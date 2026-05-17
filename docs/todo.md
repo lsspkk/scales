@@ -96,7 +96,7 @@ Requirements:
 
 ## Task 23: Desktop navigation — proper top bar / menu
 
-**Status:** pending
+**Status:** done
 
 Today the desktop UI reuses the mobile chrome verbatim: a single `ScreenHeader` with a back arrow + title spans the full viewport, content is constrained to 700–900px below it, and the only navigation between top-level screens is "back to Home, then pick another card." The recently added info action (`/harjoittelu/tietoa`) is a 24px icon parked on the far right edge of a 1900px-wide bar — visually disconnected from the title it belongs to and easy to miss. The mobile back-stack metaphor doesn't carry its weight on a wide viewport.
 

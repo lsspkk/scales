@@ -11,7 +11,31 @@ Read this file before implementing any screen or UI change. It is the source of 
 - **Typography:** Finnish for all user-facing text. English for code only. Musical terms in Finnish when a clear translation exists.
 - **Viewport breakpoint:** 769px. Below = mobile, above = desktop. Use `useViewport()` hook.
 - **No scroll on hub screens.** Content screens (Kirkkosavellajit, Harjoittelu info) may scroll vertically.
-- **Desktop content containment:** On desktop, only app-level chrome (ScreenHeader) spans full viewport width. All content — including sub-navigation like tabs, toggles, and filters — must live inside the screen's max-width content container (e.g., `max-w-[700px]`). Tabs that stretch edge-to-edge on a wide monitor look disconnected from the content they control. On mobile, full-width tabs are fine because the viewport _is_ the container.
+- **Desktop content containment:** On desktop, only app-level chrome (the top navigation bar) spans full viewport width. All content — including sub-navigation like tabs, toggles, and filters — must live inside the screen's max-width content container (e.g., `max-w-[700px]`). Tabs that stretch edge-to-edge on a wide monitor look disconnected from the content they control. On mobile, full-width tabs are fine because the viewport _is_ the container.
+
+---
+
+## Desktop chrome — top navigation bar (Task 23)
+
+**Component:** `DesktopNavBar` (see `docs/ui-components.md`). Rendered once in `App.tsx`, above the route content, on desktop only.
+
+```
++----------------------------------------------------------------------+
+| max-w-[1200px] inner container                                       |
+| Sävellajit   [ Moodit ]  [ Harjoittelu ]            [Tietoa…]        |
++----------------------------------------------------------------------+
+```
+
+- The bar spans full viewport width (brown `#5a2d0c`); its inner content is clamped to `max-w-[1200px]`, so brand/links stay aligned with the screen body.
+- Brand "Sävellajit" (`font-medieval`) on the left links to `/`.
+- Primary links: **Moodit** → `/moodit`, **Harjoittelu** → `/harjoittelu`. 44px tap targets, visible focus ring, `aria-current="page"` on the active link. Active style: filled red chip + underline.
+- Sub-routes highlight their parent: `/harjoittelu/tietoa` keeps **Harjoittelu** active.
+- Right side reserved for optional screen-local secondary actions (passed in via the `rightActions` prop). These stay inside the `max-w` container — never flush with the viewport edge.
+- **Soittohetki** is a leaf screen and has no entry in the nav.
+
+**Per-screen header on desktop (decision (b)):** Screens skip `ScreenHeader` entirely on desktop. The top bar carries brand + section nav; screen-local titles (e.g. "Tietoa harjoittelusta") and secondary actions (e.g. the info link on Harjoittelu) are rendered inside the content container instead. Mobile keeps the existing `ScreenHeader` with back arrow.
+
+**Mobile header height:** the mobile `ScreenHeader` was shrunk from `min-h-[52px]` / 44px buttons to `min-h-[40px]` / 40px buttons (Task 23) — same brown bar, tighter vertical footprint.
 
 ---
 

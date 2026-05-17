@@ -135,3 +135,28 @@ Fullscreen modal overlay for mobile that shows scale detail content. Closes via 
 | `title` | `string` | Modal header text (scale name + positions) |
 | `children` | `ReactNode` | Content to render (typically `ScaleDetailPanel`) |
 | `onClose` | `() => void` | Called when modal is dismissed |
+
+---
+
+## DesktopNavBar
+
+**File:** `app/src/components/ui/DesktopNavBar.tsx`
+
+### Purpose
+Persistent top navigation bar shown on desktop (≥769px) only. Replaces the per-screen `ScreenHeader` as the chrome carrying the brand and top-level navigation. Rendered once in `App.tsx`, above `<Routes>`.
+
+### Props
+| Prop | Type | Description |
+|------|------|-------------|
+| `rightActions` | `ReactNode?` | Optional screen-local secondary actions (rarely used — most screens render their own actions inline in the content area instead). |
+
+### Behaviour
+- Brand "Sävellajit" (`font-medieval`, links to `/`).
+- Two primary links — **Moodit** (`/moodit`) and **Harjoittelu** (`/harjoittelu`) — rendered as `<Link>` with `min-h-[44px]`, visible focus rings, and `aria-current="page"` on the active route.
+- Active matching: exact path or `pathname.startsWith(to + '/')`, so `/harjoittelu/tietoa` highlights "Harjoittelu".
+- Full-bleed brown bar; inner content clamped to `max-w-[1200px]` so brand/links don't drift to the corners on wide monitors.
+- Not rendered on mobile. Soittohetki is a leaf screen and has no nav entry.
+
+### Design decisions (Task 23)
+- **Decision (b)** for per-screen headers: screens omit `ScreenHeader` on desktop and render their own title/actions inside the content container. The nav bar is the only piece of chrome with viewport-spanning background.
+- **Mobile chrome unchanged** apart from `ScreenHeader` shrinking from `min-h-[52px]`/44px buttons to `min-h-[40px]`/40px buttons (user feedback: navbar was too tall on mobile).

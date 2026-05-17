@@ -30,7 +30,9 @@ export function Home() {
 
   return (
     <div className={`flex flex-col h-full bg-[#fffbe9] px-6 pt-10 ${isDesktop ? 'items-center justify-center' : ''}`}>
-      <h1 className='font-medieval text-center text-[#5a2d0c] text-3xl mb-10 leading-tight'>Sävellajit</h1>
+      {!isDesktop && (
+        <h1 className='font-medieval text-center text-[#5a2d0c] text-3xl mb-10 leading-tight'>Sävellajit</h1>
+      )}
       <div className={`flex gap-5 ${isDesktop ? 'flex-row justify-center' : 'flex-col flex-1'}`}>
         <HomeCard icon={BookMusicIcon} label='Moodit' subtitle='Kirkkosävellajien perusteet' color='brown' onClick={() => navigate('/moodit')} />
         <HomeCard icon={ViolinIcon} label='Harjoittelu' subtitle='Sävellajit viululla' color='red' onClick={() => navigate('/harjoittelu')} />

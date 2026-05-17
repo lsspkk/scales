@@ -13,7 +13,7 @@
 | `docs/architecture.md` | Music theory implementation, octave-aware note system, arpeggio rendering, React app architecture, Zustand data flow, canvas layout, responsive design, deployment |
 | `docs/deployment.md` | Local build step, `dist/` folder convention, and how the CI/CD workflow deploys to Azure Static Storage |
 | `docs/ux-spec.md` | UX specification: screen layouts (ASCII), interaction rules, visual palette, component usage — **read before any screen or UI change** |
-| `docs/ui-components.md` | HomeCard, ScreenHeader, and AccordionSection components: props, design decisions, and usage |
+| `docs/ui-components.md` | HomeCard, ScreenHeader, AccordionSection, and DesktopNavBar components: props, design decisions, and usage |
 | `docs/scale-practice-method.md` | Violin scale practice method: skill levels, key progression, shifts, arpeggios — data source for Harjoittelu |
 | `docs/soittohetki.md` | Soittohetki screen: URL params, layout, scale/arpeggio toggle, countdown timer hook |
 | `docs/animations.md` | Pelican timer + time-up celebration animations: variants, CSS keyframe wiring, pause/reset model, anatomical pivots, debug routes |

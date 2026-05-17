@@ -72,7 +72,11 @@ export function computeLayout(options: { width: number; height: number; staves?:
     staffTop = Math.round(height * 0.19)
     staffGap = Math.round(height * 0.44)
   } else {
-    lineSpacing = Math.max(2, Math.round(Math.min(height / 14, width / 26)))
+    const isMobileSingleStaff = width <= 500
+    lineSpacing = Math.max(
+      2,
+      Math.round(Math.min(height / (isMobileSingleStaff ? 10.5 : 14), width / (isMobileSingleStaff ? 22 : 26))),
+    )
     staffTop = Math.round(height / 2 - 2 * lineSpacing)
     staffGap = 0
   }

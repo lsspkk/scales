@@ -19,10 +19,10 @@ export function ScreenHeader({ title, subtitle, onBack, color = 'brown', action 
   const bg = color === 'red' ? 'bg-[#a0563f]' : 'bg-[#5a2d0c]'
 
   return (
-    <div className={`flex items-center gap-1 px-2 ${bg} text-white flex-shrink-0 min-h-[52px]`}>
+    <div className={`flex items-center gap-1 px-2 ${bg} text-white flex-shrink-0 min-h-[40px]`}>
       <button
         onClick={onBack}
-        className="flex items-center justify-center w-11 h-11 bg-transparent border-none cursor-pointer flex-shrink-0"
+        className="flex items-center justify-center w-10 h-10 bg-transparent border-none cursor-pointer flex-shrink-0"
         aria-label="Takaisin"
       >
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
@@ -36,7 +36,7 @@ export function ScreenHeader({ title, subtitle, onBack, color = 'brown', action 
       {action && (
         <button
           onClick={action.onClick}
-          className="flex items-center justify-center w-11 h-11 bg-transparent border-none cursor-pointer flex-shrink-0"
+          className="flex items-center justify-center w-10 h-10 bg-transparent border-none cursor-pointer flex-shrink-0"
           aria-label={action.label}
         >
           {action.icon}

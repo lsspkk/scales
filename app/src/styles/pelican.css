@@ -10,7 +10,11 @@
 }
 
 .pelican-scene.is-paused,
-.pelican-scene.is-paused * {
+.pelican-scene.is-paused *,
+.pelican-scene.is-paused *::before,
+.pelican-scene.is-paused *::after,
+.pelican-scene.is-paused::before,
+.pelican-scene.is-paused::after {
   animation-play-state: paused !important;
 }
 

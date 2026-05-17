@@ -1,6 +1,7 @@
 import { lazy, Suspense } from 'react'
 import { Routes, Route, Navigate } from 'react-router-dom'
 import { MobileShell } from './components/ui/MobileShell'
+import { DesktopNavBar } from './components/ui/DesktopNavBar'
 import { useViewport } from './lib/useViewport'
 
 const Home = lazy(() => import('./screens/Home').then((m) => ({ default: m.Home })))
@@ -52,7 +53,12 @@ export function App() {
   )
 
   if (isDesktop) {
-    return <div className='min-h-screen bg-[#fffbe9]'>{content}</div>
+    return (
+      <div className='min-h-screen flex flex-col bg-[#fffbe9]'>
+        <DesktopNavBar />
+        <div className='flex-1 flex flex-col min-h-0'>{content}</div>
+      </div>
+    )
   }
 
   return <MobileShell>{content}</MobileShell>

@@ -15,6 +15,7 @@
   box-shadow: 0 0 20px rgba(245, 177, 52, 0.45);
 }
 
+/* Distant horizon line — thin scrolling grass strip sitting on the horizon (top of ground-strip at 35%). */
 .pelican-scene--walking .pelican-scene__backdrop::before {
   content: '';
   position: absolute;
@@ -39,6 +40,7 @@
   }
 }
 
+/* Foreground ground — main scrolling grass covering bottom 35% of scene. */
 .pelican-scene--walking .ground-strip {
   position: absolute;
   left: 0;
@@ -60,11 +62,13 @@
   }
 }
 
+/* Mid-distance grass — smaller "back" grass strip, sits just below horizon (band top hits 35%). Scrolls opposite to foreground.
+ * Formula: bottom = horizon (35%) − band height (container 35% × bg-size 40% = 14%) = 21%. */
 .pelican-scene--walking .pelican-scene__backdrop::after {
   content: '';
   position: absolute;
   left: 0;
-  bottom: 80px;
+  bottom: 21%;
   width: 100%;
   height: 35%;
   pointer-events: none;
@@ -318,6 +322,21 @@
   background-repeat: repeat-x;
 }
 
+.pelican-scene--celebration-walking .pelican-scene__backdrop::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  bottom: 21%;
+  width: 100%;
+  height: 35%;
+  pointer-events: none;
+  z-index: -1;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%236f8548' stroke-width='1.5' stroke-linejoin='round' stroke-linecap='round'><path d='M10 50 L13 43 L16 49 L19 41 L22 50'/><path d='M48 30 L51 24 L54 30 L57 26 L60 30'/><path d='M85 55 L88 47 L91 54 L94 45 L97 53 L100 55'/><path d='M128 20 L131 14 L134 20 L137 16 L140 20'/><path d='M165 45 L168 38 L171 44 L174 36 L177 43 L180 45'/></g></svg>");
+  background-size: 80px 40%;
+  background-repeat: repeat-x;
+  background-position: 0 100%;
+}
+
 /* Coconut drops — fall from above, bounce on impact, then sway.
  * .coconut is a vertical "track" from top of scene down to just above
  * the ground (bottom: 18%, near pelican's feet). .coconut-drop animates
@@ -555,7 +574,7 @@
 }
 
 .pelican-scene--celebration-walking .palm--celebration-big .palm-big-shadow--leaf {
-  width: 16%;
+  width: 16%; 
   height: 1.1%;
   border-radius: 50% 6% 50% 6%;
 }

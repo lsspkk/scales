@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import {
   getKeyList, getModeList, getBaseModeKey,
@@ -23,15 +23,48 @@ export function Kirkkosavellajit() {
   const setCurrentMode = useMusicStore((s) => s.setMode)
   const navigate = useNavigate()
   const [menuOpen, setMenuOpen] = useState(false)
+  const [snapshot, setSnapshot] = useState<{ key: string; mode: string } | null>(null)
+
+  const openMenu = () => {
+    setSnapshot({ key: currentKey, mode: currentMode })
+    history.pushState({ mooditMenu: true }, '')
+    setMenuOpen(true)
+  }
+  const confirmMenu = () => {
+    setSnapshot(null)
+    setMenuOpen(false)
+    if (history.state?.mooditMenu) history.back()
+  }
+  const cancelMenu = () => {
+    if (snapshot) {
+      setCurrentKey(snapshot.key)
+      setCurrentMode(snapshot.mode)
+    }
+    setSnapshot(null)
+    setMenuOpen(false)
+    if (history.state?.mooditMenu) history.back()
+  }
+
+  useEffect(() => {
+    if (!menuOpen) return
+    const handlePopState = () => {
+      if (snapshot) {
+        setCurrentKey(snapshot.key)
+        setCurrentMode(snapshot.mode)
+      }
+      setSnapshot(null)
+      setMenuOpen(false)
+    }
+    window.addEventListener('popstate', handlePopState)
+    return () => window.removeEventListener('popstate', handlePopState)
+  }, [menuOpen, snapshot, setCurrentKey, setCurrentMode])
 
   const selectKey = (key: string) => {
     setCurrentKey(key)
-    setMenuOpen(false)
   }
 
   const selectMode = (mode: string) => {
     setCurrentMode(mode)
-    setMenuOpen(false)
   }
 
   const prevNote = () => {
@@ -129,9 +162,7 @@ export function Kirkkosavellajit() {
 
   if (isDesktop) {
     return (
-      <div className="flex flex-col h-screen bg-[#fffbe9]">
-        <ScreenHeader title="Moodit" onBack={() => navigate('/')} />
-
+      <div className="flex flex-col flex-1 min-h-0 bg-[#fffbe9]">
         <div className="flex flex-1 overflow-hidden">
           {/* Sidebar — always-visible controls */}
           <div className="w-72 flex-shrink-0 overflow-y-auto p-4 flex flex-col gap-3 border-r border-[#e0d5c0]">
@@ -176,9 +207,23 @@ export function Kirkkosavellajit() {
           <Button variant="outlined" color="secondary" size="sm" onClick={randomMode} className="flex-1">
             Arvo moodi
           </Button>
-          <Button variant="outlined" color="primary" size="sm" onClick={() => setMenuOpen(o => !o)} className="flex-1 bg-[#fff3c9]">
-            Valitse ▾
-          </Button>
+          <button
+            onClick={openMenu}
+            className="flex-1 min-h-[36px] px-3 rounded-lg border-2 border-[#8b6f47] text-[#8b6f47] bg-[#fff3c9] active:bg-[#f5ead5] flex items-center justify-center"
+            aria-label="Valitse sävel ja moodi"
+          >
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+              <line x1="4" y1="6" x2="14" y2="6" />
+              <line x1="18" y1="6" x2="20" y2="6" />
+              <circle cx="16" cy="6" r="2" fill="#fff3c9" />
+              <line x1="4" y1="12" x2="6" y2="12" />
+              <line x1="10" y1="12" x2="20" y2="12" />
+              <circle cx="8" cy="12" r="2" fill="#fff3c9" />
+              <line x1="4" y1="18" x2="14" y2="18" />
+              <line x1="18" y1="18" x2="20" y2="18" />
+              <circle cx="16" cy="18" r="2" fill="#fff3c9" />
+            </svg>
+          </button>
         </div>
 
         {/* Arrow navigation */}
@@ -221,13 +266,46 @@ export function Kirkkosavellajit() {
         {summaryBlock}
       </div>
 
-      {/* Dropdown selection menu */}
+      {/* Fullscreen selection modal */}
       {menuOpen && (
-        <div className="absolute left-3 right-3 top-[140px] z-50 shadow-2xl">
-          {selectionPanels}
-          <Button variant="outlined" color="neutral" size="sm" onClick={() => setMenuOpen(false)} className="mt-2 w-full">
-            Sulje
-          </Button>
+        <div className="fixed inset-0 z-50 flex flex-col bg-[#fffbe9]">
+          <div className="flex items-center justify-between px-2 min-h-[52px] bg-[#5a2d0c] flex-shrink-0">
+            <h2 className="font-medieval text-lg text-white pl-2 truncate pr-2">Valitse sävel ja moodi</h2>
+            <button
+              onClick={cancelMenu}
+              className="w-11 h-11 flex items-center justify-center text-white text-2xl shrink-0"
+              aria-label="Sulje"
+            >
+              &#10005;
+            </button>
+          </div>
+          <div className="flex-1 overflow-y-auto px-3 py-3 space-y-2">
+            {selectionPanels}
+            {summaryBlock}
+          </div>
+          <div className="flex gap-2 px-3 py-3 border-t border-[#c9a96e] bg-[#fffbe9] flex-shrink-0">
+            <button
+              onClick={cancelMenu}
+              className="flex-1 min-h-[44px] rounded-lg border-2 border-[#8b6f47] text-[#5a2d0c] bg-transparent active:bg-[#f5ead5] flex items-center justify-center gap-2 font-semibold"
+              aria-label="Peruuta"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <line x1="6" y1="6" x2="18" y2="18" />
+                <line x1="18" y1="6" x2="6" y2="18" />
+              </svg>
+              Peruuta
+            </button>
+            <button
+              onClick={confirmMenu}
+              className="flex-1 min-h-[44px] rounded-lg bg-[#5a2d0c] text-white active:bg-[#3a1a00] flex items-center justify-center gap-2 font-semibold"
+              aria-label="OK"
+            >
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true">
+                <polyline points="5 12 10 17 19 7" />
+              </svg>
+              OK
+            </button>
+          </div>
         </div>
       )}
 

@@ -165,6 +165,7 @@
   background-repeat: repeat-x;
 }
 
+/* Foreground waves — main scrolling wave pattern filling the water (water-line, bottom 40% of scene). */
 .pelican-scene--flying .water-line::before {
   bottom: -10px;
   height: 100%;
@@ -174,8 +175,9 @@
   animation: sea-wave-scroll 1.6s linear infinite;
 }
 
+/* Distant waves — smaller "back" wave strip scrolling opposite to foreground, sits above the foreground waves. */
 .pelican-scene--flying .water-line::after {
-  bottom: 90px;
+  bottom: 60%;
   height: 60%;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%23355f88' stroke-width='1.05' stroke-linecap='round'><path d='M5 50 q 6 -3 12 0 t 12 0'/><path d='M48 30 q 6 -2.5 12 0 t 12 0'/><path d='M85 55 q 6 -3 12 0 t 12 0 t 12 0'/><path d='M128 20 q 6 -2.5 12 0 t 12 0'/><path d='M160 45 q 6 -3 12 0 t 12 0 t 12 0'/></g></svg>");
   background-size: 140px 40%;
@@ -372,6 +374,7 @@
   background-repeat: repeat-x;
 }
 
+/* Celebration foreground waves — main scrolling wave pattern (slower than timer variant). */
 .pelican-scene--celebration-flying .water-line::before {
   bottom: -10px;
   height: 100%;
@@ -381,8 +384,9 @@
   animation: sea-wave-scroll 3.2s linear infinite;
 }
 
+/* Celebration distant waves — smaller "back" wave strip (slower than timer variant). */
 .pelican-scene--celebration-flying .water-line::after {
-  bottom: 90px;
+  bottom: 60%;
   height: 60%;
   background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='60' viewBox='0 0 200 60'><g fill='none' stroke='%23355f88' stroke-width='1.05' stroke-linecap='round'><path d='M5 50 q 6 -3 12 0 t 12 0'/><path d='M48 30 q 6 -2.5 12 0 t 12 0'/><path d='M85 55 q 6 -3 12 0 t 12 0 t 12 0'/><path d='M128 20 q 6 -2.5 12 0 t 12 0'/><path d='M160 45 q 6 -3 12 0 t 12 0 t 12 0'/></g></svg>");
   background-size: 140px 40%;

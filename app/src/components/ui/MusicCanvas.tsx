@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { computeLayout, renderScale, renderArpeggio, type NoteWithOctave } from '../../lib/musicStave'
+import { useViewport } from '../../lib/useViewport'
 
 interface MusicCanvasProps {
   scaleKey?: string
@@ -20,14 +21,8 @@ interface MusicCanvasProps {
  * the measured CSS size into `computeLayout`. No CSS stretching of a fixed
  * bitmap — all geometry follows the container.
  */
-export function MusicCanvas({
-  scaleKey,
-  mode,
-  staves = 2,
-  arpeggioNotes,
-  className,
-  style,
-}: MusicCanvasProps) {
+export function MusicCanvas({ scaleKey, mode, staves = 2, arpeggioNotes, className, style }: MusicCanvasProps) {
+  const { isDesktop } = useViewport()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
@@ -42,7 +37,8 @@ export function MusicCanvas({
     const draw = () => {
       const rect = wrapper.getBoundingClientRect()
       const cssW = Math.max(1, Math.round(rect.width))
-      const cssH = Math.max(1, Math.round(rect.height))
+      const wrapperH = Math.max(1, Math.round(rect.height))
+      const cssH = Math.max(1, Math.round(wrapperH * (!isDesktop && staves === 1 ? 0.9 : 1)))
       const dpr = window.devicePixelRatio || 1
 
       canvas.style.width = `${cssW}px`
@@ -66,8 +62,12 @@ export function MusicCanvas({
       if (entries[0].isIntersecting) draw()
     })
     io.observe(wrapper)
-    return () => { ro.disconnect(); io.disconnect(); clearTimeout(t) }
-  }, [scaleKey, mode, staves, arpeggioNotes])
+    return () => {
+      ro.disconnect()
+      io.disconnect()
+      clearTimeout(t)
+    }
+  }, [scaleKey, mode, staves, arpeggioNotes, isDesktop])
 
   return (
     <div ref={wrapperRef} className={className} style={style}>

@@ -332,19 +332,40 @@ export function Harjoittelu() {
 
   return (
     <div className='flex flex-col h-full bg-[#fffbe9]'>
-      <ScreenHeader
-        title='Harjoittelu'
-        color='red'
-        onBack={() => navigate('/')}
-        action={{
-          icon: InfoIcon,
-          label: 'Tietoa harjoittelusta',
-          onClick: () => navigate('/harjoittelu/tietoa'),
-        }}
-      />
+      {!isDesktop && (
+        <ScreenHeader
+          title='Harjoittelu'
+          color='red'
+          onBack={() => navigate('/')}
+          action={{
+            icon: InfoIcon,
+            label: 'Tietoa harjoittelusta',
+            onClick: () => navigate('/harjoittelu/tietoa'),
+          }}
+        />
+      )}
 
+      {isDesktop && (
+        <div className='w-full bg-[#a0563f] border-b border-[#3a1a00]'>
+          <div className='max-w-[1200px] mx-auto px-8 flex justify-end'>
+            <button
+              onClick={() => navigate('/harjoittelu/tietoa')}
+              className='inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-semibold text-white hover:bg-[#b86a52] focus:outline focus:outline-2 focus:outline-[#fffbe9]'
+              aria-label='Tietoa harjoittelusta'
+            >
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
+                <circle cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='1.8' />
+                <text x='12' y='17' textAnchor='middle' fill='currentColor' fontSize='14' fontWeight='600' fontFamily='serif'>
+                  i
+                </text>
+              </svg>
+              <span>Tietoa harjoittelusta</span>
+            </button>
+          </div>
+        </div>
+      )}
       <div className='flex-1 overflow-y-auto'>
-        <div className={isDesktop ? 'max-w-[1200px] mx-auto px-8 py-8' : 'px-4 pt-3 pb-4'}>
+        <div className={isDesktop ? 'max-w-[1200px] mx-auto px-8 py-6' : 'px-4 pt-3 pb-4'}>
           <PracticeBody selectedScale={selectedScale} onSelectScale={handleSelectScale} />
         </div>
       </div>

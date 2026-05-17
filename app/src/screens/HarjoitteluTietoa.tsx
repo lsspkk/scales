@@ -118,10 +118,32 @@ export function HarjoitteluTietoa() {
 
   return (
     <div className='flex flex-col h-full bg-[#fffbe9]'>
-      <ScreenHeader title='Tietoa harjoittelusta' color='red' onBack={() => navigate('/harjoittelu')} />
+      {!isDesktop && (
+        <ScreenHeader title='Tietoa harjoittelusta' color='red' onBack={() => navigate('/harjoittelu')} />
+      )}
+
+      {isDesktop && (
+        <div className='w-full bg-[#a0563f] border-b border-[#3a1a00]'>
+          <div className='max-w-[1200px] mx-auto px-8 flex justify-end'>
+            <button
+              onClick={() => navigate('/harjoittelu')}
+              className='inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-semibold text-white hover:bg-[#b86a52] focus:outline focus:outline-2 focus:outline-[#fffbe9]'
+              aria-label='Takaisin'
+            >
+              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <polyline points='15 18 9 12 15 6' />
+              </svg>
+              <span>Takaisin</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className='flex-1 overflow-y-auto'>
-        <div className={isDesktop ? 'max-w-[700px] mx-auto px-8 py-8' : 'px-4 pt-3 pb-4'}>
+        <div className={isDesktop ? 'max-w-[700px] mx-auto px-8 py-6' : 'px-4 pt-3 pb-4'}>
+          {isDesktop && (
+            <h1 className='font-medieval text-3xl text-[#5a2d0c] mb-4'>Tietoa harjoittelusta</h1>
+          )}
           <AccordionSection title='Harjoitusmenetelmä' isMobile={isMobile} defaultOpen={true}>
             <p className='text-base leading-relaxed text-[#3a1a00] mb-3'>
               Tämä harjoitusohjelma perustuu <strong>Carl Fleschin</strong> kvinttiympyrämenetelmään, joka on viulistien
