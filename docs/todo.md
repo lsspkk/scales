@@ -132,3 +132,86 @@ Goal: a persistent desktop navigation that makes the top-level destinations (Kir
 - `app/src/components/ui/ScreenHeader.tsx` — possibly accept a "desktop variant" or be skipped on desktop
 - `docs/ux-spec.md` — add a "Desktop chrome" section + ASCII diagram, update each screen's desktop layout
 - `docs/ui-components.md` — document the new component
+
+---
+
+## Task 24: Polyphonic sample-based audio engine + chord drone test page
+
+**Status:** pending
+**Reference:** `docs/audio-research.md` — initial options, pitch math at A=442, chord interval table, open questions. Read it before designing the service.
+
+Three one-note sample files currently sit in `app/public/` (`major-pad.mp3`, `major-space.mp3`, `minor-space.mp3`). Build the foundation that turns them into a small polyphonic drone engine: one decoded sample, pitch-shifted into 3–4 simultaneous voices that together spell a named chord. Anchor tuning to **A = 442 Hz**. This engine is the basis for a future "drone background" in Soittohetki, but this task only delivers the engine + a hidden test page — no Soittohetki integration yet.
+
+The task is intentionally broad. Implementation is expected to make architecture choices (Web Audio direct vs. a tiny wrapper, envelope shape, filename-encoded vs. manifest-only metadata, etc.) — `audio-research.md` lists the open questions and constraints. The final architecture doc is a deliverable (see Requirement 5).
+
+### Requirements
+
+1. **Phase 0 — Pitch detector + sample organization.** Build the detection tool first; use it to identify the existing samples; then rename and move them.
+   - **Portable pitch-detection algorithm** in `app/src/lib/audio/pitchDetect.ts`. Pure function over a `Float32Array` of mono PCM samples + a `sampleRate` — returns at minimum `{ hz, midi, noteName, cents, confidence }`. **No browser-only or Node-only imports inside this file** — same code must run in both. Algorithm choice is open (YIN is the obvious candidate for sustained monophonic samples; autocorrelation and FFT peak picking are simpler fallbacks — pick one, document why in the final architecture doc).
+   - **Tuning anchor** uses the same A = 442 Hz constant from `lib/audio/tuning.ts` (Phase 1) so detected pitch agrees with the playback engine.
+   - **Node CLI wrapper** as a script in the repo (e.g. `scripts/detect-pitch.mjs`, runnable via `node scripts/detect-pitch.mjs <file>` or an npm script). The wrapper handles file I/O + decoding (mp3 / ogg / wav) into a `Float32Array`, then delegates to `pitchDetect.ts`. Output is human-readable AND machine-readable (e.g. JSON with `--json`). Decoding library / approach is open — choose one that handles the formats already present in `public/samples/`.
+   - **Test it against the existing samples** (`major-pad.mp3`, `major-space.mp3`, `minor-space.mp3`) and any other reference files with known pitches. Confirm the detector returns the right notes before trusting it. Commit one tiny test or a small Markdown note in `docs/` recording the detected pitch + confidence for each shipped sample.
+   - **Then** move samples into a dedicated subfolder (e.g. `app/public/samples/`) and rename to a clear, future-proof convention that makes the sample's character + pitch obvious from the filename. Pick one convention and stick to it.
+   - Update any existing references (none expected today, but check).
+   - The in-app tuner UI is **out of scope for this task** — but `pitchDetect.ts` must be written so a future tuner can drop it into an `AnalyserNode` / `AudioWorklet` pipeline without modification. Keep the browser-specific wiring (mic input, frame buffering) out of `pitchDetect.ts`.
+
+2. **Phase 1 — Audio service** (`app/src/lib/audio/`, internal API). Pure logic, no React inside the service itself.
+   - One module owns a lazily-created `AudioContext` and a sample cache keyed by sample id. Samples are fetched + decoded once, then reused.
+   - Exposes a typed API along the lines of `playChord({ sampleId, rootNote, intervals })` and `stopAll()`. The service does **not** know chord names — it takes a list of MIDI offsets and plays N pitch-shifted voices simultaneously from the cached `AudioBuffer`. Naming of chord types lives in a separate small table.
+   - Each voice goes through its own gain node so the service can apply a short attack/release envelope (no clicks on start/stop). Choose the curve; document the choice.
+   - **A = 442 Hz** is the single tuning constant, defined in one place. Pitch-ratio math uses it consistently.
+   - The service initialises on the first user gesture (browser autoplay policy). Subsequent calls reuse the same context.
+   - A small `useAudio` (or equivalent) React hook in `app/src/hooks/` wraps the service for components, but the service itself must be usable without React (so the engine can be unit-tested with plain functions where useful).
+
+3. **Phase 2 — Chord vocabulary.** A small data module mapping chord type → interval list. Required chord types, exactly:
+   - `major` (0, 4, 7)
+   - `minor` (0, 3, 7)
+   - `diminished` (0, 3, 6)
+   - `augmented` (0, 4, 8)
+   - `maj7` (0, 4, 7, 11)
+   - `dom7` / "normal 7" (0, 4, 7, 10)
+   - `dim7` (0, 3, 6, 9)
+   No other chord types in this task. New ones added later by extending this table only.
+
+4. **Phase 3 — Hidden test page** at `/test/audio` (matches the existing `/test/...` convention in `App.tsx`; also link it from `TestMenu`). Marked in code with the standard `DEBUG / TEST ROUTE` comment. UX can be utilitarian — this is a developer/test surface, not user-facing.
+   - **Sample picker** — radio/buttons to choose which of the available samples is currently "armed".
+   - **Chord-root picker** — twelve buttons or chips, one per chromatic note (C, C♯, D, …). Single selected at a time. Reasonable default (C or A).
+   - **Chord buttons** — one button per chord type from Phase 2. Tapping a chord button plays the chord on the currently selected root using the currently selected sample. Tapping a chord button while another chord is sounding stops the previous chord (simplest behaviour for v1).
+   - **Stop button** — explicit "Hiljaa" / Stop button that releases all voices.
+   - **Now-playing readout** — small text showing which sample, root, chord, and the resulting note list (e.g. "C major → C4 E4 G4"). Useful for verifying pitch math by ear and by eye.
+   - Should work on mobile and desktop, but no design polish beyond legibility.
+
+5. **Phase 4 — Architecture doc** (`docs/audio-architecture.md`, new). Written **after** the implementation is working, not before. Covers:
+   - The architecture that shipped (Web Audio nodes used, how voices share one decoded buffer, where the context lives, voice lifecycle).
+   - **Why** this approach over the alternatives in `audio-research.md` (HTMLAudio, Tone.js, etc.). Include any approach attempted and discarded.
+   - How pitch shifting is computed and how A = 442 enters the picture.
+   - How to add a new sample. How to add a new chord type.
+   - Known limitations (no seamless looping for very long sustain, single-zone pitch-shift quality, etc.).
+   - Update `CLAUDE.md` reference table to point at the new doc.
+
+### Out of scope
+
+- Wiring the drone into Soittohetki (separate future task).
+- Seamless looping / crossfade for indefinite sustain.
+- Per-voice volume control, panning, reverb, filters, master volume slider.
+- Multi-zone sampling (more than one source sample per "color").
+- Recording new samples or sourcing additional ones beyond the three already present.
+- **In-app tuner UI** — mic capture, real-time meter, on-screen needle. (The detection algorithm itself IS in scope per Phase 0; only the UI/integration is deferred.)
+
+### Files (likely)
+
+- `app/public/samples/` (new folder) — renamed sample files
+- `app/src/lib/audio/pitchDetect.ts` (new) — portable pitch-detection algorithm, no env-specific imports
+- `app/src/lib/audio/audioService.ts` (new) — context + buffer cache + voice playback
+- `app/src/lib/audio/chords.ts` (new) — chord-type → interval table
+- `app/src/lib/audio/samples.ts` (new) — sample manifest (id, src, rootPitch, label)
+- `app/src/lib/audio/tuning.ts` (new) — A = 442 constant + note↔frequency helpers (used by both engine and detector)
+- `app/src/hooks/useAudio.ts` (new) — thin React wrapper
+- `app/src/screens/AudioTest.tsx` (new) — the hidden test page
+- `app/src/App.tsx` — register `/test/audio` route
+- `app/src/screens/TestMenu.tsx` — add link to the audio test
+- `scripts/detect-pitch.mjs` (new) — Node CLI wrapping `pitchDetect.ts` with file decoding
+- `app/package.json` — npm script for the CLI; any new dev-dependency for decoding (if needed)
+- `docs/audio-architecture.md` (new) — final architecture doc
+- `docs/audio-research.md` — may receive minor follow-up notes after implementation, but is not the deliverable
+- `CLAUDE.md` — reference table entry for the new architecture doc

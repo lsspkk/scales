@@ -118,9 +118,7 @@ export function HarjoitteluTietoa() {
 
   return (
     <div className='flex flex-col h-full bg-[#fffbe9]'>
-      {!isDesktop && (
-        <ScreenHeader title='Tietoa harjoittelusta' color='red' onBack={() => navigate('/harjoittelu')} />
-      )}
+      {!isDesktop && <ScreenHeader title='Tietoa harjoittelusta' color='red' onBack={() => navigate('/harjoittelu')} />}
 
       {isDesktop && (
         <div className='w-full bg-[#a0563f] border-b border-[#3a1a00]'>
@@ -130,7 +128,16 @@ export function HarjoitteluTietoa() {
               className='inline-flex items-center gap-2 px-3 py-1 rounded text-sm font-semibold text-white hover:bg-[#b86a52] focus:outline focus:outline-2 focus:outline-[#fffbe9]'
               aria-label='Takaisin'
             >
-              <svg width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+              <svg
+                width='16'
+                height='16'
+                viewBox='0 0 24 24'
+                fill='none'
+                stroke='currentColor'
+                strokeWidth='2'
+                strokeLinecap='round'
+                strokeLinejoin='round'
+              >
                 <polyline points='15 18 9 12 15 6' />
               </svg>
               <span>Takaisin</span>
@@ -141,9 +148,7 @@ export function HarjoitteluTietoa() {
 
       <div className='flex-1 overflow-y-auto'>
         <div className={isDesktop ? 'max-w-[700px] mx-auto px-8 py-6' : 'px-4 pt-3 pb-4'}>
-          {isDesktop && (
-            <h1 className='font-medieval text-3xl text-[#5a2d0c] mb-4'>Tietoa harjoittelusta</h1>
-          )}
+          {isDesktop && <h1 className='font-medieval text-3xl text-[#5a2d0c] mb-4'>Tietoa harjoittelusta</h1>}
           <AccordionSection title='Harjoitusmenetelmä' isMobile={isMobile} defaultOpen={true}>
             <p className='text-base leading-relaxed text-[#3a1a00] mb-3'>
               Tämä harjoitusohjelma perustuu <strong>Carl Fleschin</strong> kvinttiympyrämenetelmään, joka on viulistien
@@ -151,9 +156,9 @@ export function HarjoitteluTietoa() {
               sävel lisää yhden ylennyksen tai alennuksen edelliseen verrattuna, joten vasen käsi sopeutuu vähitellen.
             </p>
             <p className='text-base leading-relaxed text-[#3a1a00] mb-3'>
-              Flesch (<em>Scale System</em>, 1926) ja Galamian (<em>Principles of Violin Playing and Teaching</em>, 1962)
-              käyttävät molemmat kvinttiympyrää järjestyksen perustana. Tämä on parempi vaihtoehto kuin kromaattinen
-              järjestys (C, Cis, D, Dis…), joka hyppää sormiasemasta toiseen ennakoimattomasti.
+              Flesch (<em>Scale System</em>, 1926) ja Galamian (<em>Principles of Violin Playing and Teaching</em>,
+              1962) käyttävät molemmat kvinttiympyrää järjestyksen perustana. Tämä on parempi vaihtoehto kuin
+              kromaattinen järjestys (C, Cis, D, Dis…), joka hyppää sormiasemasta toiseen ennakoimattomasti.
             </p>
             <p className='text-base leading-relaxed text-[#3a1a00]'>
               Harjoitusohjelma on jaettu kolmeen taitotasoon teknisen vaativuuden mukaan: ylennys- ja alennus­merkkien
@@ -163,24 +168,24 @@ export function HarjoitteluTietoa() {
 
           <AccordionSection title='Taso 1 – Ensimmäinen asema' isMobile={isMobile}>
             <p className='text-base leading-relaxed text-[#3a1a00] mb-3'>
-              0–2 ylennystä tai alennusta. Kaikki asteikot soitetaan ensimmäisessä asemassa. Kaksi oktaavia aina kun ambitus
-              sen sallii, muuten yksi oktaavi.
+              0–2 ylennystä tai alennusta. Kaikki asteikot soitetaan ensimmäisessä asemassa. Kaksi oktaavia aina kun
+              ambitus sen sallii, muuten yksi oktaavi.
             </p>
             <ScaleTable1 scales={level1Scales} />
           </AccordionSection>
 
           <AccordionSection title='Taso 2 – Asemavaihdot (1.–3. asema)' isMobile={isMobile}>
             <p className='text-base leading-relaxed text-[#3a1a00] mb-3'>
-              1–3 ylennystä tai alennusta. Asteikot soitetaan ensimmäisessä ja kolmannessa asemassa. Jokaisella asteikolla
-              on nimetty siirtymispiste.
+              1–3 ylennystä tai alennusta. Asteikot soitetaan ensimmäisessä ja kolmannessa asemassa. Jokaisella
+              asteikolla on nimetty siirtymispiste.
             </p>
             <ScaleTable23 scales={level2Scales} />
           </AccordionSection>
 
           <AccordionSection title='Taso 3 – Kolme asemaa' isMobile={isMobile}>
             <p className='text-base leading-relaxed text-[#3a1a00] mb-3'>
-              Enintään 4–5 ylennystä tai alennusta. Asteikot käyttävät kaikkia kolmea asemaa (1., 2. ja 3.). Sisältää sekä
-              1.→2. että 2.→3. asemavaihdot.
+              Enintään 4–5 ylennystä tai alennusta. Asteikot käyttävät kaikkia kolmea asemaa (1., 2. ja 3.). Sisältää
+              sekä 1.→2. että 2.→3. asemavaihdot.
             </p>
             <ScaleTable23 scales={level3Scales} />
           </AccordionSection>
@@ -190,10 +195,10 @@ export function HarjoitteluTietoa() {
               <div>
                 <h3 className='text-base font-bold text-[#5a2d0c] mb-1'>1. asema</h3>
                 <p className='text-base leading-relaxed text-[#3a1a00]'>
-                  Perusasema. Kaikki neljä sormea ovat luonnollisessa etäisyydessään: 1. sormi kokosävelaskel avoimen kielen
-                  yläpuolella, 2. sormi joko korkealla (kokosävelaskel 1. sormesta) tai matalalla (puolisävelaskel 1.
-                  sormesta) sävellajin mukaan, 3. sormi kvartti avoimen kielen yläpuolella, 4. sormi seuraavan alempana
-                  olevan avoimen kielen oktaavissa.
+                  Perusasema. Kaikki neljä sormea ovat luonnollisessa etäisyydessään: 1. sormi kokosävelaskel avoimen
+                  kielen yläpuolella, 2. sormi joko korkealla (kokosävelaskel 1. sormesta) tai matalalla
+                  (puolisävelaskel 1. sormesta) sävellajin mukaan, 3. sormi kvartti avoimen kielen yläpuolella, 4. sormi
+                  seuraavan alempana olevan avoimen kielen oktaavissa.
                 </p>
                 <p className='text-sm text-[#8B4513] mt-1 italic'>
                   Hallittu kun: soittaja pystyy soittamaan kaikki tason 1 asteikot puhtaasti tasaisella äänenlaaulla.
@@ -221,9 +226,15 @@ export function HarjoitteluTietoa() {
                   terssi avoimen kielen yläpuolella sävellajin mukaan).
                 </p>
                 <p className='text-base leading-relaxed text-[#3a1a00] mt-2'>
-                  <strong>Harjoittelun aloitus:</strong> useimmat oppikirjat (Suzuki vol. 4–5, Sassmannshaus vol. 3)
-                  esittelevät 3. aseman A-kielen kautta, jossa 1. sormi 3. asemassa soittaa Cis:n tai C:n — nuotteja, jotka
-                  voidaan helposti tarkistaa avointa A-kieltä vasten (terssi yläpuolella).
+                  <strong>Harjoittelun aloitus:</strong> useimmat oppikirjat (esim. Suzuki vol. 4–5 ja Sassmannshaus
+                  vol. 3) esittelevät 3. aseman siirtymisen A-kielen kautta. 3. asemassa A-kielellä 1. sormi tuottaa
+                  sävelen D (re), joka löytyy puhtaasti suhteessa avoimeen D-kieleen oktaavin unisonona.{' '}
+                </p>
+
+                <p className='text-base leading-relaxed text-[#3a1a00] mt-2'>
+                  Kun asemaa harjoitellaan, on tärkeää kiinnittää huomiota siihen, että sormien välimatkat säilyvät
+                  samanlaisina kuin alemmissa asemissa, mutta koko käsi siirtyy ylöspäin otelaudalla. Näin 3. aseman
+                  perussävelet asettuvat oikeaan kuulokuvalliseen ja lihasmuistilliseen paikkaan.
                 </p>
               </div>
             </div>
@@ -237,8 +248,8 @@ export function HarjoitteluTietoa() {
                   <li>Kuule kohdenuotti mielessäsi ennen siirtymistä.</li>
                   <li>Vapauta sormienpaine siirtymisen aikana — käsi liukuu, ei hyppää.</li>
                   <li>
-                    Opassormi-tekniikka: käden alla oleva sormi ohjaa siirtymisen; kohdenuotin sormi laskeutuu vasta perille
-                    päästyä.
+                    Opassormi-tekniikka: käden alla oleva sormi ohjaa siirtymisen; kohdenuotin sormi laskeutuu vasta
+                    perille päästyä.
                   </li>
                   <li>Harjoittele ensin hitaasti kuuluvan liukuman kanssa, vähennä sitten liukumaa asteittain.</li>
                   <li>Tarkista intonaatio soittamalla kohdenuotti flageolettina tai avointa kieltä vasten.</li>
@@ -278,11 +289,13 @@ export function HarjoitteluTietoa() {
               </div>
 
               <div>
-                <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Harjoitus 4: Laskevat siirrot (kaikki asemat)</h3>
+                <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>
+                  Harjoitus 4: Laskevat siirrot (kaikki asemat)
+                </h3>
                 <p className='text-base text-[#3a1a00]'>
-                  Laskevat siirrot ovat vaikeampia, koska painovoima ja käsivarren paino vaikeuttavat liikettä. Harjoittele
-                  vapauttamalla sormienpaine ennen alaspäistä siirtoa, ylläpitä kyynärvarren tuki (kyynärpää ei romahda), ja
-                  käytä samaa hidas-glissando-lähestymistä tarkistaen intonaation avoimilla kielillä.
+                  Laskevat siirrot ovat vaikeampia, koska painovoima ja käsivarren paino vaikeuttavat liikettä.
+                  Harjoittele vapauttamalla sormienpaine ennen alaspäistä siirtoa, ylläpitä kyynärvarren tuki (kyynärpää
+                  ei romahda), ja käytä samaa hidas-glissando-lähestymistä tarkistaen intonaation avoimilla kielillä.
                 </p>
               </div>
 
@@ -290,8 +303,8 @@ export function HarjoitteluTietoa() {
                 <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Siirtymisrutiini kullekin asteikolla</h3>
                 <ol className='list-decimal list-inside space-y-1 text-base text-[#3a1a00]'>
                   <li>
-                    Soita siirtymäpari (viimeinen nuotti ennen siirtoa + ensimmäinen nuotti sen jälkeen) 5 kertaa hitaasti
-                    kuuluvalla liukumalla.
+                    Soita siirtymäpari (viimeinen nuotti ennen siirtoa + ensimmäinen nuotti sen jälkeen) 5 kertaa
+                    hitaasti kuuluvalla liukumalla.
                   </li>
                   <li>Soita siirtymäpari 5 kertaa tempossa minimaalisella liukumalla.</li>
                   <li>Soita koko asteikko hitaasti, pysähdy hetkeksi siirtymäkohdassa.</li>
@@ -310,7 +323,9 @@ export function HarjoitteluTietoa() {
             <div className='space-y-3 mb-4'>
               <div>
                 <h3 className='text-base font-bold text-[#5a2d0c] mb-1'>Taso 1</h3>
-                <p className='text-base text-[#3a1a00]'>Yhden oktaavin toonika-arpeggio 1. asemassa, neljäsosanuoteilla.</p>
+                <p className='text-base text-[#3a1a00]'>
+                  Yhden oktaavin toonika-arpeggio 1. asemassa, neljäsosanuoteilla.
+                </p>
               </div>
               <div>
                 <h3 className='text-base font-bold text-[#5a2d0c] mb-1'>Taso 2</h3>
@@ -345,18 +360,19 @@ export function HarjoitteluTietoa() {
               </li>
               <li>
                 <strong>Galamian, Ivan.</strong> <em>Principles of Violin Playing and Teaching.</em>
-                Prentice-Hall, 1962 (3. painos, Shar Products, 1985). Luku asemavaihdosta: opassormi-menetelmä, mentaalinen
-                valmistautuminen, paineen vapauttaminen. Käytetty ensisijaisena lähteenä asemavaihto-periaatteille.
+                Prentice-Hall, 1962 (3. painos, Shar Products, 1985). Luku asemavaihdosta: opassormi-menetelmä,
+                mentaalinen valmistautuminen, paineen vapauttaminen. Käytetty ensisijaisena lähteenä
+                asemavaihto-periaatteille.
               </li>
               <li>
                 <strong>Galamian, Ivan &amp; Neumann, Frederick.</strong>{' '}
-                <em>Contemporary Violin Technique, Vol. 1: Scale and Arpeggio Exercises.</em> Galaxy Music, 1962. Täydentävä
-                harjoituskirja. Tarjoaa spesifisiä asemavaihdos- ja arpeggioharjoituksia kaikissa asemissa.
+                <em>Contemporary Violin Technique, Vol. 1: Scale and Arpeggio Exercises.</em> Galaxy Music, 1962.
+                Täydentävä harjoituskirja. Tarjoaa spesifisiä asemavaihdos- ja arpeggioharjoituksia kaikissa asemissa.
               </li>
               <li>
                 <strong>Sassmannshaus, Kurt.</strong> <em>Early Start on the Violin, Vols. 1–4.</em>
-                Baerenreiter, 2008. Progressiivinen metodi asemien käyttöönottoon: 1. asema (osat 1–2), 3. asema (osa 3), 2.
-                ja ylempiä asemia (osa 4).
+                Baerenreiter, 2008. Progressiivinen metodi asemien käyttöönottoon: 1. asema (osat 1–2), 3. asema (osa
+                3), 2. ja ylempiä asemia (osa 4).
               </li>
               <li>
                 <strong>Suzuki, Shinichi.</strong> <em>Suzuki Violin School, Vols. 1–8.</em>
