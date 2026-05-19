@@ -6,7 +6,7 @@ Read this file before implementing any screen or UI change. It is the source of 
 
 ## Global Rules
 
-- **Palette:** warm parchment background `#fffbe9`, browns `#5a2d0c` / `#8B4513`, reds `#a0563f` / `#8B2500`. No greys, blues, or cool tones.
+- **Palette:** warm parchment background `#fffbe9`, browns `#5a2d0c` / `#8B4513`, reds `#a0563f` / `#8B2500`. No greys, blues, or cool tones. **Exception** (Task 25): the Soittohetki sound row uses olive `#5a6b3d` as its background — an earth-tone complement to the red-brown timer row above it, chosen to read as a separate functional band ("sound" vs "timer") while staying inside the warm earth-tone family.
 - **Touch targets:** minimum 44x44px on all interactive elements (Apple/Android guideline).
 - **Typography:** Finnish for all user-facing text. English for code only. Musical terms in Finnish when a clear translation exists.
 - **Viewport breakpoint:** 769px. Below = mobile, above = desktop. Use `useViewport()` hook.
@@ -157,32 +157,32 @@ Mobile (<=768px)                Desktop (>768px)
 **Purpose:** Kid-friendly countdown timer for practicing a single scale. Opened from a row in Harjoittelu's practice list.
 
 ```
-Mobile (<=768px)                Desktop (>768px)
-+---------------------------+   +------------------------------------------+
-| < D-duuri, 2 oktaavia    |   | < D-duuri, 2 oktaavia                   |
-|---------------------------|   |------------------------------------------|
-| [Asteikko] [Arpeggio]    |   |     +-- max 520px, centered ---------+   |
-| +-----------------------+ |   |     | [Asteikko] [Arpeggio]         |   |
-| |  music canvas 4:1     | |   |     | +-------------------------+   |   |
-| +-----------------------+ |   |     | |  music canvas 4:1       |   |   |
-| C - D - E - F - G - A    |   |     | +-------------------------+   |   |
-|                           |   |     | Ajastettu soittohetki         |   |
-| Ajastettu soittohetki    |   |     |    3:00                       |   |
-|     3:00                  |   |     | +-------------------------+   |   |
-| +-----------------------+ |   |     | | animation placeholder   |   |   |
-| | animation placeholder | |   |     | +-------------------------+   |   |
-| +-----------------------+ |   |     | [1][3][5][10] [>] [reset]    |   |
-| [1][3][5][10] [>] [reset]|   |     +-------------------------------+   |
-+---------------------------+   +------------------------------------------+
+Mobile (<=768px)                  Desktop (>768px)
++----------------------------+    +------------------------------------------+
+| < D-duuri, 2 oktaavia      |    | < D-duuri, 2 oktaavia                    |
+|----------------------------|    |------------------------------------------|
+| [Asteikko] [Arpeggio]      |    |     +-- max 520px, centered ---------+   |
+| +------------------------+ |    |     | [Asteikko] [Arpeggio]         |   |
+| |  music canvas 4:1      | |    |     | +-------------------------+   |   |
+| +------------------------+ |    |     | |  music canvas 4:1       |   |   |
+| D - E - F# - G - A - B    |    |     | +-------------------------+   |   |
+| +------------------------+ |    |     | +-------------------------+   |   |
+| | pelican animation      | |    |     | | pelican animation       |   |   |
+| +------------------------+ |    |     | +-------------------------+   |   |
+| [1][3][5][10] 3:00 [▶]    |    |     | [1][3][5][10] 3:00 [▶]       |   |
+| [🔊===●===] [Sample ▾]    |    |     | [🔊===●===] [Sample ▾]       |   |
+| [ D ][DMaj][DMaj7]         |    |     | [ D ][DMaj][DMaj7]           |   |
++----------------------------+    +------------------------------------------+
 ```
 
 - `ScreenHeader` (red), title = scale label (e.g. "D-duuri, 2 oktaavia"). Back navigates to `/harjoittelu`.
 - URL: `#/soittohetki?root=D&mode=ionian&octaves=2&min=3` — see `docs/soittohetki.md` for the param spec.
 - **Asteikko / Arpeggio toggle:** local state, swaps the canvas between scale notes (`getScale()`) and tonic arpeggio (`buildArpeggioNotesWithOctave()`).
 - **Note text** under the canvas: scale notes joined with " – ", or arpeggio note letters + accidentals (octave dropped).
-- **Duration chips:** circular buttons (48px), numeric only (1 / 3 / 5 / 10). Disabled while running.
+- **Duration chips:** circular buttons (~44px), numeric only (1 / 3 / 5 / 10). Disabled while running.
 - **Play / Pause / Reset:** icon-only round buttons in the same row as the chips. Play swaps to Pause while running. Reset appears once the timer has moved off its initial state.
-- **Animation placeholder:** square dashed box reserved for Task 21's procedural animation. The square sits below the time display, before the controls row.
+- **Pelican animation:** procedural CSS pelican (timer variants) / celebration (time-up variants). Sits between the canvas note row and the timer-controls row.
+- **Sound row (Task 25):** olive background `#5a6b3d` to distinguish it from the red-brown timer row above. Holds the volume slider, sample picker, and tonic-drone + diatonic chord suggestions. Details + full selection-to-playback wiring in `docs/soittohetki.md`.
 
 ## Shared Components
 

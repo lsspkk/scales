@@ -38,6 +38,16 @@ export function TestMenu() {
               <span className='text-base font-bold'>Valmis-animaation testi</span>
               <span className='mt-1 text-sm text-[#fffbe9]'>Pelikanin juhla-animaation versiot, kesto ja toisto.</span>
             </Link>
+
+            <Link
+              to='/test/audio'
+              className='flex min-h-11 flex-col rounded-2xl border-2 border-[#8B4513] bg-[#8B4513] px-4 py-4 text-white shadow-[0_4px_14px_rgba(139,69,19,0.2)] transition-transform active:scale-[0.99]'
+            >
+              <span className='text-base font-bold'>Äänimoottorin testi</span>
+              <span className='mt-1 text-sm text-[#fffbe9]'>
+                Sample, pohjasävel ja sointu — moniääninen taustaääni.
+              </span>
+            </Link>
           </nav>
         </div>
       </div>

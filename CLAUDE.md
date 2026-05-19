@@ -17,6 +17,9 @@
 | `docs/scale-practice-method.md` | Violin scale practice method: skill levels, key progression, shifts, arpeggios — data source for Harjoittelu |
 | `docs/soittohetki.md` | Soittohetki screen: URL params, layout, scale/arpeggio toggle, countdown timer hook |
 | `docs/animations.md` | Pelican timer + time-up celebration animations: variants, CSS keyframe wiring, pause/reset model, anatomical pivots, debug routes |
+| `docs/audio-research.md` | Initial design notes for the audio engine: candidate APIs, A=442 pitch math, chord interval table, open questions |
+| `docs/audio-architecture.md` | Shipped audio engine: Web Audio voice graph, tuning, YIN pitch detector, sample manifest, how to add samples/chords |
+| `docs/audio-samples.md` | Detected pitch + confidence for each shipped sample; how to re-run the CLI detector |
 
 ## Project Structure
 

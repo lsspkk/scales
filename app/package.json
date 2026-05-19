@@ -8,7 +8,8 @@
     "build": "tsc && vite build",
     "deploy:build": "tsc && vite build",
     "preview": "vite preview",
-    "test": "vitest run"
+    "test": "vitest run",
+    "detect-pitch": "node --experimental-strip-types ../scripts/detect-pitch.mjs"
   },
   "devDependencies": {
     "@testing-library/jest-dom": "^6.9.1",

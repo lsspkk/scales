@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
+import { VolumeSlider } from '../components/ui/VolumeSlider'
 import { useViewport } from '../lib/useViewport'
 import { MusicCanvas } from '../components/ui/MusicCanvas'
 import { PelicanTimer, type PelicanTimerVariant } from '../components/animations/PelicanTimer'
@@ -8,6 +9,11 @@ import { PelicanCelebration } from '../components/animations/PelicanCelebration'
 import { useCountdownTimer } from '../lib/useCountdownTimer'
 import { getScale } from '../lib/musicScale'
 import { buildArpeggioNotesWithOctave } from '../lib/practiceMethod'
+import { getScaleChords } from '../lib/scaleChords'
+import { getChordType } from '../lib/audio/chords'
+import { SAMPLES } from '../lib/audio/samples'
+import { noteNameToMidi } from '../lib/audio/tuning'
+import { playChord, stopAll, setMasterVolume } from '../lib/audio/audioService'
 import { Pause, Play } from 'lucide-react'
 
 type Mode = 'ionian' | 'aeolian'
@@ -23,6 +29,19 @@ function pickRandomAnimationVariant(): PelicanTimerVariant {
 
 const DURATION_PRESETS_MIN = [1, 3, 5, 10] as const
 const DEFAULT_DURATION_MIN = 3
+
+// Default playback octave for drone/chord roots. One octave below middle C
+// (C3 = MIDI 48) so the drone sits as a calm background under most kid-violin
+// practice ranges instead of competing with what the kid plays.
+const ROOT_OCTAVE = 3
+const INITIAL_VOLUME = 0.6
+
+interface SoundOption {
+  id: string
+  label: string
+  ariaLabel: string
+  intervals: readonly number[]
+}
 
 function parseMode(value: string | null): Mode {
   return value === 'aeolian' ? 'aeolian' : 'ionian'
@@ -86,6 +105,80 @@ export function Soittohetki() {
   const [runId, setRunId] = useState(0)
   const bumpRun = () => setRunId((n) => n + 1)
   const dismissCelebration = () => setShowCelebration(false)
+
+  // Sound-row state
+  const [sampleId, setSampleId] = useState<string>(SAMPLES[0].id)
+  const [selectedSoundId, setSelectedSoundId] = useState<string | null>(null)
+  const [volume, setVolume] = useState<number>(INITIAL_VOLUME)
+
+  // Push the initial slider value into the engine once on mount so the engine
+  // and the on-screen control agree before any playback starts.
+  useEffect(() => {
+    setMasterVolume(INITIAL_VOLUME)
+  }, [])
+
+  const handleVolumeChange = (v: number) => {
+    setVolume(v)
+    setMasterVolume(v)
+  }
+
+  // Build the sound list: tonic drone first, then diatonic chord suggestions.
+  const soundOptions = useMemo<SoundOption[]>(() => {
+    const droneOption: SoundOption = {
+      id: 'drone',
+      label: root,
+      ariaLabel: `${root} pohjasävel`,
+      intervals: [0],
+    }
+    const chordOptions: SoundOption[] = getScaleChords(root, mode)
+      .map((suggestion) => {
+        const ct = getChordType(suggestion.chordTypeId)
+        if (!ct) return null
+        return {
+          id: suggestion.id,
+          label: suggestion.label,
+          ariaLabel: `${suggestion.rootNote} ${ct.label}`,
+          intervals: ct.intervals,
+        }
+      })
+      .filter((o): o is SoundOption => o !== null)
+    return [droneOption, ...chordOptions]
+  }, [root, mode])
+
+  const activeSound = useMemo(
+    () => soundOptions.find((s) => s.id === selectedSoundId) ?? null,
+    [soundOptions, selectedSoundId],
+  )
+
+  // Drive playback off (isRunning ∧ activeSound). Cleanup runs on pause, on
+  // time-up (isRunning flips false), on selection / sample change, and on
+  // unmount — each path stops everything via stopAll.
+  useEffect(() => {
+    if (!isRunning || !activeSound) {
+      stopAll()
+      return
+    }
+    let cancelled = false
+    const rootMidi = noteNameToMidi(`${root}${ROOT_OCTAVE}`)
+    void playChord({
+      sampleId,
+      rootMidi,
+      intervals: activeSound.intervals,
+      loop: true,
+    }).then(() => {
+      // If pause/unmount/selection-change happened during decode, kill the
+      // voices that just started.
+      if (cancelled) stopAll()
+    })
+    return () => {
+      cancelled = true
+      stopAll()
+    }
+  }, [isRunning, activeSound, sampleId, root])
+
+  const handleSoundClick = (id: string) => {
+    setSelectedSoundId((current) => (current === id ? null : id))
+  }
 
   const setDurationMin = (m: number) => {
     if (isRunning) return
@@ -273,6 +366,52 @@ export function Soittohetki() {
                     <Play size={20} />
                   </button>
                 )}
+              </div>
+            </div>
+
+            {/* Sound row — olive bg distinguishes it from the timer-controls row above. */}
+            <div className='-mx-4 mt-2 bg-[#5a6b3d] px-2 py-2 md:mx-0 md:rounded-lg md:px-3'>
+              <div className='flex items-center gap-1.5 md:gap-2'>
+                <VolumeSlider
+                  value={volume}
+                  onChange={handleVolumeChange}
+                  className='flex-1 min-w-[80px] max-w-[160px]'
+                />
+                <label className='sr-only' htmlFor='soittohetki-sample'>
+                  Näyte
+                </label>
+                <select
+                  id='soittohetki-sample'
+                  value={sampleId}
+                  onChange={(e) => setSampleId(e.target.value)}
+                  className='h-9 shrink-0 rounded bg-[#fffbe9] text-[#5a2d0c] text-xs font-semibold px-2 min-w-[88px] max-w-[120px] focus:outline focus:outline-2 focus:outline-[#fffbe9]'
+                >
+                  {SAMPLES.map((s) => (
+                    <option key={s.id} value={s.id}>
+                      {s.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className='mt-2 flex items-center gap-1 overflow-x-auto md:gap-1.5'>
+                {soundOptions.map((option) => {
+                  const selected = selectedSoundId === option.id
+                  return (
+                    <button
+                      key={option.id}
+                      onClick={() => handleSoundClick(option.id)}
+                      aria-pressed={selected}
+                      aria-label={option.ariaLabel}
+                      className={`h-9 shrink-0 rounded-full border-2 px-3 text-xs font-bold transition-colors md:h-10 md:text-sm ${
+                        selected
+                          ? 'bg-[#8B2500] border-[#8B2500] text-white'
+                          : 'bg-[#fffbe9] border-[#c9a96e] text-[#5a2d0c] active:bg-[#f0dbb8]'
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  )
+                })}
               </div>
             </div>
           </div>

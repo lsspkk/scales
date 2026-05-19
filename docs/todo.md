@@ -137,7 +137,7 @@ Goal: a persistent desktop navigation that makes the top-level destinations (Kir
 
 ## Task 24: Polyphonic sample-based audio engine + chord drone test page
 
-**Status:** pending
+**Status:** done
 **Reference:** `docs/audio-research.md` — initial options, pitch math at A=442, chord interval table, open questions. Read it before designing the service.
 
 Three one-note sample files currently sit in `app/public/` (`major-pad.mp3`, `major-space.mp3`, `minor-space.mp3`). Build the foundation that turns them into a small polyphonic drone engine: one decoded sample, pitch-shifted into 3–4 simultaneous voices that together spell a named chord. Anchor tuning to **A = 442 Hz**. This engine is the basis for a future "drone background" in Soittohetki, but this task only delivers the engine + a hidden test page — no Soittohetki integration yet.
@@ -215,3 +215,90 @@ The task is intentionally broad. Implementation is expected to make architecture
 - `docs/audio-architecture.md` (new) — final architecture doc
 - `docs/audio-research.md` — may receive minor follow-up notes after implementation, but is not the deliverable
 - `CLAUDE.md` — reference table entry for the new architecture doc
+
+---
+
+## Task 25: Scale-aware chord suggestions + Soittohetki drone/chord loop
+
+**Status:** done
+**Blocked by:** Task 20 (Soittohetki), Task 24 (audio engine)
+**Reference:** `docs/audio-architecture.md` (engine + its known limitations: no looping, no master volume API), `app/src/lib/musicScale.ts` (scale model), `app/src/lib/audio/chords.ts` (chord-type interval table).
+
+Suggest a small set of chords that fit the current scale, then let the kid pick **one** (or the tonic drone, or nothing) and have the audio engine play it on loop while the Soittohetki timer is running. The same control row carries a sample picker and a YouTube-style volume slider.
+
+### Phase 1 — Chord suggestions in the scale library
+
+Add a `ChordSuggestion` type and a function `getScaleChords(root: string, mode: string): ChordSuggestion[]` that returns the chords that fit a given scale. Shape proposal:
+
+```ts
+type ChordSuggestion = {
+  id: string              // e.g. 'C-maj7'
+  label: string           // e.g. 'CMaj7'  (compact, button-ready)
+  rootNote: string        // e.g. 'C'      (matches musicScale.ts note strings)
+  chordTypeId: ChordTypeId // matches an entry in audio/chords.ts CHORD_TYPES
+}
+```
+
+Scope for v1: **chords built on the tonic** that match the scale flavour. Only chords whose notes all lie in the scale — no non-diatonic suggestions.
+
+- C major (ionian) → `CMaj` (major triad), `CMaj7` (major 7th).
+- A minor (aeolian) → `Am` (minor triad), `Am7` (minor 7th). **No** `A7` (dominant 7th uses C♯, not in A natural minor).
+
+New file: **`app/src/lib/scaleChords.ts`**. Imports from `musicScale.ts` and `audio/chords.ts`. No React, no audio. Unit-testable in isolation.
+
+### Phase 2 — Audio engine: looping + master volume
+
+Lift two of the limitations documented in `docs/audio-architecture.md`:
+
+- **Looping.** Add a looping playback path — either `playChord({ ..., loop: true })` or a new `playLoopedChord(...)`. The returned value (or `stopAll`) must be able to stop just that loop without affecting unrelated voices, if any. Looping uses `AudioBufferSourceNode.loop = true`; for v1 the buffer's natural length is the loop period — note seam audibility per sample in the architecture doc.
+- **Master volume.** Add `setMasterVolume(value: 0..1)` to `audioService` that routes through the existing `masterGain` (already shown in the architecture diagram — make sure it's actually wired). Persist the last value in module state so subsequent `playChord` calls inherit it.
+
+Expose both via `useAudio` so React components don't reach into the service directly.
+
+### Phase 3 — Soittohetki sound-control row
+
+Below the existing timer-controls row in `Soittohetki.tsx` (`app/src/screens/Soittohetki.tsx:229`), add a second row with a **distinct background colour** that reads as "sound" rather than "timer" (pick a muted complement to `#8B2500` — note the choice in `docs/ux-spec.md`). Same tight, mobile-first horizontal layout as the timer row.
+
+From left to right on the row:
+
+1. **Volume slider** — YouTube-style: speaker icon + thin horizontal track + filled portion + draggable thumb. Tap the icon to mute/unmute. Touch-friendly hit area but visually minimal. Likely its own component `app/src/components/ui/VolumeSlider.tsx`.
+2. **Sample picker** — dropdown over `SAMPLES` from `app/src/lib/audio/samples.ts`. Native `<select>` is acceptable if styled to match; otherwise a tiny popover. Default to the first sample.
+3. **Sound buttons** — radio-style group built from `getScaleChords(root, mode)`:
+   - **First button is always the tonic drone** (single note: `intervals = [0]`).
+   - Following buttons are the suggested chords in the order returned by `getScaleChords`.
+   - Labels are compact (`C`, `CMaj`, `CMaj7`); `aria-label` spells them out.
+   - Only one button can be active at a time. Tapping the active button again deselects it ("no sound" state — silent timer is the default).
+   - Active state visually matches the timer row's primary-brown highlight so "armed" is unambiguous.
+
+### Phase 4 — Wire selection into the timer
+
+- **On start** (`handleStart`, `app/src/screens/Soittohetki.tsx:106`): if a sound is selected, call the looped-playback API with `{ sampleId, rootMidi, intervals }`. Pick a default playback octave for the root (e.g. octave 3 or 4) and document.
+- **On pause**: fade out via `stopAll`. On resume, restart the loop.
+- **On time-up** (the existing `onComplete` that triggers the celebration): `stopAll`.
+- **Selection change while running**: stop the old loop, start the new one.
+- **On screen unmount / back navigation**: `stopAll`.
+- Volume changes apply live via `setMasterVolume` without restarting the loop.
+
+### Phase 5 — Docs
+
+- `docs/audio-architecture.md` — looping section, master-volume API, removed limitations.
+- `docs/soittohetki.md` — new sound row, selection model, drone-vs-chord semantics, volume + sample picker.
+- `docs/ux-spec.md` — ASCII for the new row, palette note.
+
+### Out of scope
+
+- Non-tonic chord suggestions (V–I, ii–V–I, secondary dominants, modal characteristic chords, etc.). Tonic only for v1.
+- Recording or adding new samples.
+- Per-voice volume / panning / reverb / filters.
+- Persisting last-used sample/chord/volume across sessions (single-session state is enough).
+- Showing the chosen chord on the music canvas.
+- Crossfaded seamless looping for samples whose loop points click — note the seam if audible, don't fix it here.
+
+### Files (likely)
+
+- `app/src/lib/scaleChords.ts` (new) — `ChordSuggestion` type + `getScaleChords()`.
+- `app/src/lib/audio/audioService.ts` — looping playback + `setMasterVolume`.
+- `app/src/hooks/useAudio.ts` — expose new API.
+- `app/src/screens/Soittohetki.tsx` — sound row UI + timer wiring.
+- `app/src/components/ui/VolumeSlider.tsx` (new, likely).
+- `docs/audio-architecture.md`, `docs/soittohetki.md`, `docs/ux-spec.md`.

@@ -38,12 +38,12 @@ Invalid values fall back to defaults — no error screen, no redirect.
 | +----------------------------+ |
 | C – D – E – F – G – A – B – C  |  note names below canvas
 |                                |
-|  Ajastettu soittohetki         |  section title
-|       3:00                     |  countdown display, MM:SS
 |  +------------------------+    |
-|  | animation placeholder  |    |  square, dashed border — Task 21 lands here
+|  |   pelican animation    |    |  PelicanTimer / PelicanCelebration
 |  +------------------------+    |
-|  [1] [3] [5] [10]  [▶] [⟲]     |  duration chips + play/reset on one row
+|  [1] [3] [5] [10]  3:00  [▶]   |  duration chips + time + play/pause (red-brown row)
+|  [🔊====●==]  [Sample ▾]       |  sound row — olive bg (#5a6b3d)
+|  [ D ] [DMaj] [DMaj7]          |  drone + diatonic chord suggestions
 +--------------------------------+
 ```
 
@@ -71,7 +71,46 @@ Procedural CSS pelican rendered by `app/src/components/animations/PelicanTimer.t
 
 Two variants share the same rig: **walking** and **flying**. Harjoittelu picks one at random when opening Soittohetki, and direct links without `anim` are normalised to a random variant once and then kept stable in the URL. The internal test menu lives at `#/test`, and the timer preview route is documented in `animations.md`.
 
+## Sound row (Task 25)
+
+Below the duration-controls row sits a second row with an **olive** background (`#5a6b3d`) so the eye reads it as a different functional band ("sound") from the red-brown timer row above. The row holds, left to right:
+
+1. **VolumeSlider** (`app/src/components/ui/VolumeSlider.tsx`) — YouTube-style speaker icon (tap to mute/unmute, remembers last non-zero level) plus a thin horizontal track with the filled portion drawn by `accent-color`. Emits 0..1 to the parent.
+2. **Sample picker** — native `<select>` over `SAMPLES` from `app/src/lib/audio/samples.ts`, styled to match the row (parchment chip on olive). Default: the first sample in the manifest.
+3. **Sound buttons** — radio-style row built from `getScaleChords(root, mode)`:
+   - First button is always the **tonic drone** (`intervals = [0]`). Label is the bare root letter (e.g. "C").
+   - Following buttons are diatonic chord suggestions in `CHORD_TYPES` order. Labels are compact (`CMaj`, `CMaj7`, `Am`, `Am7`); `aria-label` spells the chord (`C Duuri`, `A Molli 7`).
+   - One selected at a time. Tapping the active button deselects it — silent timer is the default state.
+   - Active state uses the same primary-brown highlight (`#8B2500`) as the timer row's duration-chip selection.
+
+### Selection ⇄ playback wiring
+
+A single effect in `Soittohetki.tsx` watches `(isRunning, activeSound, sampleId, root)`:
+
+| Event | What happens |
+|---|---|
+| Start with a sound selected | `playChord({ sampleId, rootMidi, intervals, loop: true })` |
+| Start with no sound selected | Silent timer |
+| Pause / Reset / time-up | `stopAll` (effect cleanup, 250 ms release fade) |
+| Resume (Start after pause) | `playChord` again from the top |
+| Change selected sound while running | Old voices stop, new loop starts |
+| Change sample while running | Same — the effect re-runs |
+| Unmount / back navigation | `stopAll` |
+| Volume slider drag | `setMasterVolume(v)` — applied live; loop is **not** restarted |
+
+The effect uses a `cancelled` flag captured in a closure: if the user pauses while `playChord` is still awaiting `decodeAudioData` on the first listen, the voices are killed as soon as they wake.
+
+### Root octave
+
+Drone and chord roots play at **octave 3** (e.g. C3 = MIDI 48 for a C-major scale) — one octave below middle C — so the audio sits comfortably as background below most kid-violin practice ranges. The other chord voices stack upward via interval offsets, so the topmost voice of a maj7 chord at C3 is B3 (MIDI 59), still safely below middle C. Defined as `ROOT_OCTAVE` in `Soittohetki.tsx`; change there to move the drone.
+
+### Initial volume
+
+The volume slider initialises to **0.6** on screen mount and immediately calls `setMasterVolume(0.6)` so the engine and the slider agree before the first playback gesture. Subsequent drags propagate live via `setMasterVolume(v)` with a 20 ms ramp inside the engine — no zipper noise, no loop restart.
+
 ## Out of scope (handled by future tasks)
 
-- **Task 22:** time-up celebration animation, triggered via the `onComplete` callback.
-- Drone/metronome audio, persisting completed sessions, scale variations.
+- Non-tonic chord suggestions (V, ii–V–I, secondary dominants, modal characteristic chords).
+- Crossfaded seamless loops — the shipped pad samples fade out cleanly enough; loops with non-zero tails would click at the seam.
+- Persisting last-used sample / chord / volume across sessions.
+- Showing the chosen chord on the music canvas.

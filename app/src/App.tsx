@@ -23,6 +23,9 @@ const AnimationTest = lazy(() => import('./screens/AnimationTest').then((m) => (
 const CelebrationAnimationTest = lazy(() =>
   import('./screens/CelebrationAnimationTest').then((m) => ({ default: m.CelebrationAnimationTest })),
 )
+// DEBUG / TEST ROUTE — polyphonic audio-engine test page (Task 24).
+// Reach from #/test or directly via #/test/audio.
+const AudioTest = lazy(() => import('./screens/AudioTest').then((m) => ({ default: m.AudioTest })))
 
 function LoadingSpinner() {
   return (
@@ -47,6 +50,7 @@ export function App() {
         <Route path='/test' element={<TestMenu />} />
         <Route path='/test/animation/timer' element={<AnimationTest />} />
         <Route path='/test/animation/celebration' element={<CelebrationAnimationTest />} />
+        <Route path='/test/audio' element={<AudioTest />} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
     </Suspense>

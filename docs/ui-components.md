@@ -160,3 +160,31 @@ Persistent top navigation bar shown on desktop (≥769px) only. Replaces the per
 ### Design decisions (Task 23)
 - **Decision (b)** for per-screen headers: screens omit `ScreenHeader` on desktop and render their own title/actions inside the content container. The nav bar is the only piece of chrome with viewport-spanning background.
 - **Mobile chrome unchanged** apart from `ScreenHeader` shrinking from `min-h-[52px]`/44px buttons to `min-h-[40px]`/40px buttons (user feedback: navbar was too tall on mobile).
+
+---
+
+## VolumeSlider
+
+**File:** `app/src/components/ui/VolumeSlider.tsx`
+
+### Purpose
+YouTube-style horizontal volume control. Used in the Soittohetki sound row to drive the audio engine's master gain.
+
+### Props
+| Prop | Type | Description |
+|------|------|-------------|
+| `value` | `number` | Current volume, `0..1`. |
+| `onChange` | `(value: number) => void` | Fires on every drag tick and on mute-toggle clicks. |
+| `className` | `string?` | Outer wrapper className (e.g. `flex-1`). |
+
+### Behaviour
+- Left: a 36×36 round button with a speaker icon (`Volume2` when audible, `VolumeX` when muted). Tap to mute/unmute. The component remembers the last non-zero value, so unmute restores it.
+- Right: a native `<input type="range">` (0–100) styled with `accent-color: white` so the filled portion reads on a coloured background (Soittohetki sound row is olive).
+- Stateless: the parent owns the value. The component only tracks the "last non-zero" reference internally for unmute.
+- ARIA: speaker button has `aria-label='Mykistä'/'Avaa ääni'`; slider has `aria-label='Äänenvoimakkuus'`.
+
+### Design decisions (Task 25)
+- **Native `<input type="range">` over a custom drag handler:** built-in keyboard support, touch-friendly thumb, no rAF loop. The visual styling we need (track + filled portion) is delivered by `accent-color`.
+- **Parent owns value:** the volume number lives where the audio engine call lives. The component is a pure controlled input — easier to wire into `setMasterVolume` and to initialise from `getMasterVolume()`.
+- **Speaker icon button separate from the track:** explicit tap target (36×36) larger than a slider thumb, so quick mute/unmute is reliable on mobile.
+
