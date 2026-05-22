@@ -36,7 +36,7 @@ Invalid values fall back to defaults — no error screen, no redirect.
 | +----------------------------+ |
 | |  music canvas (4:1)        | |  notes from getScale() or arpeggio
 | +----------------------------+ |
-| C – D – E – F – G – A – B – C  |  note names below canvas
+| C – D – E – F – G – A – B – C [🎲][👁] |  marquee note line + challenge buttons in scale mode
 |                                |
 |  +------------------------+    |
 |  |   pelican animation    |    |  PelicanTimer / PelicanCelebration
@@ -48,9 +48,19 @@ Invalid values fall back to defaults — no error screen, no redirect.
 ```
 
 - The toggle drives a local `view` state (`'scale' | 'arpeggio'`). Switching re-renders the `MusicCanvas` with either `scaleKey`/`mode` or `arpeggioNotes` props.
-- Note text below the canvas uses `scaleNotes.join(' – ')` or the arpeggio notes (letter + accidental, dropping the octave number).
+- In scale mode, the note line below the canvas is a compact flex row: `MarqueeText` on the left, dice + hide buttons on the right. The marquee shows either `scaleNotes.join(' – ')` or the rolled variation text.
+- In arpeggio mode, the old plain text line remains: arpeggio notes (letter + accidental, dropping the octave number), no extra buttons.
 - Duration chips are disabled while the timer is running so the user can't change the duration mid-countdown.
 - The play button swaps to a pause button while running. The reset button only appears once the timer has moved off its initial state.
+
+## Scale-line challenge controls (Task 26)
+
+Only the **scale** view gets the extra controls below the canvas.
+
+1. **Variation button** — rolls one Finnish practice instruction from `SCALE_VARIATIONS` and shows it in the marquee area.
+2. **Hide-two-notes button** — cycles hide → reveal → hide new pair for two non-tonic notes from the current scale. The dimming is passed to `MusicCanvas` through `hiddenNotes`.
+
+The challenge state is local to `Soittohetki` and resets when a different root/mode is opened.
 
 ## Timer logic
 
@@ -87,16 +97,16 @@ Below the duration-controls row sits a second row with an **olive** background (
 
 A single effect in `Soittohetki.tsx` watches `(isRunning, activeSound, sampleId, root)`:
 
-| Event | What happens |
-|---|---|
-| Start with a sound selected | `playChord({ sampleId, rootMidi, intervals, loop: true })` |
-| Start with no sound selected | Silent timer |
-| Pause / Reset / time-up | `stopAll` (effect cleanup, 250 ms release fade) |
-| Resume (Start after pause) | `playChord` again from the top |
-| Change selected sound while running | Old voices stop, new loop starts |
-| Change sample while running | Same — the effect re-runs |
-| Unmount / back navigation | `stopAll` |
-| Volume slider drag | `setMasterVolume(v)` — applied live; loop is **not** restarted |
+| Event                               | What happens                                                   |
+| ----------------------------------- | -------------------------------------------------------------- |
+| Start with a sound selected         | `playChord({ sampleId, rootMidi, intervals, loop: true })`     |
+| Start with no sound selected        | Silent timer                                                   |
+| Pause / Reset / time-up             | `stopAll` (effect cleanup, 250 ms release fade)                |
+| Resume (Start after pause)          | `playChord` again from the top                                 |
+| Change selected sound while running | Old voices stop, new loop starts                               |
+| Change sample while running         | Same — the effect re-runs                                      |
+| Unmount / back navigation           | `stopAll`                                                      |
+| Volume slider drag                  | `setMasterVolume(v)` — applied live; loop is **not** restarted |
 
 The effect uses a `cancelled` flag captured in a closure: if the user pauses while `playChord` is still awaiting `decodeAudioData` on the first listen, the voices are killed as soon as they wake.
 

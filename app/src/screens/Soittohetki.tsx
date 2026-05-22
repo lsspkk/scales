@@ -2,19 +2,22 @@ import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { VolumeSlider } from '../components/ui/VolumeSlider'
+import { MarqueeText } from '../components/ui/MarqueeText'
 import { useViewport } from '../lib/useViewport'
 import { MusicCanvas } from '../components/ui/MusicCanvas'
 import { PelicanTimer, type PelicanTimerVariant } from '../components/animations/PelicanTimer'
 import { PelicanCelebration } from '../components/animations/PelicanCelebration'
 import { useCountdownTimer } from '../lib/useCountdownTimer'
+import { useScaleVariationQueue } from '../hooks/useScaleVariationQueue'
 import { getScale } from '../lib/musicScale'
 import { buildArpeggioNotesWithOctave } from '../lib/practiceMethod'
 import { getScaleChords } from '../lib/scaleChords'
+import { rollHiddenNotes, type ScaleVariation } from '../lib/scaleVariations'
 import { getChordType } from '../lib/audio/chords'
 import { SAMPLES } from '../lib/audio/samples'
 import { noteNameToMidi } from '../lib/audio/tuning'
 import { playChord, stopAll, setMasterVolume } from '../lib/audio/audioService'
-import { Play, Square } from 'lucide-react'
+import { Dice5, EyeOff, Play, Square } from 'lucide-react'
 
 type Mode = 'ionian' | 'aeolian'
 type View = 'scale' | 'arpeggio'
@@ -62,6 +65,13 @@ interface TimerControlsRowProps {
   onPause: () => void
 }
 
+interface ScaleCanvasActionsProps {
+  variation: ScaleVariation | null
+  hiddenNotesActive: boolean
+  onRollVariation: () => void
+  onToggleHiddenNotes: () => void
+}
+
 function parseMode(value: string | null): Mode {
   return value === 'aeolian' ? 'aeolian' : 'ionian'
 }
@@ -77,6 +87,8 @@ function buildLabel(root: string, mode: Mode, octaves: number): string {
   const octWord = octaves === 1 ? 'oktaavi' : 'oktaavia'
   return `${root}-${modeWord}, ${octaves} ${octWord}`
 }
+
+type HiddenNoteState = { notes: [string, string]; active: boolean } | null
 
 function formatTime(ms: number): string {
   const totalSec = Math.ceil(ms / 1000)
@@ -201,6 +213,45 @@ function TimerControlsRow({
   )
 }
 
+function VariationActions({
+  variation,
+  hiddenNotesActive,
+  onRollVariation,
+  onToggleHiddenNotes,
+}: ScaleCanvasActionsProps) {
+  const baseButtonClass = 'inline-flex  items-center justify-center rounded-md border transition-colors h-7 w-7 mb-1'
+
+  const variationButtonClass = variation
+    ? 'bg-[#8B2500] border-[#8B2500] text-white text-sm'
+    : 'bg-[#fffbe9] border-[#c9a96e] text-[#8B4513] active:bg-[#f0dbb8] text-sm'
+
+  const hiddenNotesButtonClass = hiddenNotesActive
+    ? 'bg-[#8B2500] border-[#8B2500] text-white text-sm'
+    : 'bg-[#fffbe9] border-[#c9a96e] text-[#8B4513] active:bg-[#f0dbb8] text-sm'
+
+  return (
+    <div className='flex shrink-0 items-center gap-1'>
+      <button
+        onClick={onRollVariation}
+        className={`${baseButtonClass} ${variationButtonClass}`}
+        aria-label={variation ? 'Arvo uusi harjoitusmuunnos' : 'Arvo harjoitusmuunnos'}
+        title='Arvo harjoitusmuunnos'
+      >
+        <Dice5 size={18} aria-hidden='true' className='-m-1' />
+      </button>
+      <button
+        onClick={onToggleHiddenNotes}
+        className={`${baseButtonClass} ${hiddenNotesButtonClass}`}
+        aria-label={hiddenNotesActive ? 'Näytä piilotetut nuotit' : 'Piilota kaksi nuottia'}
+        aria-pressed={hiddenNotesActive}
+        title='Piilota kaksi nuottia'
+      >
+        <EyeOff size={18} aria-hidden='true' className='-m-1' />
+      </button>
+    </div>
+  )
+}
+
 export function Soittohetki() {
   const navigate = useNavigate()
   const { isDesktop } = useViewport()
@@ -215,6 +266,8 @@ export function Soittohetki() {
 
   const scaleNotes = useMemo(() => getScale(root, mode), [root, mode])
   const arpeggioNotes = useMemo(() => buildArpeggioNotesWithOctave(scaleNotes, root), [scaleNotes, root])
+  const { variation, rollNextVariation, clearVariation } = useScaleVariationQueue()
+  const [hiddenNoteState, setHiddenNoteState] = useState<HiddenNoteState>(null)
 
   const durationMinStr = searchParams.get('min')
   const durationMin = (() => {
@@ -232,6 +285,11 @@ export function Soittohetki() {
     next.set('anim', pickRandomAnimationVariant())
     setSearchParams(next, { replace: true })
   }, [animationParam, searchParams, setSearchParams])
+
+  useEffect(() => {
+    clearVariation()
+    setHiddenNoteState(null)
+  }, [root, mode, clearVariation])
 
   const { remainingMs, isRunning, start, pause, reset } = useCountdownTimer(durationMs, () => {
     setShowCelebration(true)
@@ -256,6 +314,25 @@ export function Soittohetki() {
     setVolume(v)
     setMasterVolume(v)
   }
+
+  const handleRollVariation = () => rollNextVariation()
+
+  const handleToggleHiddenNotes = () => {
+    setHiddenNoteState((current) => {
+      if (!current) {
+        const rolled = rollHiddenNotes(scaleNotes)
+        return rolled ? { notes: rolled, active: true } : current
+      }
+      if (current.active) {
+        return { ...current, active: false }
+      }
+      const rolled = rollHiddenNotes(scaleNotes, current.notes)
+      return rolled ? { notes: rolled, active: true } : null
+    })
+  }
+
+  const activeHiddenNotes = hiddenNoteState?.active ? hiddenNoteState.notes : undefined
+  const scaleLineText = variation ? `Soita: ${variation.text}` : scaleNotes.join(' – ')
 
   // Build the sound list: tonic drone first, then diatonic chord suggestions.
   const soundOptions = useMemo<SoundOption[]>(() => {
@@ -368,7 +445,7 @@ export function Soittohetki() {
       )}
 
       {/* Outer flex-col: fills remaining screen on mobile, auto height on desktop */}
-      <div className='flex-1 min-h-0 flex flex-col w-full pb-4 md:max-w-130 md:mx-auto md:flex-none md:min-h-fit md:px-4 md:py-4'>
+      <div className='flex-1 min-h-0 flex flex-col w-full md:max-w-130 md:mx-auto md:flex-none md:min-h-fit md:px-4 md:py-4'>
         {/* Row 1: Canvas — fixed by content */}
         <div className='w-full shrink-0'>
           {view === 'scale' ? (
@@ -377,11 +454,21 @@ export function Soittohetki() {
                 scaleKey={root}
                 mode={mode}
                 staves={1}
+                hiddenNotes={activeHiddenNotes}
                 className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
               />
-              <p className='px-4 md:mt-2 text-xs md:text-sm text-[#8B4513] text-center md:px-0'>
-                {scaleNotes.join(' – ')}
-              </p>
+              <div className='mt-1 flex items-center gap-1 pl-4 pr-2 md:mt-2 md:gap-1.5 md:px-0'>
+                <MarqueeText
+                  text={scaleLineText}
+                  className={`min-w-0 flex-1 text-xs md:text-sm ${variation ? 'text-[#8B2500] font-medium' : 'text-[#8B4513]'}`}
+                />
+                <VariationActions
+                  variation={variation}
+                  hiddenNotesActive={hiddenNoteState?.active ?? false}
+                  onRollVariation={handleRollVariation}
+                  onToggleHiddenNotes={handleToggleHiddenNotes}
+                />
+              </div>
             </>
           ) : (
             <>
@@ -398,7 +485,7 @@ export function Soittohetki() {
         </div>
 
         {/* Row 2: fills remaining vertical space on mobile */}
-        <div className='flex-1 min-h-0 flex flex-col gap-3 md:pt-4 px-1 w-full pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:px-0 md:pb-0'>
+        <div className='flex-1 min-h-0 flex flex-col gap-3 md:pt-4 px-1 w-full md:px-0'>
           {/* Animation + shared controls */}
           <div className='@container flex-1 min-h-0 flex items-center justify-center overflow-hidden'>
             <div className='relative w-full h-[min(100cqh,100cqw)] max-h-full rounded-2xl overflow-hidden bg-[#fffbe9] md:w-full md:h-[35svh] md:min-h-[180px] md:max-h-[360px]'>

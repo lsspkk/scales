@@ -305,16 +305,16 @@ From left to right on the row:
 
 ---
 
-## Task 26: Harjoittelu row variations + hidden-note challenge
+## Task 26: Soittohetki scale-line variations + hidden-note challenge
 
 **Status:** done
-**Reference:** `docs/scale-variation-research.md`, `app/src/screens/Harjoittelu.tsx`, `app/src/lib/musicStave.ts`
+**Reference:** `docs/scale-variation-research.md`, `app/src/screens/Soittohetki.tsx`, `app/src/lib/musicStave.ts`
 
-Add two small row-level challenge controls to the Harjoittelu practice list so the student can quickly make a selected scale less automatic without leaving the screen.
+Add two small challenge controls to the scale-note line in Soittohetki so the student can quickly make the current scale less automatic without leaving the timed-practice screen.
 
 ### Goal
 
-Each practice row already shows the core assignment (scale / arpeggio). Extend that same text row with two **tiny text-sized buttons** placed after the existing scale/arpeggio text:
+In Soittohetki scale mode, the note-name line already sits directly below the scale canvas. Extend that same row with two **tiny text-sized buttons** placed after the note text:
 
 1. a **variation roll** button that randomly selects one practice variation and shows the instruction in **Finnish** on that same row
 2. a **hide two notes** button that rolls two notes from the scale and makes them almost invisible on the canvas to create a recall challenge
@@ -348,13 +348,13 @@ Example intent only; final wording can be adjusted during implementation:
 ### UI requirements
 
 1. **Placement**
-   - Add both controls on the same text row that currently presents the scale/arpeggio assignment in Harjoittelu.
+   - Add both controls on the same text row that currently presents the scale-note text in Soittohetki.
    - Keep them visually small — closer to inline text actions than standard icon buttons.
    - Each button must include a small icon/symbol so the action is recognizable even before reading the text.
 
 2. **Variation button**
    - Clicking the variation button rolls **one** item from the allowed variation set above.
-   - The rolled result is displayed as Finnish instruction text on that same row.
+   - The rolled result is displayed as Finnish instruction text on that same row, replacing the plain note list.
    - Because the row is narrow, the result text must stay inline and use a **slow right-to-left marquee / digital-display style animation** when it overflows.
    - The animation must be calm and readable, not flashy.
    - Re-clicking the variation button rolls a new variation.
@@ -374,9 +374,9 @@ Example intent only; final wording can be adjusted during implementation:
 
 ### Behaviour and state
 
-1. **Per-row state**
-   - Variation result and hidden-note state belong to the individual practice row, not to the whole screen globally.
-   - Multiple rows may each have their own rolled variation / hidden-note challenge state.
+1. **Per-screen state**
+   - Variation result and hidden-note state belong to the Soittohetki screen instance, not to Harjoittelu globally.
+   - Opening a different scale in Soittohetki resets the challenge state.
 
 2. **Variation rolling**
    - Use uniform random selection for v1.
@@ -391,6 +391,7 @@ Example intent only; final wording can be adjusted during implementation:
 4. **Canvas integration**
    - The hidden-note state must flow into the existing stave/canvas rendering so the affected notes are drawn at 10% opacity.
    - The notes should still occupy their normal positions; only visibility changes.
+   - This applies to the Soittohetki **scale canvas** only. Arpeggio mode keeps its current plain note row and does not show these controls.
 
 ### Implementation expectations
 
@@ -398,11 +399,11 @@ Example intent only; final wording can be adjusted during implementation:
 - Keep the Finnish instruction text centralized so it is easy to refine later.
 - Implement the marquee as a lightweight CSS animation that only activates when the text actually overflows its container.
 - Avoid introducing heavy animation logic or timers for the text.
-- Preserve the existing Harjoittelu row layout and tap targets as much as possible.
+- Preserve the existing Harjoittelu row layout. The new UI belongs in Soittohetki only.
 
 ### Out of scope
 
-- Adding the same variation system to Soittohetki
+- Adding the same variation system to Harjoittelu rows
 - Combining two simultaneous rolled variations
 - Persisting rolled variations or hidden-note state between sessions
 - Audio cues, metronome, or spoken instructions
@@ -411,8 +412,8 @@ Example intent only; final wording can be adjusted during implementation:
 
 ### Files (likely)
 
-- `app/src/screens/Harjoittelu.tsx` — row UI, button actions, per-row challenge state
+- `app/src/screens/Soittohetki.tsx` — scale-line UI, button actions, per-screen challenge state
 - `app/src/components/ui/...` — optional tiny inline control or marquee helper component if extraction improves clarity
 - `app/src/lib/musicStave.ts` — support per-note reduced opacity in rendered output
 - `app/src/lib/...` — small variation-definition helper and/or hidden-note rolling helper if needed
-- `docs/ux-spec.md` — update row layout if the visual design changes materially
+- `docs/soittohetki.md` / `docs/ux-spec.md` — update the scale-note row if the visual design changes materially
