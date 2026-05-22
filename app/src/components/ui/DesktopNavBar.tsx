@@ -16,24 +16,12 @@ function isActive(pathname: string, to: string): boolean {
   return pathname.startsWith(to + '/')
 }
 
-/** Small decorative scroll/flourish next to the brand — evokes a manuscript seal. */
+/** Fleur-de-lis (U+269C) — heraldic medieval symbol next to the brand. */
 function Flourish() {
   return (
-    <svg
-      width='22'
-      height='22'
-      viewBox='0 0 22 22'
-      aria-hidden='true'
-      className='flex-shrink-0'
-    >
-      <g fill='none' stroke='#a0563f' strokeWidth='1.4' strokeLinecap='round'>
-        <path d='M11 3 C 8 6, 8 10, 11 11 C 14 10, 14 6, 11 3 Z' fill='#a0563f' />
-        <path d='M11 11 L 11 19' />
-        <path d='M6 17 Q 11 14, 16 17' />
-        <circle cx='6' cy='17' r='1.1' fill='#a0563f' />
-        <circle cx='16' cy='17' r='1.1' fill='#a0563f' />
-      </g>
-    </svg>
+    <span className='inline-block font-medieval text-4xl text-[#5a2d0c] leading-none flex-shrink-0 -translate-y-[10%]'>
+      ⚜
+    </span>
   )
 }
 
@@ -46,8 +34,7 @@ export function DesktopNavBar({ rightActions }: { rightActions?: ReactNode }) {
       <div
         className='relative'
         style={{
-          background:
-            'linear-gradient(180deg, #faefce 0%, #f1dfa8 55%, #eed59a 100%)',
+          background: 'linear-gradient(180deg, #faefce 0%, #f1dfa8 55%, #eed59a 100%)',
         }}
       >
         <div className='max-w-[1200px] mx-auto flex items-center gap-4 px-8 h-14'>

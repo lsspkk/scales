@@ -251,6 +251,11 @@ export function drawAccidental(
  *
  * Enforces the hard drawing range [G3, G6]. Notes outside this range are
  * logged via console.error and skipped — nothing is drawn for them.
+ *
+ * `opacity` (0..1, default 1) applies to head, stem, ledger lines, and the
+ * accidental — the whole rendered note dims as one unit. Used by the
+ * hidden-note challenge in Harjoittelu (Task 26) to draw selected notes at
+ * 10% opacity without disturbing layout.
  */
 export function drawNoteAt(
   ctx: CanvasRenderingContext2D,
@@ -258,6 +263,7 @@ export function drawNoteAt(
   note: NoteWithOctave,
   staffLineYs: number[],
   layout: StaveLayout,
+  opacity: number = 1,
 ): void {
   if (!isInDrawingRange(note)) {
     console.error(`Note out of range: ${formatNoteSPN(note)} (allowed G3–G6)`)
@@ -265,6 +271,9 @@ export function drawNoteAt(
   }
 
   const y = getAbsoluteNoteY(note, staffLineYs)
+
+  ctx.save()
+  ctx.globalAlpha = opacity
 
   ctx.fillStyle = '#000'
   ctx.beginPath()
@@ -289,14 +298,41 @@ export function drawNoteAt(
   if (note.accidental) {
     drawAccidental(ctx, x - layout.accidentalOffsetX, y, note.accidental, layout.accidentalFontSize)
   }
+
+  ctx.restore()
+}
+
+/**
+ * Match a note against a set of hidden-note strings like "F#", "Bb", or "C".
+ * Octave is ignored — hiding is by pitch class within the current key
+ * spelling so both the ascending and descending instance of e.g. F# disappear
+ * together.
+ */
+function noteKey(note: NoteWithOctave): string {
+  return `${note.letter}${note.accidental ?? ''}`
+}
+
+function opacityFor(note: NoteWithOctave, hiddenNotes?: ReadonlySet<string> | null): number {
+  if (!hiddenNotes || hiddenNotes.size === 0) return 1
+  return hiddenNotes.has(noteKey(note)) ? 0.1 : 1
 }
 
 /**
  * Render a complete scale on the canvas.
  * Uses octave-aware absolute positioning so the root note lands on the same
  * staff line as the matching arpeggio root.
+ *
+ * `hiddenNotes` (optional, Task 26): set of pitch-class strings such as
+ * "F#" / "Bb" / "C". Any rendered instance matching one of these draws at
+ * 10% opacity so the student must recall it from memory.
  */
-export function renderScale(ctx: CanvasRenderingContext2D, key: string, mode: string, layout: StaveLayout): void {
+export function renderScale(
+  ctx: CanvasRenderingContext2D,
+  key: string,
+  mode: string,
+  layout: StaveLayout,
+  hiddenNotes?: ReadonlySet<string> | null,
+): void {
   ctx.clearRect(0, 0, layout.width, layout.height)
 
   drawStaffLines(ctx, layout)
@@ -313,7 +349,7 @@ export function renderScale(ctx: CanvasRenderingContext2D, key: string, mode: st
   const ascShift = notes[0]?.accidental ? layout.accidentalOffsetX : 0
   notes.forEach((note, i) => {
     const x = layout.noteStartX + ascShift + i * layout.noteSpacing
-    drawNoteAt(ctx, x, note, upperStaffLines, layout)
+    drawNoteAt(ctx, x, note, upperStaffLines, layout, opacityFor(note, hiddenNotes))
   })
 
   if (layout.staves === 2) {
@@ -321,12 +357,17 @@ export function renderScale(ctx: CanvasRenderingContext2D, key: string, mode: st
     const descShift = reversed[0]?.accidental ? layout.accidentalOffsetX : 0
     reversed.forEach((note, i) => {
       const x = layout.noteStartX + descShift + i * layout.noteSpacing
-      drawNoteAt(ctx, x, note, lowerStaffLines, layout)
+      drawNoteAt(ctx, x, note, lowerStaffLines, layout, opacityFor(note, hiddenNotes))
     })
   }
 }
 
-export function renderArpeggio(ctx: CanvasRenderingContext2D, notes: NoteWithOctave[], layout: StaveLayout): void {
+export function renderArpeggio(
+  ctx: CanvasRenderingContext2D,
+  notes: NoteWithOctave[],
+  layout: StaveLayout,
+  hiddenNotes?: ReadonlySet<string> | null,
+): void {
   ctx.clearRect(0, 0, layout.width, layout.height)
 
   drawStaffLines(ctx, layout)
@@ -342,6 +383,6 @@ export function renderArpeggio(ctx: CanvasRenderingContext2D, notes: NoteWithOct
 
   for (let i = 0; i < noteCount; i++) {
     const x = startX + i * spacing
-    drawNoteAt(ctx, x, notes[i], staffLineYs, layout)
+    drawNoteAt(ctx, x, notes[i], staffLineYs, layout, opacityFor(notes[i], hiddenNotes))
   }
 }

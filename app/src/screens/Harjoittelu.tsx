@@ -3,9 +3,36 @@ import { useNavigate } from 'react-router-dom'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
 import { ScaleDetailPanel } from '../components/ui/ScaleDetailPanel'
 import { ScaleDetailModal } from '../components/ui/ScaleDetailModal'
+import { MarqueeText } from '../components/ui/MarqueeText'
 import { useViewport } from '../lib/useViewport'
 import { usePracticeStore } from '../stores/practiceStore'
 import { formatScaleLabel, formatPositions, getScaleDetail, getScaleKey, type ScaleEntry } from '../lib/practiceMethod'
+import { getScale } from '../lib/musicScale'
+import { rollVariation, rollHiddenNotes } from '../lib/scaleVariations'
+
+type HiddenNoteState = { notes: [string, string]; active: boolean } | null
+
+const DiceIcon = (
+  <svg width='14' height='14' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg' aria-hidden='true'>
+    <rect x='3' y='3' width='14' height='14' rx='2.5' stroke='currentColor' strokeWidth='1.5' />
+    <circle cx='7' cy='7' r='1.1' fill='currentColor' />
+    <circle cx='13' cy='13' r='1.1' fill='currentColor' />
+    <circle cx='10' cy='10' r='1.1' fill='currentColor' />
+  </svg>
+)
+
+const HideIcon = (
+  <svg width='16' height='16' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg' aria-hidden='true'>
+    <path
+      d='M2.5 10 C 4.5 6, 7 4.5, 10 4.5 C 13 4.5, 15.5 6, 17.5 10 C 15.5 14, 13 15.5, 10 15.5 C 7 15.5, 4.5 14, 2.5 10 Z'
+      stroke='currentColor'
+      strokeWidth='1.4'
+      strokeLinejoin='round'
+    />
+    <circle cx='10' cy='10' r='2.2' stroke='currentColor' strokeWidth='1.4' />
+    <line x1='4' y1='16.5' x2='16' y2='3.5' stroke='currentColor' strokeWidth='1.6' strokeLinecap='round' />
+  </svg>
+)
 
 function pickRandomAnimationVariant(): 'walking' | 'flying' {
   return Math.random() < 0.5 ? 'walking' : 'flying'
@@ -47,17 +74,25 @@ function PracticeListItem({
   index,
   selected,
   isMobile,
+  variationText,
+  hideActive,
   onToggleDone,
   onSelectInfo,
   onPlay,
+  onRollVariation,
+  onToggleHide,
 }: {
   item: { scale: ScaleEntry; done: boolean }
   index: number
   selected: boolean
   isMobile: boolean
+  variationText: string | null
+  hideActive: boolean
   onToggleDone: (index: number) => void
   onSelectInfo: () => void
   onPlay: () => void
+  onRollVariation: () => void
+  onToggleHide: () => void
 }) {
   const baseClasses = isMobile
     ? 'w-full min-h-[44px] flex items-center gap-2 py-2 border-b border-[#c9a96e] transition-colors'
@@ -67,6 +102,7 @@ function PracticeListItem({
     : isMobile
       ? 'bg-[#fffbe9]'
       : 'bg-[#fffbe9] border border-[#c9a96e]'
+  const secondLineText = variationText ?? item.scale.shiftPattern
   return (
     <div className={`${baseClasses} ${bgClasses}`}>
       <button
@@ -84,11 +120,51 @@ function PracticeListItem({
       </button>
 
       <div className='flex-1 min-w-0'>
-        <span className={`text-base font-semibold ${item.done ? 'line-through text-[#8B4513]' : 'text-[#5a2d0c]'}`}>
-          {formatScaleLabel(item.scale)}
-        </span>
-        <span className='text-sm text-[#8B4513] ml-2'>{formatPositions(item.scale)} as.</span>
-        {item.scale.shiftPattern && <div className='text-xs mt-0.5 text-[#8B4513]'>{item.scale.shiftPattern}</div>}
+        <div className='flex items-center gap-1.5 flex-wrap'>
+          <span className={`text-base font-semibold ${item.done ? 'line-through text-[#8B4513]' : 'text-[#5a2d0c]'}`}>
+            {formatScaleLabel(item.scale)}
+          </span>
+          <span className='text-sm text-[#8B4513]'>{formatPositions(item.scale)} as.</span>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onRollVariation()
+            }}
+            className={`ml-1 inline-flex items-center justify-center w-7 h-7 rounded-md border transition-colors ${
+              variationText
+                ? 'bg-[#8B2500] border-[#8B2500] text-white'
+                : 'bg-[#fffbe9] border-[#c9a96e] text-[#8B4513] hover:bg-[#f0dbb8]'
+            }`}
+            aria-label={variationText ? 'Arvo uusi harjoitusmuunnos' : 'Arvo harjoitusmuunnos'}
+            title='Arvo harjoitusmuunnos'
+          >
+            {DiceIcon}
+          </button>
+
+          <button
+            onClick={(e) => {
+              e.stopPropagation()
+              onToggleHide()
+            }}
+            className={`inline-flex items-center justify-center w-7 h-7 rounded-md border transition-colors ${
+              hideActive
+                ? 'bg-[#8B2500] border-[#8B2500] text-white'
+                : 'bg-[#fffbe9] border-[#c9a96e] text-[#8B4513] hover:bg-[#f0dbb8]'
+            }`}
+            aria-label={hideActive ? 'Näytä piilotetut nuotit' : 'Piilota kaksi nuottia'}
+            title='Piilota kaksi nuottia'
+          >
+            {HideIcon}
+          </button>
+        </div>
+        {secondLineText && (
+          variationText ? (
+            <MarqueeText text={variationText} className='text-xs mt-0.5 text-[#8B2500] font-medium' />
+          ) : (
+            <div className='text-xs mt-0.5 text-[#8B4513]'>{secondLineText}</div>
+          )
+        )}
       </div>
 
       <button
@@ -158,6 +234,42 @@ function PracticeBody({
   const resetProgress = usePracticeStore((s) => s.resetProgress)
   const reshuffleSet = usePracticeStore((s) => s.reshuffleSet)
   const clearSession = usePracticeStore((s) => s.clearSession)
+
+  // Per-row challenge state (Task 26). Keyed by getScaleKey(scale) so it
+  // survives reshuffle. Both maps are session-only — not persisted.
+  const [variationByRow, setVariationByRow] = useState<Record<string, { id: string; text: string }>>({})
+  const [hideByRow, setHideByRow] = useState<Record<string, HiddenNoteState>>({})
+
+  const rollVariationFor = useCallback((scale: ScaleEntry) => {
+    const k = getScaleKey(scale)
+    setVariationByRow((prev) => {
+      const next = rollVariation(prev[k]?.id ?? null)
+      return { ...prev, [k]: { id: next.id, text: next.text } }
+    })
+  }, [])
+
+  const toggleHideFor = useCallback((scale: ScaleEntry) => {
+    const k = getScaleKey(scale)
+    setHideByRow((prev) => {
+      const current = prev[k]
+      if (!current) {
+        const rolled = rollHiddenNotes(getScale(scale.key, scale.mode))
+        return rolled ? { ...prev, [k]: { notes: rolled, active: true } } : prev
+      }
+      if (current.active) {
+        return { ...prev, [k]: { ...current, active: false } }
+      }
+      const rolled = rollHiddenNotes(getScale(scale.key, scale.mode))
+      return rolled ? { ...prev, [k]: { notes: rolled, active: true } } : { ...prev, [k]: null }
+    })
+  }, [])
+
+  const selectedHiddenNotes = selectedScale
+    ? (() => {
+        const state = hideByRow[getScaleKey(selectedScale)]
+        return state && state.active ? state.notes : undefined
+      })()
+    : undefined
 
   const doneCount = practiceSet.filter((item) => item.done).length
   const totalCount = practiceSet.length
@@ -249,26 +361,34 @@ function PracticeBody({
         )
       })()}
       <div className={isDesktop ? 'space-y-1' : 'border-t border-[#c9a96e]'}>
-        {practiceSet.map((item, index) => (
-          <PracticeListItem
-            key={getScaleKey(item.scale)}
-            item={item}
-            index={index}
-            selected={selectedScale === item.scale}
-            isMobile={!isDesktop}
-            onToggleDone={toggleDone}
-            onSelectInfo={() => onSelectScale(selectedScale === item.scale ? null : item.scale)}
-            onPlay={() => {
-              const params = new URLSearchParams({
-                root: item.scale.key,
-                mode: item.scale.mode,
-                octaves: String(item.scale.octaves),
-                anim: pickRandomAnimationVariant(),
-              })
-              navigateToSoittohetki(`/soittohetki?${params.toString()}`)
-            }}
-          />
-        ))}
+        {practiceSet.map((item, index) => {
+          const rowKey = getScaleKey(item.scale)
+          const hideState = hideByRow[rowKey]
+          return (
+            <PracticeListItem
+              key={rowKey}
+              item={item}
+              index={index}
+              selected={selectedScale === item.scale}
+              isMobile={!isDesktop}
+              variationText={variationByRow[rowKey]?.text ?? null}
+              hideActive={!!hideState?.active}
+              onToggleDone={toggleDone}
+              onSelectInfo={() => onSelectScale(selectedScale === item.scale ? null : item.scale)}
+              onPlay={() => {
+                const params = new URLSearchParams({
+                  root: item.scale.key,
+                  mode: item.scale.mode,
+                  octaves: String(item.scale.octaves),
+                  anim: pickRandomAnimationVariant(),
+                })
+                navigateToSoittohetki(`/soittohetki?${params.toString()}`)
+              }}
+              onRollVariation={() => rollVariationFor(item.scale)}
+              onToggleHide={() => toggleHideFor(item.scale)}
+            />
+          )
+        })}
       </div>
     </div>
   )
@@ -283,7 +403,7 @@ function PracticeBody({
           {detail ? (
             <div className='sticky top-4 bg-[#faf3d8] border border-[#c9a96e] rounded-xl p-4'>
               <h3 className='text-lg font-bold text-[#5a2d0c] mb-4 pb-2 border-b border-[#c9a96e]'>{detail.label}</h3>
-              <ScaleDetailPanel detail={detail} />
+              <ScaleDetailPanel detail={detail} hiddenNotes={selectedHiddenNotes} />
             </div>
           ) : (
             <div className='sticky top-4 bg-[#faf3d8] border border-[#c9a96e] rounded-xl p-4 text-center'>
@@ -304,7 +424,7 @@ function PracticeBody({
           title={`${formatScaleLabel(selectedScale)} — ${formatPositions(selectedScale)} as.`}
           onClose={() => onSelectScale(null)}
         >
-          <ScaleDetailPanel detail={getScaleDetail(selectedScale)} />
+          <ScaleDetailPanel detail={getScaleDetail(selectedScale)} hiddenNotes={selectedHiddenNotes} />
         </ScaleDetailModal>
       )}
     </>

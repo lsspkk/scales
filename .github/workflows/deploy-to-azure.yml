@@ -52,6 +52,24 @@ jobs:
               --destination '$web' \
               --source dist \
               --overwrite \
+              --content-type 'audio/mpeg' \
+              --pattern '*.mp3'
+
+            az storage blob upload-batch \
+              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+              --account-key ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }} \
+              --destination '$web' \
+              --source dist \
+              --overwrite \
+              --content-type 'image/svg+xml' \
+              --pattern '*.svg'
+
+            az storage blob upload-batch \
+              --account-name ${{ secrets.AZURE_STORAGE_ACCOUNT_NAME }} \
+              --account-key ${{ secrets.AZURE_STORAGE_ACCOUNT_KEY }} \
+              --destination '$web' \
+              --source dist \
+              --overwrite \
               --pattern 'assets/*'
 
       - name: Deployment complete

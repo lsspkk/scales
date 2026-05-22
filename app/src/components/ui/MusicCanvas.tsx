@@ -7,6 +7,11 @@ interface MusicCanvasProps {
   mode?: string
   staves?: 1 | 2
   arpeggioNotes?: NoteWithOctave[]
+  /**
+   * Pitch-class strings to dim to 10% opacity (e.g. "F#", "Bb", "C").
+   * Used by the hidden-note challenge in Harjoittelu (Task 26).
+   */
+  hiddenNotes?: ReadonlyArray<string>
   className?: string
   style?: React.CSSProperties
 }
@@ -21,7 +26,15 @@ interface MusicCanvasProps {
  * the measured CSS size into `computeLayout`. No CSS stretching of a fixed
  * bitmap — all geometry follows the container.
  */
-export function MusicCanvas({ scaleKey, mode, staves = 2, arpeggioNotes, className, style }: MusicCanvasProps) {
+export function MusicCanvas({
+  scaleKey,
+  mode,
+  staves = 2,
+  arpeggioNotes,
+  hiddenNotes,
+  className,
+  style,
+}: MusicCanvasProps) {
   const { isDesktop } = useViewport()
   const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
@@ -33,6 +46,8 @@ export function MusicCanvas({ scaleKey, mode, staves = 2, arpeggioNotes, classNa
 
     const ctx = canvas.getContext('2d')
     if (!ctx) return
+
+    const hiddenSet = hiddenNotes && hiddenNotes.length > 0 ? new Set(hiddenNotes) : null
 
     const draw = () => {
       const rect = wrapper.getBoundingClientRect()
@@ -49,9 +64,9 @@ export function MusicCanvas({ scaleKey, mode, staves = 2, arpeggioNotes, classNa
 
       const layout = computeLayout({ width: cssW, height: cssH, staves })
       if (arpeggioNotes) {
-        renderArpeggio(ctx, arpeggioNotes, layout)
+        renderArpeggio(ctx, arpeggioNotes, layout, hiddenSet)
       } else if (scaleKey && mode) {
-        renderScale(ctx, scaleKey, mode, layout)
+        renderScale(ctx, scaleKey, mode, layout, hiddenSet)
       }
     }
 
@@ -67,7 +82,7 @@ export function MusicCanvas({ scaleKey, mode, staves = 2, arpeggioNotes, classNa
       io.disconnect()
       clearTimeout(t)
     }
-  }, [scaleKey, mode, staves, arpeggioNotes, isDesktop])
+  }, [scaleKey, mode, staves, arpeggioNotes, hiddenNotes, isDesktop])
 
   return (
     <div ref={wrapperRef} className={className} style={style}>

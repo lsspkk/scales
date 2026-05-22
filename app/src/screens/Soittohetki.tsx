@@ -14,7 +14,7 @@ import { getChordType } from '../lib/audio/chords'
 import { SAMPLES } from '../lib/audio/samples'
 import { noteNameToMidi } from '../lib/audio/tuning'
 import { playChord, stopAll, setMasterVolume } from '../lib/audio/audioService'
-import { Pause, Play } from 'lucide-react'
+import { Play, Square } from 'lucide-react'
 
 type Mode = 'ionian' | 'aeolian'
 type View = 'scale' | 'arpeggio'
@@ -43,6 +43,25 @@ interface SoundOption {
   intervals: readonly number[]
 }
 
+interface SoundControlsRowProps {
+  volume: number
+  onVolumeChange: (value: number) => void
+  sampleId: string
+  onSampleChange: (sampleId: string) => void
+  soundOptions: SoundOption[]
+  selectedSoundId: string | null
+  onSoundClick: (soundId: string) => void
+}
+
+interface TimerControlsRowProps {
+  durationMin: number
+  isRunning: boolean
+  remainingMs: number
+  onSelectDuration: (minutes: number) => void
+  onStart: () => void
+  onPause: () => void
+}
+
 function parseMode(value: string | null): Mode {
   return value === 'aeolian' ? 'aeolian' : 'ionian'
 }
@@ -64,6 +83,122 @@ function formatTime(ms: number): string {
   const min = Math.floor(totalSec / 60)
   const sec = totalSec % 60
   return `${min}:${sec.toString().padStart(2, '0')}`
+}
+
+function SoundControlsRow({
+  volume,
+  onVolumeChange,
+  sampleId,
+  onSampleChange,
+  soundOptions,
+  selectedSoundId,
+  onSoundClick,
+}: SoundControlsRowProps) {
+  return (
+    <div className='-mx-1 bg-[#5a6b3d] px-2 py-1 md:mx-0 md:mt-2 md:rounded-lg md:px-3 md:py-2'>
+      <div className='flex items-center gap-1 md:gap-2 w-full'>
+        <label className='sr-only' htmlFor='soittohetki-sample'>
+          Näyte
+        </label>
+        <select
+          id='soittohetki-sample'
+          value={sampleId}
+          onChange={(e) => onSampleChange(e.target.value)}
+          className='justify-self-start shrink-0 rounded bg-[#fffbe9] px-2 text-xs font-semibold text-[#5a2d0c] min-w-[88px] max-w-[120px] focus:outline focus:outline-2 focus:outline-[#fffbe9] md:h-9 md:text-sm'
+        >
+          {SAMPLES.map((sample) => (
+            <option key={sample.id} value={sample.id}>
+              {sample.label}
+            </option>
+          ))}
+        </select>
+        <div className='flex w-full grow gap-1 justify-end'>
+          {soundOptions.map((option) => {
+            const selected = selectedSoundId === option.id
+            return (
+              <button
+                key={option.id}
+                onClick={() => onSoundClick(option.id)}
+                aria-pressed={selected}
+                aria-label={option.ariaLabel}
+                className={`shrink-0 rounded-md border-2 px-1 md:px-3 md:py-1 text-xs font-bold transition-colors md:text-sm ${
+                  selected
+                    ? 'bg-[#8B2500] border-[#8B2500] text-white'
+                    : 'bg-[#fffbe9] border-[#c9a96e] text-[#5a2d0c] active:bg-[#f0dbb8]'
+                }`}
+              >
+                {option.label}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+      <div className='flex items-center overflow-x-auto md:mt-2 gap-1.5 justify-end w-full'>
+        <VolumeSlider value={volume} onChange={onVolumeChange} className='flex-1 min-w-[80px] max-w-[160px]' />
+      </div>
+    </div>
+  )
+}
+
+function TimerControlsRow({
+  durationMin,
+  isRunning,
+  remainingMs,
+  onSelectDuration,
+  onStart,
+  onPause,
+}: TimerControlsRowProps) {
+  return (
+    <div className='-mx-1 mt-1 md:mt-4 flex items-center px-1 md:mx-0 md:gap-1.5 md:px-0'>
+      <div className='flex gap-0.5 shrink-0 md:gap-1'>
+        {DURATION_PRESETS_MIN.map((m) => {
+          const selected = durationMin === m
+          return (
+            <button
+              key={m}
+              onClick={() => onSelectDuration(m)}
+              disabled={isRunning}
+              className={`h-[clamp(2rem,9vw,2.75rem)] w-[clamp(2rem,9vw,2.75rem)] rounded-full border-2 text-[clamp(0.65rem,2.8vw,0.75rem)] font-bold transition-colors md:h-11 md:w-11 md:text-xs ${
+                selected
+                  ? 'bg-[#8B2500] border-[#8B2500] text-white'
+                  : 'bg-[#fffbe9] border-[#c9a96e] text-[#5a2d0c] active:bg-[#f0dbb8]'
+              } disabled:opacity-40 disabled:pointer-events-none`}
+              aria-pressed={selected}
+              aria-label={`${m} minuuttia`}
+            >
+              {m}
+            </button>
+          )
+        })}
+      </div>
+      <div
+        className='min-w-[3.4ch] flex-1 text-center text-[#5a2d0c] text-[clamp(1.2rem,6.5vw,1.75rem)] font-bold tabular-nums leading-none md:min-w-[4ch] md:text-3xl'
+        aria-live='polite'
+      >
+        {formatTime(remainingMs)}
+      </div>
+      <div className='shrink-0'>
+        {isRunning ? (
+          <button
+            onClick={onPause}
+            className='h-[clamp(2.25rem,10vw,2.75rem)] w-[clamp(2.25rem,10vw,2.75rem)] rounded-full bg-[#a0563f] text-white flex items-center justify-center active:bg-[#7a3f2e] md:h-11 md:w-11'
+            aria-label='Tauko'
+          >
+            <Square size={20} />
+          </button>
+        ) : (
+          <button
+            onClick={onStart}
+            disabled={remainingMs === 0}
+            className='h-[clamp(2.25rem,10vw,2.75rem)] w-[clamp(2.25rem,10vw,2.75rem)] rounded-full bg-[#8B2500] text-white flex items-center justify-center active:bg-[#5a1700] disabled:opacity-40 disabled:pointer-events-none md:h-11 md:w-11'
+            aria-label='Aloita'
+          >
+            <Play size={20} />
+          </button>
+        )}
+      </div>
+    </div>
+  )
 }
 
 export function Soittohetki() {
@@ -202,7 +337,7 @@ export function Soittohetki() {
   }
 
   return (
-    <div className='flex flex-col h-full bg-[#fffbe9]'>
+    <div className='flex flex-col h-[100svh] bg-[#fffbe9] md:h-full'>
       {isDesktop ? (
         <div className='w-full bg-[#a0563f] border-b border-[#3a1a00]'>
           <div className='max-w-[1200px] mx-auto px-8 flex items-center justify-between gap-3'>
@@ -244,7 +379,9 @@ export function Soittohetki() {
                 staves={1}
                 className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
               />
-              <p className='px-4 mt-2 text-sm text-[#8B4513] text-center md:px-0'>{scaleNotes.join(' – ')}</p>
+              <p className='px-4 md:mt-2 text-xs md:text-sm text-[#8B4513] text-center md:px-0'>
+                {scaleNotes.join(' – ')}
+              </p>
             </>
           ) : (
             <>
@@ -253,7 +390,7 @@ export function Soittohetki() {
                 staves={1}
                 className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
               />
-              <p className='px-4 mt-2 text-sm text-[#8B4513] text-center md:px-0'>
+              <p className='px-4 md:mt-2 text-xs md:text-sm text-[#8B4513] text-center md:px-0'>
                 {arpeggioNotes.map((n) => `${n.letter}${n.accidental ?? ''}`).join(' – ')}
               </p>
             </>
@@ -261,159 +398,79 @@ export function Soittohetki() {
         </div>
 
         {/* Row 2: fills remaining vertical space on mobile */}
-        <div className='flex-1 min-h-0 flex flex-col gap-3 pt-4 px-4 w-full pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:px-0 md:pb-0'>
-          {/* subrow 1: Title + view toggle — fixed by content */}
-          <div className='flex flex-row w-full justify-end items-center gap-2 shrink-0'>
-            <div className='flex gap-1'>
-              <button
-                onClick={() => {
-                  dismissCelebration()
-                  setView('scale')
-                }}
-                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                  view === 'scale' ? 'bg-[#8B2500] text-white' : 'bg-[#f0dbb8] text-[#5a2d0c] active:bg-[#e0c590]'
-                }`}
-                aria-pressed={view === 'scale'}
-                aria-label='Asteikko'
-              >
-                <svg width='22' height='22' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
-                  <circle cx='4' cy='18' r='2.2' />
-                  <circle cx='10' cy='13' r='2.2' />
-                  <circle cx='16' cy='8' r='2.2' />
-                  <circle cx='22' cy='3' r='2.2' />
-                </svg>
-              </button>
-              <button
-                onClick={() => {
-                  dismissCelebration()
-                  setView('arpeggio')
-                }}
-                className={`w-10 h-10 rounded-lg flex items-center justify-center transition-colors ${
-                  view === 'arpeggio' ? 'bg-[#8B2500] text-white' : 'bg-[#f0dbb8] text-[#5a2d0c] active:bg-[#e0c590]'
-                }`}
-                aria-pressed={view === 'arpeggio'}
-                aria-label='Arpeggio'
-              >
-                <svg width='22' height='22' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
-                  <rect x='3' y='17' width='4' height='7' rx='0.5' />
-                  <rect x='9' y='12' width='4' height='12' rx='0.5' />
-                  <rect x='15' y='7' width='4' height='17' rx='0.5' />
-                </svg>
-              </button>
+        <div className='flex-1 min-h-0 flex flex-col gap-3 md:pt-4 px-1 w-full pb-[calc(env(safe-area-inset-bottom)+0.75rem)] md:px-0 md:pb-0'>
+          {/* Animation + shared controls */}
+          <div className='@container flex-1 min-h-0 flex items-center justify-center overflow-hidden'>
+            <div className='relative w-full h-[min(100cqh,100cqw)] max-h-full rounded-2xl overflow-hidden bg-[#fffbe9] md:w-full md:h-[35svh] md:min-h-[180px] md:max-h-[360px]'>
+              {showCelebration ? (
+                <PelicanCelebration variant={animationVariant} />
+              ) : (
+                <PelicanTimer
+                  key={`${animationVariant}-${durationMs}-${runId}`}
+                  variant={animationVariant}
+                  durationMs={durationMs}
+                  isRunning={isRunning}
+                />
+              )}
+              <div className='absolute top-1 right-1 z-10 flex gap-0.5 md:top-1.5 md:right-1.5 md:gap-1'>
+                <button
+                  onClick={() => {
+                    dismissCelebration()
+                    setView('scale')
+                  }}
+                  className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors shadow-sm md:w-9 md:h-9 md:rounded-lg ${
+                    view === 'scale' ? 'bg-[#8B2500] text-white' : 'bg-[#f0dbb8]/90 text-[#5a2d0c] active:bg-[#e0c590]'
+                  }`}
+                  aria-pressed={view === 'scale'}
+                  aria-label='Asteikko'
+                >
+                  <svg className='w-4 h-4 md:w-5 md:h-5' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+                    <circle cx='4' cy='18' r='2.2' />
+                    <circle cx='10' cy='13' r='2.2' />
+                    <circle cx='16' cy='8' r='2.2' />
+                    <circle cx='22' cy='3' r='2.2' />
+                  </svg>
+                </button>
+                <button
+                  onClick={() => {
+                    dismissCelebration()
+                    setView('arpeggio')
+                  }}
+                  className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors shadow-sm md:w-9 md:h-9 md:rounded-lg ${
+                    view === 'arpeggio'
+                      ? 'bg-[#8B2500] text-white'
+                      : 'bg-[#f0dbb8]/90 text-[#5a2d0c] active:bg-[#e0c590]'
+                  }`}
+                  aria-pressed={view === 'arpeggio'}
+                  aria-label='Arpeggio'
+                >
+                  <svg className='w-4 h-4 md:w-5 md:h-5' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+                    <rect x='3' y='17' width='4' height='7' rx='0.5' />
+                    <rect x='9' y='12' width='4' height='12' rx='0.5' />
+                    <rect x='15' y='7' width='4' height='17' rx='0.5' />
+                  </svg>
+                </button>
+              </div>
             </div>
           </div>
-
-          {/* subrow 2: Animation + shared controls */}
-          <div className='flex-1 min-h-0 flex flex-col gap-3 min-w-0'>
-            <div className='flex-1 min-h-0 flex items-center justify-center overflow-hidden'>
-              <div className='w-full max-w-[min(100%,calc(100svw-2rem))] aspect-square max-h-[min(100%,calc(100svw-2rem))] self-center rounded-2xl overflow-hidden bg-[#fffbe9] md:w-full md:max-w-none md:h-[35svh] md:min-h-[180px] md:max-h-[360px] md:aspect-auto'>
-                {showCelebration ? (
-                  <PelicanCelebration variant={animationVariant} />
-                ) : (
-                  <PelicanTimer
-                    key={`${animationVariant}-${durationMs}-${runId}`}
-                    variant={animationVariant}
-                    durationMs={durationMs}
-                    isRunning={isRunning}
-                  />
-                )}
-              </div>
-            </div>
-            <div className='-mx-4 mt-auto flex items-center gap-1 px-1 md:mx-0 md:gap-1.5 md:px-0'>
-              <div className='flex gap-0.5 shrink-0 md:gap-1'>
-                {DURATION_PRESETS_MIN.map((m) => {
-                  const selected = durationMin === m
-                  return (
-                    <button
-                      key={m}
-                      onClick={() => setDurationMin(m)}
-                      disabled={isRunning}
-                      className={`h-[clamp(2rem,9vw,2.75rem)] w-[clamp(2rem,9vw,2.75rem)] rounded-full border-2 text-[clamp(0.65rem,2.8vw,0.75rem)] font-bold transition-colors md:h-11 md:w-11 md:text-xs ${
-                        selected
-                          ? 'bg-[#8B2500] border-[#8B2500] text-white'
-                          : 'bg-[#fffbe9] border-[#c9a96e] text-[#5a2d0c] active:bg-[#f0dbb8]'
-                      } disabled:opacity-40 disabled:pointer-events-none`}
-                      aria-pressed={selected}
-                      aria-label={`${m} minuuttia`}
-                    >
-                      {m}
-                    </button>
-                  )
-                })}
-              </div>
-              <div
-                className='min-w-[3.4ch] flex-1 text-center text-[#5a2d0c] text-[clamp(1.2rem,6.5vw,1.75rem)] font-bold tabular-nums leading-none md:min-w-[4ch] md:text-3xl'
-                aria-live='polite'
-              >
-                {formatTime(remainingMs)}
-              </div>
-              <div className='shrink-0'>
-                {isRunning ? (
-                  <button
-                    onClick={pause}
-                    className='h-[clamp(2.25rem,10vw,2.75rem)] w-[clamp(2.25rem,10vw,2.75rem)] rounded-full bg-[#a0563f] text-white flex items-center justify-center active:bg-[#7a3f2e] md:h-11 md:w-11'
-                    aria-label='Tauko'
-                  >
-                    <Pause size={20} />
-                  </button>
-                ) : (
-                  <button
-                    onClick={handleStart}
-                    disabled={remainingMs === 0}
-                    className='h-[clamp(2.25rem,10vw,2.75rem)] w-[clamp(2.25rem,10vw,2.75rem)] rounded-full bg-[#8B2500] text-white flex items-center justify-center active:bg-[#5a1700] disabled:opacity-40 disabled:pointer-events-none md:h-11 md:w-11'
-                    aria-label='Aloita'
-                  >
-                    <Play size={20} />
-                  </button>
-                )}
-              </div>
-            </div>
-
-            {/* Sound row — olive bg distinguishes it from the timer-controls row above. */}
-            <div className='-mx-4 mt-2 bg-[#5a6b3d] px-2 py-2 md:mx-0 md:rounded-lg md:px-3'>
-              <div className='flex items-center gap-1.5 md:gap-2'>
-                <VolumeSlider
-                  value={volume}
-                  onChange={handleVolumeChange}
-                  className='flex-1 min-w-[80px] max-w-[160px]'
-                />
-                <label className='sr-only' htmlFor='soittohetki-sample'>
-                  Näyte
-                </label>
-                <select
-                  id='soittohetki-sample'
-                  value={sampleId}
-                  onChange={(e) => setSampleId(e.target.value)}
-                  className='h-9 shrink-0 rounded bg-[#fffbe9] text-[#5a2d0c] text-xs font-semibold px-2 min-w-[88px] max-w-[120px] focus:outline focus:outline-2 focus:outline-[#fffbe9]'
-                >
-                  {SAMPLES.map((s) => (
-                    <option key={s.id} value={s.id}>
-                      {s.label}
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <div className='mt-2 flex items-center gap-1 overflow-x-auto md:gap-1.5'>
-                {soundOptions.map((option) => {
-                  const selected = selectedSoundId === option.id
-                  return (
-                    <button
-                      key={option.id}
-                      onClick={() => handleSoundClick(option.id)}
-                      aria-pressed={selected}
-                      aria-label={option.ariaLabel}
-                      className={`h-9 shrink-0 rounded-full border-2 px-3 text-xs font-bold transition-colors md:h-10 md:text-sm ${
-                        selected
-                          ? 'bg-[#8B2500] border-[#8B2500] text-white'
-                          : 'bg-[#fffbe9] border-[#c9a96e] text-[#5a2d0c] active:bg-[#f0dbb8]'
-                      }`}
-                    >
-                      {option.label}
-                    </button>
-                  )
-                })}
-              </div>
-            </div>
+          <div className='justify-self-end'>
+            <SoundControlsRow
+              volume={volume}
+              onVolumeChange={handleVolumeChange}
+              sampleId={sampleId}
+              onSampleChange={setSampleId}
+              soundOptions={soundOptions}
+              selectedSoundId={selectedSoundId}
+              onSoundClick={handleSoundClick}
+            />
+            <TimerControlsRow
+              durationMin={durationMin}
+              isRunning={isRunning}
+              remainingMs={remainingMs}
+              onSelectDuration={setDurationMin}
+              onStart={handleStart}
+              onPause={pause}
+            />
           </div>
         </div>
       </div>

@@ -32,14 +32,19 @@ Triggers on push to `main` or manual dispatch. Steps:
    - `*.html` → `text/html`
    - `*.css` → `text/css`
    - `*.js` → `application/javascript`
-   - `assets/*` → default (covers fonts, images, etc.)
+
+- `*.mp3` → `audio/mpeg`
+- `*.svg` → `image/svg+xml`
+- `assets/*` → default (covers fonts, images, etc.)
+
+Static files that Vite copies from `app/public/` land in `dist/` at deploy time. If a new file type is added there (for example `samples/*.mp3`), the workflow must upload that extension too or Azure will never receive the files.
 
 ## Secrets
 
-| Secret | Purpose |
-|--------|---------|
+| Secret                       | Purpose              |
+| ---------------------------- | -------------------- |
 | `AZURE_STORAGE_ACCOUNT_NAME` | Storage account name |
-| `AZURE_STORAGE_ACCOUNT_KEY` | Storage account key |
+| `AZURE_STORAGE_ACCOUNT_KEY`  | Storage account key  |
 
 No new secrets are needed beyond what was already configured.
 

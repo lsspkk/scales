@@ -20,6 +20,7 @@
 | `docs/audio-research.md` | Initial design notes for the audio engine: candidate APIs, A=442 pitch math, chord interval table, open questions |
 | `docs/audio-architecture.md` | Shipped audio engine: Web Audio voice graph, tuning, YIN pitch detector, sample manifest, how to add samples/chords |
 | `docs/audio-samples.md` | Detected pitch + confidence for each shipped sample; how to re-run the CLI detector |
+| `docs/harjoittelu-row-challenges.md` | Per-row variation roll + hide-two-notes challenge in Harjoittelu: button placement, state model, canvas dimming, marquee details |
 
 ## Project Structure
 

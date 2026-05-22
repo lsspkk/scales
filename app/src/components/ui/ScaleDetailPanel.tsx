@@ -3,10 +3,16 @@ import { MusicCanvas } from './MusicCanvas'
 
 interface ScaleDetailPanelProps {
   detail: ScaleDetail
+  /**
+   * Pitch-class strings (e.g. "F#", "Bb") to render at 10% opacity in both
+   * the scale and arpeggio canvases. Used by the hidden-note challenge from
+   * Harjoittelu (Task 26).
+   */
+  hiddenNotes?: ReadonlyArray<string>
 }
 
 /** Renders detailed practice guidance for a single scale. Used in both desktop side panel and mobile modal. */
-export function ScaleDetailPanel({ detail }: ScaleDetailPanelProps) {
+export function ScaleDetailPanel({ detail, hiddenNotes }: ScaleDetailPanelProps) {
   return (
     <div className='space-y-5'>
       {/* Nuotit (Notes) */}
@@ -16,6 +22,7 @@ export function ScaleDetailPanel({ detail }: ScaleDetailPanelProps) {
           scaleKey={detail.scaleKey}
           mode={detail.scaleMode}
           staves={1}
+          hiddenNotes={hiddenNotes}
           className='w-full aspect-[4/1] bg-[#fff3c9]'
         />
         <p className='text-xs text-[#8B4513] mt-1'>{detail.notes.join(' – ')}</p>
@@ -50,6 +57,7 @@ export function ScaleDetailPanel({ detail }: ScaleDetailPanelProps) {
         <MusicCanvas
           arpeggioNotes={detail.arpeggioNotesWithOctave}
           staves={1}
+          hiddenNotes={hiddenNotes}
           className='w-full aspect-[4/1] bg-[#fff3c9]'
         />
         <p className='text-xs text-[#8B4513] mt-1'>{detail.arpeggioNotes}</p>

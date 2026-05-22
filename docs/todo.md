@@ -171,7 +171,7 @@ The task is intentionally broad. Implementation is expected to make architecture
    - `maj7` (0, 4, 7, 11)
    - `dom7` / "normal 7" (0, 4, 7, 10)
    - `dim7` (0, 3, 6, 9)
-   No other chord types in this task. New ones added later by extending this table only.
+     No other chord types in this task. New ones added later by extending this table only.
 
 4. **Phase 3 — Hidden test page** at `/test/audio` (matches the existing `/test/...` convention in `App.tsx`; also link it from `TestMenu`). Marked in code with the standard `DEBUG / TEST ROUTE` comment. UX can be utilitarian — this is a developer/test surface, not user-facing.
    - **Sample picker** — radio/buttons to choose which of the available samples is currently "armed".
@@ -232,9 +232,9 @@ Add a `ChordSuggestion` type and a function `getScaleChords(root: string, mode: 
 
 ```ts
 type ChordSuggestion = {
-  id: string              // e.g. 'C-maj7'
-  label: string           // e.g. 'CMaj7'  (compact, button-ready)
-  rootNote: string        // e.g. 'C'      (matches musicScale.ts note strings)
+  id: string // e.g. 'C-maj7'
+  label: string // e.g. 'CMaj7'  (compact, button-ready)
+  rootNote: string // e.g. 'C'      (matches musicScale.ts note strings)
   chordTypeId: ChordTypeId // matches an entry in audio/chords.ts CHORD_TYPES
 }
 ```
@@ -302,3 +302,117 @@ From left to right on the row:
 - `app/src/screens/Soittohetki.tsx` — sound row UI + timer wiring.
 - `app/src/components/ui/VolumeSlider.tsx` (new, likely).
 - `docs/audio-architecture.md`, `docs/soittohetki.md`, `docs/ux-spec.md`.
+
+---
+
+## Task 26: Harjoittelu row variations + hidden-note challenge
+
+**Status:** done
+**Reference:** `docs/scale-variation-research.md`, `app/src/screens/Harjoittelu.tsx`, `app/src/lib/musicStave.ts`
+
+Add two small row-level challenge controls to the Harjoittelu practice list so the student can quickly make a selected scale less automatic without leaving the screen.
+
+### Goal
+
+Each practice row already shows the core assignment (scale / arpeggio). Extend that same text row with two **tiny text-sized buttons** placed after the existing scale/arpeggio text:
+
+1. a **variation roll** button that randomly selects one practice variation and shows the instruction in **Finnish** on that same row
+2. a **hide two notes** button that rolls two notes from the scale and makes them almost invisible on the canvas to create a recall challenge
+
+The controls should feel lightweight and playful, not like a second toolbar.
+
+### Variation set for v1
+
+Only these variations are in scope for this task:
+
+- `V02` dotted long-short
+- `V03` dotted short-long
+- `V05` quarter + two eighths
+- `V07` two slurred + two separate
+- `V10` staccato or martelé
+- `V14` broken thirds
+- `V16` tonic arpeggio pass
+
+Each variation needs a short, child-readable **Finnish instruction string** suitable for inline display in a narrow row.
+
+Example intent only; final wording can be adjusted during implementation:
+
+- "Pitkä-lyhyt rytmi"
+- "Lyhyt-pitkä rytmi"
+- "Neljäsosa + kaksi kahdeksasosaa"
+- "2 sidottuna, 2 erikseen"
+- "Staccato / martelé"
+- "Murretut terssit"
+- "Lisää toonika-arpeggio"
+
+### UI requirements
+
+1. **Placement**
+   - Add both controls on the same text row that currently presents the scale/arpeggio assignment in Harjoittelu.
+   - Keep them visually small — closer to inline text actions than standard icon buttons.
+   - Each button must include a small icon/symbol so the action is recognizable even before reading the text.
+
+2. **Variation button**
+   - Clicking the variation button rolls **one** item from the allowed variation set above.
+   - The rolled result is displayed as Finnish instruction text on that same row.
+   - Because the row is narrow, the result text must stay inline and use a **slow right-to-left marquee / digital-display style animation** when it overflows.
+   - The animation must be calm and readable, not flashy.
+   - Re-clicking the variation button rolls a new variation.
+
+3. **Hide-two-notes button**
+   - Clicking the button the first time rolls **two notes** from the currently shown scale.
+   - The **root note must never be one of the hidden notes**.
+   - Those two notes stay in the scale visually, but their rendered opacity on the stave/canvas is reduced to **10%**.
+   - Clicking the same button again restores the hidden notes to full visibility.
+   - Clicking it a third time rolls a **new pair** of hidden notes and applies the 10% opacity again.
+   - The cycle continues: hide pair → reveal → hide new pair → reveal ...
+
+4. **Same-row feedback**
+   - The row must remain understandable even when both features are used.
+   - The variation text and the note-hiding state should not force the row to grow into a large multi-line control block unless that is required for mobile usability.
+   - Prefer a compact inline layout first.
+
+### Behaviour and state
+
+1. **Per-row state**
+   - Variation result and hidden-note state belong to the individual practice row, not to the whole screen globally.
+   - Multiple rows may each have their own rolled variation / hidden-note challenge state.
+
+2. **Variation rolling**
+   - Use uniform random selection for v1.
+   - No difficulty weighting yet.
+   - No automatic combination of multiple variations yet.
+
+3. **Hidden-note selection**
+   - Only notes that actually appear in the rendered scale can be selected.
+   - Exclude the tonic/root from the candidate pool.
+   - If the same pitch class appears in multiple octaves, implementation should define whether hiding applies by rendered note instance or by pitch class, and keep the behavior consistent. Prefer the option that is simplest with the current stave-rendering architecture.
+
+4. **Canvas integration**
+   - The hidden-note state must flow into the existing stave/canvas rendering so the affected notes are drawn at 10% opacity.
+   - The notes should still occupy their normal positions; only visibility changes.
+
+### Implementation expectations
+
+- Add a small variation definition table in code rather than hardcoding strings inline in JSX.
+- Keep the Finnish instruction text centralized so it is easy to refine later.
+- Implement the marquee as a lightweight CSS animation that only activates when the text actually overflows its container.
+- Avoid introducing heavy animation logic or timers for the text.
+- Preserve the existing Harjoittelu row layout and tap targets as much as possible.
+
+### Out of scope
+
+- Adding the same variation system to Soittohetki
+- Combining two simultaneous rolled variations
+- Persisting rolled variations or hidden-note state between sessions
+- Audio cues, metronome, or spoken instructions
+- Advanced weighting / difficulty tags for the variation pool
+- Hiding more than two notes or making the root hideable
+
+### Files (likely)
+
+- `app/src/screens/Harjoittelu.tsx` — row UI, button actions, per-row challenge state
+- `app/src/components/ui/...` — optional tiny inline control or marquee helper component if extraction improves clarity
+- `app/src/lib/musicStave.ts` — support per-note reduced opacity in rendered output
+- `app/src/lib/...` — small variation-definition helper and/or hidden-note rolling helper if needed
+- `docs/ux-spec.md` — update row layout if the visual design changes materially

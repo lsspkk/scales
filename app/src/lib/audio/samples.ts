@@ -28,19 +28,19 @@ export const SAMPLES: readonly SampleEntry[] = [
     id: 'major-pad',
     src: '/samples/major-pad-G4.mp3',
     rootMidi: noteNameToMidi('G4'),
-    label: 'Pad-duuri (G4)',
+    label: 'Mellow Pad',
   },
   {
     id: 'major-space',
     src: '/samples/major-space-A3.mp3',
     rootMidi: noteNameToMidi('A3'),
-    label: 'Space-duuri (A3)',
+    label: 'Organic Pad',
   },
   {
     id: 'minor-space',
     src: '/samples/minor-space-F2.mp3',
     rootMidi: noteNameToMidi('F2'),
-    label: 'Space-molli (F2)',
+    label: 'Aero Space',
   },
 ] as const
 
