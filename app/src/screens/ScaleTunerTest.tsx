@@ -10,7 +10,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMusicStore } from '../stores/musicStore.ts'
 import { useMicPitch } from '../hooks/useMicPitch.ts'
+import { DEFAULT_TUNER_SETTINGS } from '../lib/audio/tuner.ts'
 import { TunerDial } from '../components/ui/TunerDial.tsx'
+import { TunerControls } from '../components/ui/TunerControls.tsx'
 import { MusicCanvas } from '../components/ui/MusicCanvas.tsx'
 import { getScale } from '../lib/musicScale.ts'
 import { assignAscendingOctaves, SCALE_START_OCTAVE, formatNoteSPN, formatNoteFi } from '../lib/noteOctave.ts'
@@ -49,10 +51,12 @@ export function ScaleTunerTest() {
   const [randomize, setRandomize] = useState(false)
   const [targetIndex, setTargetIndex] = useState(0)
   const [holdProgress, setHoldProgress] = useState(0)
+  const [sensitivity, setSensitivity] = useState(DEFAULT_TUNER_SETTINGS.sensitivity)
+  const [noiseReduction, setNoiseReduction] = useState(DEFAULT_TUNER_SETTINGS.noiseReduction)
   const [filterEnabled, setFilterEnabled] = useState(true)
   const holdStartRef = useRef<number | null>(null)
 
-  const pitch = useMicPitch({ filterEnabled })
+  const pitch = useMicPitch({ sensitivity, noiseReduction, filterEnabled })
 
   // Ascending scale notes (8 entries; last is the octave repeat of the root).
   const scaleNotes = useMemo(() => {
@@ -104,24 +108,12 @@ export function ScaleTunerTest() {
 
   return (
     <div className='flex min-h-screen flex-col items-center gap-4 bg-[#fffbe9] p-4'>
-      <div className='flex w-full max-w-[420px] items-center justify-between'>
-        <Link
-          to='/test'
-          className='flex min-h-[44px] items-center rounded-xl border-2 border-[#5a2d0c] px-3 py-2 text-sm font-bold text-[#5a2d0c]'
-        >
-          ← Testisivut
-        </Link>
-        <button
-          onClick={() => setFilterEnabled((v) => !v)}
-          aria-label={filterEnabled ? 'Suodatin päällä' : 'Suodatin pois'}
-          className={`flex min-h-[44px] items-center gap-2 rounded-xl border-2 px-3 text-sm font-bold ${
-            filterEnabled ? 'border-[#5a2d0c] bg-[#5a2d0c] text-white' : 'border-[#8B4513] text-[#8B4513]'
-          }`}
-        >
-          <span aria-hidden>🎚</span>
-          Suodatin {filterEnabled ? 'ON' : 'OFF'}
-        </button>
-      </div>
+      <Link
+        to='/test'
+        className='flex min-h-[44px] items-center self-start rounded-xl border-2 border-[#5a2d0c] px-3 py-2 text-sm font-bold text-[#5a2d0c]'
+      >
+        ← Testisivut
+      </Link>
 
       <div className='flex w-full max-w-[420px] flex-col gap-4'>
         <h1 className='text-xl font-bold text-[#5a2d0c]'>Asteikkoviritin · {scaleDisplayName(scaleKey, mode)}</h1>
@@ -212,6 +204,20 @@ export function ScaleTunerTest() {
         >
           {pitch.listening ? 'Lopeta' : 'Aloita kuuntelu'}
         </button>
+
+        <TunerControls
+          sensitivity={sensitivity}
+          noiseReduction={noiseReduction}
+          filterEnabled={filterEnabled}
+          onSensitivity={setSensitivity}
+          onNoiseReduction={setNoiseReduction}
+          onFilterToggle={() => setFilterEnabled((v) => !v)}
+          readout={
+            pitch.hz != null
+              ? `${pitch.hz.toFixed(1)} Hz · clarity ${pitch.confidence.toFixed(2)}`
+              : `RMS ${pitch.rms.toFixed(3)} / portti ${pitch.gate.toFixed(3)}`
+          }
+        />
       </div>
     </div>
   )

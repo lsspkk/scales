@@ -21,6 +21,7 @@
 | `docs/audio-architecture.md` | Shipped audio engine: Web Audio voice graph, tuning, YIN pitch detector, sample manifest, how to add samples/chords |
 | `docs/audio-samples.md` | Detected pitch + confidence for each shipped sample; how to re-run the CLI detector |
 | `docs/harjoittelu-row-challenges.md` | Per-row variation roll + hide-two-notes challenge in Harjoittelu: button placement, state model, canvas dimming, marquee details |
+| `docs/tuner-research.md` | Mobile-browser pitch-detection research: algorithm comparison (YIN/MPM/ACF2+), documented default thresholds, why the current confidence gate is wrong, auto-sensitivity, and which controls to expose on the tuner test pages |
 
 ## Project Structure
 

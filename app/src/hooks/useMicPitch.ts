@@ -1,24 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { detectPitch } from '../lib/audio/pitchDetect.ts'
-import type { PitchResult } from '../lib/audio/pitchDetect.ts'
+import { Tuner, TUNER_FFT_SIZE, DEFAULT_TUNER_SETTINGS } from '../lib/audio/tuner.ts'
+import type { TunerReading, TunerSettings } from '../lib/audio/tuner.ts'
 
 /**
- * Live microphone → pitch hook. The "mic glue" that the file-based
- * `detectPitch` was written to feed: getUserMedia → AnalyserNode → rAF loop
- * pulling the time-domain waveform → detectPitch.
- *
- * Cleanup filter (deliberately simple):
- *  - getUserMedia constraints turn OFF echoCancellation / noiseSuppression /
- *    autoGainControl — those "improve" speech but distort pitch and level.
- *  - an RMS noise gate skips quiet frames (room hiss, between notes).
- *  - a confidence gate drops YIN results that aren't a clear pitch.
- *  - cents is median-smoothed over the last few frames to kill jitter and the
- *    occasional octave-jump spike.
+ * Live microphone → pitch hook. Owns getUserMedia + the AudioContext/analyser
+ * graph and the rAF loop; all detection settings, gating and the adaptive noise
+ * floor live in the Tuner service. Settings update live via a ref (no restart).
  */
-export interface MicPitchState extends PitchResult {
-  /** True while the mic is open and analysing. */
+export interface MicPitchState extends TunerReading {
   listening: boolean
-  /** Permission / setup error message, or null. */
   error: string | null
 }
 
@@ -28,46 +18,26 @@ const SILENT: MicPitchState = {
   noteName: null,
   cents: null,
   confidence: 0,
+  rms: 0,
+  noiseFloor: 0,
+  gate: 0,
+  detected: false,
   listening: false,
   error: null,
 }
 
-export interface UseMicPitchOptions {
-  /**
-   * Drop frames below this YIN confidence. Default 0.5 — live violin through a
-   * phone mic rarely beats ~0.85, so a high gate rejects almost everything.
-   */
-  minConfidence?: number
-  /** Drop frames quieter than this RMS (the noise gate). Default 0.006. */
-  minRms?: number
-  /** Lowest pitch to consider, Hz. Default 150 (below open-G ≈ 197 Hz). */
-  minHz?: number
-  /** Highest pitch to consider, Hz. Default 2500. */
-  maxHz?: number
-  /** Frames to median-smooth cents over. Default 5. */
-  smoothing?: number
-  /**
-   * When false, bypass the cleanup filter (noise gate, confidence gate, cents
-   * smoothing) and emit raw detection. Toggleable live without restarting the
-   * mic. Default true.
-   */
-  filterEnabled?: boolean
-}
-
-export function useMicPitch(options: UseMicPitchOptions = {}) {
-  const { minConfidence = 0.5, minRms = 0.006, minHz = 150, maxHz = 2500, smoothing = 5, filterEnabled = true } =
-    options
+export function useMicPitch(settings: Partial<TunerSettings> = {}) {
+  const { sensitivity, noiseReduction, filterEnabled } = { ...DEFAULT_TUNER_SETTINGS, ...settings }
   const [state, setState] = useState<MicPitchState>(SILENT)
   const ctxRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const rafRef = useRef<number | null>(null)
-  const historyRef = useRef<number[]>([])
   const lastEmitRef = useRef(0)
-  // Read inside the rAF loop so the toggle takes effect without restarting.
-  const filterRef = useRef(filterEnabled)
+  const tunerRef = useRef<Tuner>(new Tuner())
+  const settingsRef = useRef<TunerSettings>({ sensitivity, noiseReduction, filterEnabled })
   useEffect(() => {
-    filterRef.current = filterEnabled
-  }, [filterEnabled])
+    settingsRef.current = { sensitivity, noiseReduction, filterEnabled }
+  }, [sensitivity, noiseReduction, filterEnabled])
 
   const stop = useCallback(() => {
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
@@ -76,12 +46,11 @@ export function useMicPitch(options: UseMicPitchOptions = {}) {
     streamRef.current = null
     void ctxRef.current?.close()
     ctxRef.current = null
-    historyRef.current = []
     setState(SILENT)
   }, [])
 
   const start = useCallback(async () => {
-    if (streamRef.current) return // already listening
+    if (streamRef.current) return
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
@@ -93,48 +62,20 @@ export function useMicPitch(options: UseMicPitchOptions = {}) {
 
       const source = ctx.createMediaStreamSource(stream)
       const analyser = ctx.createAnalyser()
-      analyser.fftSize = 2048
+      analyser.fftSize = TUNER_FFT_SIZE
       source.connect(analyser)
       const buf = new Float32Array(analyser.fftSize)
 
+      tunerRef.current.reset()
       setState({ ...SILENT, listening: true })
 
       const tick = () => {
         analyser.getFloatTimeDomainData(buf)
-
-        // Noise gate: RMS level of this window.
-        let sumSq = 0
-        for (let i = 0; i < buf.length; i++) sumSq += buf[i] * buf[i]
-        const rms = Math.sqrt(sumSq / buf.length)
+        const reading = tunerRef.current.process(buf, ctx.sampleRate, settingsRef.current)
         const now = performance.now()
-        const filtering = filterRef.current
-
-        if (!filtering || rms >= minRms) {
-          const result = detectPitch(buf, ctx.sampleRate, { minHz, maxHz })
-          const confident = !filtering || result.confidence >= minConfidence
-          if (result.hz !== null && result.cents !== null && confident) {
-            let cents = result.cents
-            if (filtering) {
-              const hist = historyRef.current
-              hist.push(cents)
-              while (hist.length > smoothing) hist.shift()
-              const sorted = [...hist].sort((a, b) => a - b)
-              cents = sorted[sorted.length >> 1]
-            }
-            if (now - lastEmitRef.current > 40) {
-              lastEmitRef.current = now
-              setState({ ...result, cents, listening: true, error: null })
-            }
-            rafRef.current = requestAnimationFrame(tick)
-            return
-          }
-        }
-
-        // Silence or no confident pitch: clear the note but keep listening.
-        historyRef.current = []
-        if (now - lastEmitRef.current > 120) {
+        if (now - lastEmitRef.current > 50) {
           lastEmitRef.current = now
-          setState((s) => (s.hz === null ? s : { ...SILENT, listening: true }))
+          setState({ ...reading, listening: true, error: null })
         }
         rafRef.current = requestAnimationFrame(tick)
       }
@@ -143,9 +84,8 @@ export function useMicPitch(options: UseMicPitchOptions = {}) {
       streamRef.current = null
       setState({ ...SILENT, error: err instanceof Error ? err.message : 'Mikrofonin avaaminen epäonnistui' })
     }
-  }, [minConfidence, minRms, minHz, maxHz, smoothing])
+  }, [])
 
-  // Release the mic if the component unmounts mid-listen.
   useEffect(() => () => stop(), [stop])
 
   return { ...state, start, stop }
