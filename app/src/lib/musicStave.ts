@@ -231,8 +231,9 @@ export function drawAccidental(
   y: number,
   accidental: string,
   fontSize: number,
+  color: string = '#000',
 ): void {
-  ctx.fillStyle = '#000'
+  ctx.fillStyle = color
   ctx.font = `bold ${fontSize}px serif`
   ctx.textAlign = 'center'
 
@@ -264,6 +265,7 @@ export function drawNoteAt(
   staffLineYs: number[],
   layout: StaveLayout,
   opacity: number = 1,
+  color: string = '#000',
 ): void {
   if (!isInDrawingRange(note)) {
     console.error(`Note out of range: ${formatNoteSPN(note)} (allowed G3–G6)`)
@@ -275,7 +277,8 @@ export function drawNoteAt(
   ctx.save()
   ctx.globalAlpha = opacity
 
-  ctx.fillStyle = '#000'
+  ctx.fillStyle = color
+  ctx.strokeStyle = color
   ctx.beginPath()
   ctx.ellipse(x, y, layout.noteHeadRadiusX, layout.noteHeadRadiusY, -Math.PI / 6 - 0.087, 0, 2 * Math.PI)
   ctx.fill()
@@ -296,7 +299,7 @@ export function drawNoteAt(
   drawLedgerLines(ctx, x, y, staffLineYs, layout.ledgerHalfWidth)
 
   if (note.accidental) {
-    drawAccidental(ctx, x - layout.accidentalOffsetX, y, note.accidental, layout.accidentalFontSize)
+    drawAccidental(ctx, x - layout.accidentalOffsetX, y, note.accidental, layout.accidentalFontSize, color)
   }
 
   ctx.restore()
@@ -317,6 +320,15 @@ function opacityFor(note: NoteWithOctave, hiddenNotes?: ReadonlySet<string> | nu
   return hiddenNotes.has(noteKey(note)) ? 0.1 : 1
 }
 
+function colorFor(
+  note: NoteWithOctave,
+  highlightNotes: ReadonlySet<string> | null | undefined,
+  highlightColor: string,
+): string {
+  if (highlightNotes && highlightNotes.has(noteKey(note))) return highlightColor
+  return '#000'
+}
+
 /**
  * Render a complete scale on the canvas.
  * Uses octave-aware absolute positioning so the root note lands on the same
@@ -332,6 +344,8 @@ export function renderScale(
   mode: string,
   layout: StaveLayout,
   hiddenNotes?: ReadonlySet<string> | null,
+  highlightNotes?: ReadonlySet<string> | null,
+  highlightColor: string = '#a0563f',
 ): void {
   ctx.clearRect(0, 0, layout.width, layout.height)
 
@@ -349,7 +363,7 @@ export function renderScale(
   const ascShift = notes[0]?.accidental ? layout.accidentalOffsetX : 0
   notes.forEach((note, i) => {
     const x = layout.noteStartX + ascShift + i * layout.noteSpacing
-    drawNoteAt(ctx, x, note, upperStaffLines, layout, opacityFor(note, hiddenNotes))
+    drawNoteAt(ctx, x, note, upperStaffLines, layout, opacityFor(note, hiddenNotes), colorFor(note, highlightNotes, highlightColor))
   })
 
   if (layout.staves === 2) {
@@ -357,7 +371,7 @@ export function renderScale(
     const descShift = reversed[0]?.accidental ? layout.accidentalOffsetX : 0
     reversed.forEach((note, i) => {
       const x = layout.noteStartX + descShift + i * layout.noteSpacing
-      drawNoteAt(ctx, x, note, lowerStaffLines, layout, opacityFor(note, hiddenNotes))
+      drawNoteAt(ctx, x, note, lowerStaffLines, layout, opacityFor(note, hiddenNotes), colorFor(note, highlightNotes, highlightColor))
     })
   }
 }

@@ -12,6 +12,9 @@ interface MusicCanvasProps {
    * Used by the hidden-note challenge in Harjoittelu (Task 26).
    */
   hiddenNotes?: ReadonlyArray<string>
+  /** Pitch-class strings to draw in `highlightColor` (e.g. the tuner target). */
+  highlightNotes?: ReadonlyArray<string>
+  highlightColor?: string
   className?: string
   style?: React.CSSProperties
 }
@@ -32,6 +35,8 @@ export function MusicCanvas({
   staves = 2,
   arpeggioNotes,
   hiddenNotes,
+  highlightNotes,
+  highlightColor,
   className,
   style,
 }: MusicCanvasProps) {
@@ -48,6 +53,7 @@ export function MusicCanvas({
     if (!ctx) return
 
     const hiddenSet = hiddenNotes && hiddenNotes.length > 0 ? new Set(hiddenNotes) : null
+    const highlightSet = highlightNotes && highlightNotes.length > 0 ? new Set(highlightNotes) : null
 
     const draw = () => {
       const rect = wrapper.getBoundingClientRect()
@@ -66,7 +72,7 @@ export function MusicCanvas({
       if (arpeggioNotes) {
         renderArpeggio(ctx, arpeggioNotes, layout, hiddenSet)
       } else if (scaleKey && mode) {
-        renderScale(ctx, scaleKey, mode, layout, hiddenSet)
+        renderScale(ctx, scaleKey, mode, layout, hiddenSet, highlightSet, highlightColor)
       }
     }
 
@@ -82,7 +88,7 @@ export function MusicCanvas({
       io.disconnect()
       clearTimeout(t)
     }
-  }, [scaleKey, mode, staves, arpeggioNotes, hiddenNotes, isDesktop])
+  }, [scaleKey, mode, staves, arpeggioNotes, hiddenNotes, highlightNotes, highlightColor, isDesktop])
 
   return (
     <div ref={wrapperRef} className={className} style={style}>

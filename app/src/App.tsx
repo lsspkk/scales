@@ -26,6 +26,10 @@ const CelebrationAnimationTest = lazy(() =>
 // DEBUG / TEST ROUTE — polyphonic audio-engine test page (Task 24).
 // Reach from #/test or directly via #/test/audio.
 const AudioTest = lazy(() => import('./screens/AudioTest').then((m) => ({ default: m.AudioTest })))
+// DEBUG / TEST ROUTE — live microphone tuner. Reach from #/test or directly via #/test/tuner.
+const TunerTest = lazy(() => import('./screens/TunerTest').then((m) => ({ default: m.TunerTest })))
+// DEBUG / TEST ROUTE — scale-playing tuner game. Reach from #/test or directly via #/test/scaletuner.
+const ScaleTunerTest = lazy(() => import('./screens/ScaleTunerTest').then((m) => ({ default: m.ScaleTunerTest })))
 
 function LoadingSpinner() {
   return (
@@ -51,6 +55,8 @@ export function App() {
         <Route path='/test/animation/timer' element={<AnimationTest />} />
         <Route path='/test/animation/celebration' element={<CelebrationAnimationTest />} />
         <Route path='/test/audio' element={<AudioTest />} />
+        <Route path='/test/tuner' element={<TunerTest />} />
+        <Route path='/test/scaletuner' element={<ScaleTunerTest />} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
     </Suspense>

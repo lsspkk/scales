@@ -1,0 +1,1 @@
+import{n as e,t}from"./middleware-BWqIMzsT.js";var n=e()(t(e=>({key:`C`,mode:`ionian (Duuri)`,setKey:t=>e({key:t}),setMode:t=>e({mode:t})}),{name:`music-store`}));export{n as t};

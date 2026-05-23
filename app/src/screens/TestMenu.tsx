@@ -48,6 +48,26 @@ export function TestMenu() {
                 Sample, pohjasävel ja sointu — moniääninen taustaääni.
               </span>
             </Link>
+
+            <Link
+              to='/test/tuner'
+              className='flex min-h-11 flex-col rounded-2xl border-2 border-[#5a2d0c] bg-[#5a2d0c] px-4 py-4 text-white shadow-[0_4px_14px_rgba(90,45,12,0.2)] transition-transform active:scale-[0.99]'
+            >
+              <span className='text-base font-bold'>Viritin</span>
+              <span className='mt-1 text-sm text-[#fffbe9]'>
+                Mikrofonikuuntelu: sävelen nimi ja vireys neulamittarissa.
+              </span>
+            </Link>
+
+            <Link
+              to='/test/scaletuner'
+              className='flex min-h-11 flex-col rounded-2xl border-2 border-[#a0563f] bg-[#a0563f] px-4 py-4 text-white shadow-[0_4px_14px_rgba(160,86,63,0.2)] transition-transform active:scale-[0.99]'
+            >
+              <span className='text-base font-bold'>Asteikkoviritin</span>
+              <span className='mt-1 text-sm text-[#fffbe9]'>
+                Soita asteikon sävelet vireeseen — tarkkuus, kesto ja satunnaisarvonta.
+              </span>
+            </Link>
           </nav>
         </div>
       </div>
