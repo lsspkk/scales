@@ -33,9 +33,12 @@ const SILENT: MicPitchState = {
 }
 
 export interface UseMicPitchOptions {
-  /** Drop frames below this YIN confidence. Default 0.9. */
+  /**
+   * Drop frames below this YIN confidence. Default 0.5 — live violin through a
+   * phone mic rarely beats ~0.85, so a high gate rejects almost everything.
+   */
   minConfidence?: number
-  /** Drop frames quieter than this RMS (the noise gate). Default 0.01. */
+  /** Drop frames quieter than this RMS (the noise gate). Default 0.006. */
   minRms?: number
   /** Lowest pitch to consider, Hz. Default 150 (below open-G ≈ 197 Hz). */
   minHz?: number
@@ -43,16 +46,28 @@ export interface UseMicPitchOptions {
   maxHz?: number
   /** Frames to median-smooth cents over. Default 5. */
   smoothing?: number
+  /**
+   * When false, bypass the cleanup filter (noise gate, confidence gate, cents
+   * smoothing) and emit raw detection. Toggleable live without restarting the
+   * mic. Default true.
+   */
+  filterEnabled?: boolean
 }
 
 export function useMicPitch(options: UseMicPitchOptions = {}) {
-  const { minConfidence = 0.9, minRms = 0.01, minHz = 150, maxHz = 2500, smoothing = 5 } = options
+  const { minConfidence = 0.5, minRms = 0.006, minHz = 150, maxHz = 2500, smoothing = 5, filterEnabled = true } =
+    options
   const [state, setState] = useState<MicPitchState>(SILENT)
   const ctxRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const rafRef = useRef<number | null>(null)
   const historyRef = useRef<number[]>([])
   const lastEmitRef = useRef(0)
+  // Read inside the rAF loop so the toggle takes effect without restarting.
+  const filterRef = useRef(filterEnabled)
+  useEffect(() => {
+    filterRef.current = filterEnabled
+  }, [filterEnabled])
 
   const stop = useCallback(() => {
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
@@ -92,15 +107,20 @@ export function useMicPitch(options: UseMicPitchOptions = {}) {
         for (let i = 0; i < buf.length; i++) sumSq += buf[i] * buf[i]
         const rms = Math.sqrt(sumSq / buf.length)
         const now = performance.now()
+        const filtering = filterRef.current
 
-        if (rms >= minRms) {
+        if (!filtering || rms >= minRms) {
           const result = detectPitch(buf, ctx.sampleRate, { minHz, maxHz })
-          if (result.hz !== null && result.cents !== null && result.confidence >= minConfidence) {
-            const hist = historyRef.current
-            hist.push(result.cents)
-            while (hist.length > smoothing) hist.shift()
-            const sorted = [...hist].sort((a, b) => a - b)
-            const cents = sorted[sorted.length >> 1]
+          const confident = !filtering || result.confidence >= minConfidence
+          if (result.hz !== null && result.cents !== null && confident) {
+            let cents = result.cents
+            if (filtering) {
+              const hist = historyRef.current
+              hist.push(cents)
+              while (hist.length > smoothing) hist.shift()
+              const sorted = [...hist].sort((a, b) => a - b)
+              cents = sorted[sorted.length >> 1]
+            }
             if (now - lastEmitRef.current > 40) {
               lastEmitRef.current = now
               setState({ ...result, cents, listening: true, error: null })

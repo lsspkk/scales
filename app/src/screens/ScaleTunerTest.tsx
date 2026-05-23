@@ -33,6 +33,13 @@ function pitchClassOf(spn: string): number | null {
   }
 }
 
+/** Readable scale name, e.g. "C-duuri" / "D-dorian". */
+function scaleDisplayName(key: string, mode: string): string {
+  const paren = mode.match(/\(([^)]+)\)/)
+  const name = (paren ? paren[1] : mode.split(' ')[0]).toLowerCase()
+  return `${key}-${name}`
+}
+
 export function ScaleTunerTest() {
   const scaleKey = useMusicStore((s) => s.key)
   const mode = useMusicStore((s) => s.mode)
@@ -42,9 +49,10 @@ export function ScaleTunerTest() {
   const [randomize, setRandomize] = useState(false)
   const [targetIndex, setTargetIndex] = useState(0)
   const [holdProgress, setHoldProgress] = useState(0)
+  const [filterEnabled, setFilterEnabled] = useState(true)
   const holdStartRef = useRef<number | null>(null)
 
-  const pitch = useMicPitch()
+  const pitch = useMicPitch({ filterEnabled })
 
   // Ascending scale notes (8 entries; last is the octave repeat of the root).
   const scaleNotes = useMemo(() => {
@@ -96,17 +104,27 @@ export function ScaleTunerTest() {
 
   return (
     <div className='flex min-h-screen flex-col items-center gap-4 bg-[#fffbe9] p-4'>
-      <Link
-        to='/test'
-        className='flex min-h-[44px] items-center self-start rounded-xl border-2 border-[#5a2d0c] px-3 py-2 text-sm font-bold text-[#5a2d0c]'
-      >
-        ← Testisivut
-      </Link>
+      <div className='flex w-full max-w-[420px] items-center justify-between'>
+        <Link
+          to='/test'
+          className='flex min-h-[44px] items-center rounded-xl border-2 border-[#5a2d0c] px-3 py-2 text-sm font-bold text-[#5a2d0c]'
+        >
+          ← Testisivut
+        </Link>
+        <button
+          onClick={() => setFilterEnabled((v) => !v)}
+          aria-label={filterEnabled ? 'Suodatin päällä' : 'Suodatin pois'}
+          className={`flex min-h-[44px] items-center gap-2 rounded-xl border-2 px-3 text-sm font-bold ${
+            filterEnabled ? 'border-[#5a2d0c] bg-[#5a2d0c] text-white' : 'border-[#8B4513] text-[#8B4513]'
+          }`}
+        >
+          <span aria-hidden>🎚</span>
+          Suodatin {filterEnabled ? 'ON' : 'OFF'}
+        </button>
+      </div>
 
       <div className='flex w-full max-w-[420px] flex-col gap-4'>
-        <h1 className='text-lg font-bold text-[#5a2d0c]'>
-          Asteikkoviritin · {scaleKey} {mode.split(' ')[0]}
-        </h1>
+        <h1 className='text-xl font-bold text-[#5a2d0c]'>Asteikkoviritin · {scaleDisplayName(scaleKey, mode)}</h1>
 
         <MusicCanvas
           scaleKey={scaleKey}
@@ -117,9 +135,14 @@ export function ScaleTunerTest() {
           className='w-full aspect-[2/1] rounded-xl border-2 border-[#8B4513] bg-white'
         />
 
-        <p className='text-center text-sm text-[#5a2d0c]'>
-          Soita: <span className='font-bold' style={{ color: HIGHLIGHT_COLOR }}>{formatNoteFi(target)}</span>
-        </p>
+        <div className='flex flex-col items-center'>
+          <span className='text-sm text-[#5a2d0c]'>Soita sävel</span>
+          <span className='text-4xl font-bold' style={{ color: HIGHLIGHT_COLOR }}>
+            {target.letter}
+            {target.accidental ?? ''}
+          </span>
+          <span className='text-xs text-[#8B4513]'>{formatNoteFi(target)}</span>
+        </div>
 
         <TunerDial
           noteName={pitch.noteName}

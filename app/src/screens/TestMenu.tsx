@@ -1,6 +1,72 @@
 import { Link, useNavigate } from 'react-router-dom'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
 
+type TestMenuTone = 'brown' | 'red'
+
+interface TestMenuItem {
+  to: string
+  title: string
+  description: string
+  tone: TestMenuTone
+}
+
+interface TestMenuLinkCardProps {
+  item: TestMenuItem
+}
+
+const TEST_MENU_ITEMS: TestMenuItem[] = [
+  {
+    to: '/test/animation/timer',
+    title: 'Ajastinanimaation testi',
+    description: 'Pelikanin kävely- ja lentoversiot, kesto, tauko ja uudelleenkäynnistys.',
+    tone: 'brown',
+  },
+  {
+    to: '/test/animation/celebration',
+    title: 'Valmis-animaation testi',
+    description: 'Pelikanin juhla-animaation versiot, kesto ja toisto.',
+    tone: 'red',
+  },
+  {
+    to: '/test/audio',
+    title: 'Äänimoottorin testi',
+    description: 'Sample, pohjasävel ja sointu — moniääninen taustaääni.',
+    tone: 'brown',
+  },
+  {
+    to: '/test/tuner',
+    title: 'Viritin',
+    description: 'Mikrofonikuuntelu: sävelen nimi ja vireys neulamittarissa.',
+    tone: 'brown',
+  },
+  {
+    to: '/test/scaletuner',
+    title: 'Asteikkoviritin',
+    description: 'Soita asteikon sävelet vireeseen — tarkkuus, kesto ja satunnaisarvonta.',
+    tone: 'red',
+  },
+]
+
+function getTestMenuLinkToneClasses(tone: TestMenuTone): string {
+  if (tone === 'red') {
+    return 'border-[#a0563f] bg-[#a0563f] shadow-[0_4px_14px_rgba(160,86,63,0.2)]'
+  }
+
+  return 'border-[#5a2d0c] bg-[#5a2d0c] shadow-[0_4px_14px_rgba(90,45,12,0.2)]'
+}
+
+function TestMenuLinkCard({ item }: TestMenuLinkCardProps) {
+  return (
+    <Link
+      to={item.to}
+      className={`flex flex-col rounded-2xl border-2 p-1 text-white transition-transform active:scale-[0.99] ${getTestMenuLinkToneClasses(item.tone)}`}
+    >
+      <span className='text-sm font-bold'>{item.title}</span>
+      <span className='mt-1 text-xs text-[#fffbe9]'>{item.description}</span>
+    </Link>
+  )
+}
+
 export function TestMenu() {
   const navigate = useNavigate()
 
@@ -9,65 +75,11 @@ export function TestMenu() {
       <ScreenHeader title='Testisivut' onBack={() => navigate('/')} />
 
       <div className='flex-1 overflow-y-auto px-4 py-4'>
-        <div className='mx-auto flex max-w-175 flex-col gap-4'>
-          <div className='rounded-2xl border-2 border-[#8B4513] bg-[#fffbe9] p-4 text-[#5a2d0c] shadow-[0_4px_14px_rgba(90,45,12,0.12)]'>
-            <h1 className='text-lg font-bold'>Sisäiset animaatiotestit</h1>
-            <p className='mt-2 text-sm leading-6'>Tämä valikko kokoaa sisäiset esikatselusivut yhden reitin alle.</p>
-            {/* Keep a single stable entry route for internal preview pages so only /test needs to be remembered, even if individual test routes change later. */}
-            <p className='mt-2 text-sm leading-6'>
-              Näin testisivut löytyvät aina reitistä <span className='font-bold'>/test</span>, vaikka yksittäisiä
-              testireittejä muutettaisiin myöhemmin.
-            </p>
-          </div>
-
+        <div className='mx-auto flex max-w-175 flex-col gap-2'>
           <nav aria-label='Testisivujen navigointi' className='flex flex-col gap-3'>
-            <Link
-              to='/test/animation/timer'
-              className='flex min-h-11 flex-col rounded-2xl border-2 border-[#5a2d0c] bg-[#5a2d0c] px-4 py-4 text-white shadow-[0_4px_14px_rgba(90,45,12,0.2)] transition-transform active:scale-[0.99]'
-            >
-              <span className='text-base font-bold'>Ajastinanimaation testi</span>
-              <span className='mt-1 text-sm text-[#fffbe9]'>
-                Pelikanin kävely- ja lentoversiot, kesto, tauko ja uudelleenkäynnistys.
-              </span>
-            </Link>
-
-            <Link
-              to='/test/animation/celebration'
-              className='flex min-h-11 flex-col rounded-2xl border-2 border-[#a0563f] bg-[#a0563f] px-4 py-4 text-white shadow-[0_4px_14px_rgba(160,86,63,0.2)] transition-transform active:scale-[0.99]'
-            >
-              <span className='text-base font-bold'>Valmis-animaation testi</span>
-              <span className='mt-1 text-sm text-[#fffbe9]'>Pelikanin juhla-animaation versiot, kesto ja toisto.</span>
-            </Link>
-
-            <Link
-              to='/test/audio'
-              className='flex min-h-11 flex-col rounded-2xl border-2 border-[#8B4513] bg-[#8B4513] px-4 py-4 text-white shadow-[0_4px_14px_rgba(139,69,19,0.2)] transition-transform active:scale-[0.99]'
-            >
-              <span className='text-base font-bold'>Äänimoottorin testi</span>
-              <span className='mt-1 text-sm text-[#fffbe9]'>
-                Sample, pohjasävel ja sointu — moniääninen taustaääni.
-              </span>
-            </Link>
-
-            <Link
-              to='/test/tuner'
-              className='flex min-h-11 flex-col rounded-2xl border-2 border-[#5a2d0c] bg-[#5a2d0c] px-4 py-4 text-white shadow-[0_4px_14px_rgba(90,45,12,0.2)] transition-transform active:scale-[0.99]'
-            >
-              <span className='text-base font-bold'>Viritin</span>
-              <span className='mt-1 text-sm text-[#fffbe9]'>
-                Mikrofonikuuntelu: sävelen nimi ja vireys neulamittarissa.
-              </span>
-            </Link>
-
-            <Link
-              to='/test/scaletuner'
-              className='flex min-h-11 flex-col rounded-2xl border-2 border-[#a0563f] bg-[#a0563f] px-4 py-4 text-white shadow-[0_4px_14px_rgba(160,86,63,0.2)] transition-transform active:scale-[0.99]'
-            >
-              <span className='text-base font-bold'>Asteikkoviritin</span>
-              <span className='mt-1 text-sm text-[#fffbe9]'>
-                Soita asteikon sävelet vireeseen — tarkkuus, kesto ja satunnaisarvonta.
-              </span>
-            </Link>
+            {TEST_MENU_ITEMS.map((item) => (
+              <TestMenuLinkCard key={item.to} item={item} />
+            ))}
           </nav>
         </div>
       </div>
