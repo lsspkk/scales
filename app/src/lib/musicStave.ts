@@ -324,9 +324,10 @@ function colorFor(
   note: NoteWithOctave,
   highlightNotes: ReadonlySet<string> | null | undefined,
   highlightColor: string,
+  basicNoteColor?: string,
 ): string {
   if (highlightNotes && highlightNotes.has(noteKey(note))) return highlightColor
-  return '#000'
+  return basicNoteColor ?? '#000'
 }
 
 /**
@@ -346,6 +347,7 @@ export function renderScale(
   hiddenNotes?: ReadonlySet<string> | null,
   highlightNotes?: ReadonlySet<string> | null,
   highlightColor: string = '#a0563f',
+  basicNoteColor?: string,
 ): void {
   ctx.clearRect(0, 0, layout.width, layout.height)
 
@@ -363,7 +365,15 @@ export function renderScale(
   const ascShift = notes[0]?.accidental ? layout.accidentalOffsetX : 0
   notes.forEach((note, i) => {
     const x = layout.noteStartX + ascShift + i * layout.noteSpacing
-    drawNoteAt(ctx, x, note, upperStaffLines, layout, opacityFor(note, hiddenNotes), colorFor(note, highlightNotes, highlightColor))
+    drawNoteAt(
+      ctx,
+      x,
+      note,
+      upperStaffLines,
+      layout,
+      opacityFor(note, hiddenNotes),
+      colorFor(note, highlightNotes, highlightColor, basicNoteColor),
+    )
   })
 
   if (layout.staves === 2) {
@@ -371,7 +381,15 @@ export function renderScale(
     const descShift = reversed[0]?.accidental ? layout.accidentalOffsetX : 0
     reversed.forEach((note, i) => {
       const x = layout.noteStartX + descShift + i * layout.noteSpacing
-      drawNoteAt(ctx, x, note, lowerStaffLines, layout, opacityFor(note, hiddenNotes), colorFor(note, highlightNotes, highlightColor))
+      drawNoteAt(
+        ctx,
+        x,
+        note,
+        lowerStaffLines,
+        layout,
+        opacityFor(note, hiddenNotes),
+        colorFor(note, highlightNotes, highlightColor, basicNoteColor),
+      )
     })
   }
 }

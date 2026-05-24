@@ -19,8 +19,8 @@ const H = 118
 const CX = 140
 const CY = 110
 const RX = 130
-const RY = 86
-const NEEDLE_LEN = 74
+const RY = 100
+const NEEDLE_LEN = 86
 
 const VIOLET = '#7c6fd6' // in-tune sector + needle accent (replaces the old green)
 const TICK_CENTS = [-50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50]
@@ -64,7 +64,7 @@ export function TunerDial({ noteName, cents, accuracyCents = 20, inTune = false 
     <div className='flex flex-col items-center'>
       <svg viewBox={`0 0 ${W} ${H}`} className='h-[110px] w-[260px]' role='img' aria-label='Viritysmittari'>
         {/* in-tune sector (violet, brighter on pitch) */}
-        <path d={sectorPath} fill={VIOLET} fillOpacity={inTune ? 0.5 : 0.25} />
+        <path d={sectorPath} fill={VIOLET} fillOpacity={inTune ? 0.8 : 0.55} />
 
         {/* arc track */}
         <path d={trackPath} fill='none' stroke='#e3d1ad' strokeWidth={10} strokeLinecap='round' />
@@ -73,8 +73,8 @@ export function TunerDial({ noteName, cents, accuracyCents = 20, inTune = false 
         {TICK_CENTS.map((c) => {
           const frac = c / MAX_CENTS
           const major = c === 0 || Math.abs(c) === MAX_CENTS
-          const outer = arcPoint(frac, 1)
-          const inner = arcPoint(frac, major ? 0.8 : 0.88)
+          const outer = arcPoint(frac, 1.02)
+          const inner = arcPoint(frac, major ? 0.92 : 0.92)
           return (
             <line
               key={c}
@@ -93,32 +93,43 @@ export function TunerDial({ noteName, cents, accuracyCents = 20, inTune = false 
         <text x={(left.x - 13).toFixed(1)} y={(left.y + 5).toFixed(1)} fontSize={15} fill='#8B4513' textAnchor='middle'>
           ♭
         </text>
-        <text x={(right.x + 13).toFixed(1)} y={(right.y + 5).toFixed(1)} fontSize={15} fill='#8B4513' textAnchor='middle'>
+        <text
+          x={(right.x + 13).toFixed(1)}
+          y={(right.y + 5).toFixed(1)}
+          fontSize={15}
+          fill='#8B4513'
+          textAnchor='middle'
+        >
           ♯
         </text>
 
         {/* needle — eased toward the smoothed cents value */}
-        <g transform={`rotate(${needleDeg.toFixed(2)} ${CX} ${CY})`} className='transition-transform duration-300 ease-out'>
+        <g
+          transform={`rotate(${needleDeg.toFixed(2)} ${CX} ${CY})`}
+          className='transition-transform duration-300 ease-out'
+        >
           <line
             x1={CX}
             y1={CY}
             x2={CX}
             y2={CY - NEEDLE_LEN}
-            stroke={inTune ? VIOLET : '#5a2d0c'}
+            stroke={inTune ? VIOLET : '#7a2d4c'}
             strokeWidth={3.5}
             strokeLinecap='round'
           />
         </g>
         {/* pivot hub */}
-        <circle cx={CX} cy={CY} r={6} fill='#5a2d0c' />
+        <circle cx={CX} cy={CY} r={8} fill='#5a2d0c' />
       </svg>
 
-      <div className='mt-1 flex flex-col items-center'>
-        <span className={`text-4xl font-bold leading-none tabular-nums ${inTune ? 'text-[#6c5fc7]' : 'text-[#5a2d0c]'}`}>
+      <div className='mt-1 flex gap-2 items-center w-30 justify-center'>
+        <span
+          className={`text-4xl w-8 font-bold leading-none tabular-nums ${inTune ? 'text-[#6c5fc7]' : 'text-[#5a2d0c]'}`}
+        >
           {noteName ?? '–'}
         </span>
-        <span className='mt-0.5 text-sm tabular-nums text-[#8B4513]'>
-          {cents == null ? 'kuuntelee…' : `${cents > 0 ? '+' : ''}${cents} ¢`}
+        <span className='mt-0.5 w-8 text-sm text-end tabular-nums text-[#8B4513]'>
+          {cents == null ? '...' : `${cents > 0 ? '+' : ''}${cents} ¢`}
         </span>
       </div>
     </div>

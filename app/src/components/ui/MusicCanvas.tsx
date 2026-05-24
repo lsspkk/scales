@@ -15,6 +15,7 @@ interface MusicCanvasProps {
   /** Pitch-class strings to draw in `highlightColor` (e.g. the tuner target). */
   highlightNotes?: ReadonlyArray<string>
   highlightColor?: string
+  basicNoteColor?: string // override default note color (e.g. to make clear difference to hightlight color)
   className?: string
   style?: React.CSSProperties
 }
@@ -37,6 +38,7 @@ export function MusicCanvas({
   hiddenNotes,
   highlightNotes,
   highlightColor,
+  basicNoteColor,
   className,
   style,
 }: MusicCanvasProps) {
@@ -75,7 +77,7 @@ export function MusicCanvas({
       if (arpeggioNotes) {
         renderArpeggio(ctx, arpeggioNotes, layout, hiddenSet)
       } else if (scaleKey && mode) {
-        renderScale(ctx, scaleKey, mode, layout, hiddenSet, highlightSet, highlightColor)
+        renderScale(ctx, scaleKey, mode, layout, hiddenSet, highlightSet, highlightColor, basicNoteColor)
       }
     }
 

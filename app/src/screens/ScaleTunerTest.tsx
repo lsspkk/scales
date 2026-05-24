@@ -18,7 +18,8 @@ import { getScale, getKeyList, getModeList } from '../lib/musicScale.ts'
 import { assignAscendingOctaves, SCALE_START_OCTAVE, formatNoteSPN, formatNoteFi } from '../lib/noteOctave.ts'
 import { noteNameToMidi } from '../lib/audio/tuning.ts'
 
-const HIGHLIGHT_COLOR = '#a0563f'
+const HIGHLIGHT_COLOR = '#a0069f'
+const BASIC_NOTE_COLOR = '#aaaaaa'
 
 const ACCURACY_OPTIONS = [
   { label: 'Helppo', cents: 35 },
@@ -168,6 +169,7 @@ export function ScaleTunerTest() {
           staves={1}
           highlightNotes={[targetKey]}
           highlightColor={HIGHLIGHT_COLOR}
+          basicNoteColor={BASIC_NOTE_COLOR}
           className='w-full aspect-[5/2] rounded-lg border-2 border-[#8B4513] bg-white'
         />
 
