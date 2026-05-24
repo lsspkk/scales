@@ -59,7 +59,7 @@ function TestMenuLinkCard({ item }: TestMenuLinkCardProps) {
   return (
     <Link
       to={item.to}
-      className={`flex flex-col rounded-2xl border-2 p-1 text-white transition-transform active:scale-[0.99] ${getTestMenuLinkToneClasses(item.tone)}`}
+      className={`flex flex-col rounded border-2 p-1 text-white transition-transform active:scale-[0.99] ${getTestMenuLinkToneClasses(item.tone)}`}
     >
       <span className='text-sm font-bold'>{item.title}</span>
       <span className='mt-1 text-xs text-[#fffbe9]'>{item.description}</span>
@@ -76,7 +76,7 @@ export function TestMenu() {
 
       <div className='flex-1 overflow-y-auto px-4 py-4'>
         <div className='mx-auto flex max-w-175 flex-col gap-2'>
-          <nav aria-label='Testisivujen navigointi' className='flex flex-col gap-3'>
+          <nav aria-label='Testisivujen navigointi' className='flex flex-col gap-1'>
             {TEST_MENU_ITEMS.map((item) => (
               <TestMenuLinkCard key={item.to} item={item} />
             ))}

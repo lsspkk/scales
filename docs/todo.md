@@ -417,3 +417,190 @@ Example intent only; final wording can be adjusted during implementation:
 - `app/src/lib/musicStave.ts` — support per-note reduced opacity in rendered output
 - `app/src/lib/...` — small variation-definition helper and/or hidden-note rolling helper if needed
 - `docs/soittohetki.md` / `docs/ux-spec.md` — update the scale-note row if the visual design changes materially
+
+---
+
+## Task 27: Adopt `pitchy` (MPM) for the live tuner + clarity-gated filtering + sensitivity control
+
+**Status:** done
+**Reference:** `docs/tuner-pitch-detection.md` (the design decision + `pitchy` audit + integration snippet), `app/src/lib/audio/tuner.ts`, `app/src/hooks/useMicPitch.ts`, `app/src/screens/TunerTest.tsx`, `app/src/screens/ScaleTunerTest.tsx`
+
+> **Rewritten** (was "Tuner filter reliability" built on the hand-rolled YIN). We decided to switch the live path to the **`pitchy`** MPM library — see `docs/tuner-pitch-detection.md`. This both fixes the "real notes rejected" problem and *removes* the work the old version planned: MPM returns a single **clarity** value, so there is no "real dip vs fallback global-minimum" flag to add — you just gate on clarity.
+
+The live tuner currently behaves badly in the two states that matter most during manual testing:
+
+- with filters **on**, real played notes are often rejected entirely (the old `minConfidence` design)
+- with filters **off**, the raw reading is useful for debugging but too unstable for real use
+
+Fix the filtered path by adopting MPM and gating on clarity, and define one clear user-facing **sensitivity** control that means something simple. (Calmer needle motion / smoothing is Task 28; shipping the real tuner screen is Task 29.)
+
+### Agreed direction
+
+1. **Switch the live detector to `pitchy` (MPM).** Clarity replaces every home-grown confidence/fallback heuristic.
+2. **Filtered path gates on clarity.** A note is surfaced only when `clarity ≥` an internal default (start ~0.9); otherwise show **no detected note** — never a weak guess.
+3. **One user-facing Sensitivity knob** = how quiet a note can be before it's accepted (the volume gate). Clarity threshold becomes an **internal default**, not a second visible concept.
+
+### Requirements
+
+1. **Adopt `pitchy` on the live path**
+   - Add the `pitchy` dependency. In `tuner.ts`, create a `PitchDetector.forFloat32Array(fftSize)` once and call `findPitch(buf, sampleRate) → [hz, clarity]` per frame (see the snippet in `docs/tuner-pitch-detection.md`).
+   - **Keep `pitchDetect.ts` (YIN) unchanged** — it stays the detector for the offline `scripts/detect-pitch.mjs` sample CLI (Task 24). Only the live tuner path moves to `pitchy`.
+   - Preserve the violin frequency bounds (clamp `hz` to ≈180–2800 Hz).
+
+2. **Clarity-gated filtered behaviour** (replaces the old real-dip/fallback machinery)
+   - Surface a note only when `clarity ≥` the internal threshold; below it, emit "no note". There is no separate fallback flag to track anymore — clarity *is* the accept/reject signal.
+   - Keep the adaptive noise-floor / volume gate for silence, tuned so sustained violin notes are not dropped.
+
+3. **Raw/debug behaviour**
+   - Keep a raw mode on the test page that shows the bare `findPitch` output (`hz` + `clarity`) regardless of the gate, so low-clarity frames can still be inspected.
+   - The debug readout must show **clarity** prominently so it's obvious whether a frame would pass the gate.
+
+4. **Controls / UI semantics**
+   - The main visible knob on the normal test view is **Sensitivity** (volume gate). Map it to `pitchy`'s built-in `minVolumeDecibels` and/or the existing adaptive RMS floor.
+   - A **clarity-threshold** slider may stay on the test page for finding the default empirically, but it is not the primary user-facing concept.
+   - Build the controls from reusable UI pieces + state shapes that can later move into the real tuner settings menu (Task 29), not throwaway debug wiring.
+
+5. **Validation**
+   - **Manual (required):** with filtering on, sustained violin notes are detected across a practical loudness range; weak/noisy frames produce no stable false note name.
+   - **Cheap offline aid (optional, reuses existing infra — not a new test harness):** add a `pitchy` path/flag to `scripts/detect-pitch.mjs` and run it on 2–3 reference violin notes (recorded, or open-string / scale recordings from Wikimedia Commons) to confirm the algorithm returns the right note + high clarity *without the mic*. This shortens the slow manual loop for the algorithm itself; the mic/UI path still needs manual testing.
+
+### Out of scope
+
+- Detector-side smoothing / hysteresis / calmer needle — **Task 28**.
+- Production tuner screen + persisted preset/custom settings — **Task 29**.
+- Off-main-thread (AudioWorklet / Web Worker) detection — see `docs/tuner-web-workers.md` (verdict: not needed for this workload).
+- A full automated audio test harness (the optional CLI check above is deliberately lightweight).
+
+### Files (likely)
+
+- `app/package.json` — add `pitchy` dependency
+- `app/src/lib/audio/tuner.ts` — `pitchy` detector + clarity gate + sensitivity semantics
+- `app/src/hooks/useMicPitch.ts` — preserve live setting updates; pass `fftSize` through
+- `app/src/components/ui/TunerControls.tsx` — Sensitivity-primary controls + clarity readout
+- `app/src/screens/TunerTest.tsx`, `app/src/screens/ScaleTunerTest.tsx` — test-page wiring
+- `app/src/lib/audio/pitchDetect.ts` — **unchanged** (offline CLI keeps using it)
+- `scripts/detect-pitch.mjs` — optional `pitchy` path for offline sample checks
+
+---
+
+## Task 28: Tuner stability — slower detector output with reasonable defaults + test-screen tuning controls
+
+**Status:** done
+**Blocked by:** Task 27
+**Reference:** `docs/tuner-pitch-detection.md`, `app/src/lib/audio/tuner.ts`, `app/src/hooks/useMicPitch.ts`, `app/src/components/ui/TunerDial.tsx`, `app/src/screens/TunerTest.tsx`, `app/src/screens/ScaleTunerTest.tsx`
+
+> **Unaffected by the `pitchy` switch.** Smoothing / hysteresis is algorithm-agnostic — it sits on top of `pitchy`'s per-frame `[hz, clarity]` output (Task 27) exactly as it would on YIN. This task stays as planned.
+
+After filter reliability is fixed, the next tuner problem is stability: the detected frequency and needle move too fast to be useful for a human player. The goal is **not** merely a visually slower needle — the **detector output itself** should become calmer and easier to understand.
+
+### Product direction
+
+1. **Reasonable default behaviour**
+   - The normal tuner path should ship with sensible defaults that feel calm without requiring manual adjustment.
+   - A player opening the tuner should not need to understand multiple technical knobs before the display becomes usable.
+
+2. **Detection-side smoothing, not only animation smoothing**
+   - Slow down and stabilise the detected note / cents output in the tuning logic itself.
+   - Purely visual easing is not enough for this task; the reported reading should also become less jumpy.
+
+3. **Test-screen experimentation controls**
+   - The hidden tuner test screens should expose one or more controls so smoothing behaviour can be tuned empirically.
+    - Start with **two sliders** on the test screens:
+       - smoothing amount
+       - note-confirm delay / hysteresis
+    - More advanced controls can be added later only if these two are not enough.
+   - The production-facing concept should remain simple even if the test page exposes more detail.
+   - Prefer reusable controls/components and state shapes that can later be moved into a real tuner configuration menu.
+
+### Requirements
+
+1. **Smoothing / hysteresis in the tuner layer**
+   - Add detector-side stability logic such as one or more of:
+     - median / moving-average smoothing over recent cents readings
+     - note-confirm hysteresis (require N similar frames before committing a note label)
+     - hold / decay behaviour so a stable note does not flicker away instantly between adjacent frames
+   - Keep the implementation understandable; avoid an overcomplicated state machine unless it is clearly justified.
+
+2. **Reasonable defaults**
+   - Choose default smoothing values that work well for sustained violin notes on the current test pages.
+   - Defaults should favour readability over maximum instantaneous responsiveness.
+
+3. **Test-page controls**
+   - Add tuning controls on the test screens for experimenting with stability.
+   - First implementation: expose **two** experimental controls — one for smoothing amount and one for note-confirm delay / hysteresis.
+   - The readout should make it possible to tell whether the calmer behaviour comes from actual detector smoothing rather than only CSS animation.
+
+4. **Future settings persistence path**
+   - The stability settings explored on the test screens should be designed so they can later become user-configurable settings in the real app.
+   - Plan for those future tuner preferences to be saved in local storage, so a user can keep their own preferred tuner behaviour.
+   - The future tuner settings UI should support **preset buttons plus user-saved custom values**, including a clear way to reset back to a preset.
+
+5. **UI alignment**
+   - Ensure the dial animation timing does not fight the detector smoothing.
+   - The visual transition should support the stabilised reading, not reintroduce nervous motion.
+
+6. **Validation**
+   - Manually verify that a sustained note produces a noticeably calmer note label, cents value, and needle motion.
+   - Confirm that normal pitch changes are still detected within a practical time for tuning.
+
+### Out of scope
+
+- Replacing the detector algorithm entirely (the `pitchy` switch is Task 27)
+- Full redesign of the tuner screen (production screen is Task 29)
+- AudioWorklet / worker offloading (not needed — see `docs/tuner-web-workers.md`)
+
+### Files (likely)
+
+- `app/src/lib/audio/tuner.ts` — smoothing / hysteresis defaults and experimental parameters
+- `app/src/hooks/useMicPitch.ts` — live update cadence if needed to match the new behaviour
+- `app/src/components/ui/TunerDial.tsx` — visual transition timing aligned with smoothed readings
+- `app/src/components/ui/TunerControls.tsx` — one or more experimental stability controls for test pages
+- `app/src/screens/TunerTest.tsx` — test-page experimentation UI and readout
+- `app/src/screens/ScaleTunerTest.tsx` — keep the second tuner test page aligned with the same controls/defaults
+- `app/src/stores/...` — future persisted tuner settings store if the configuration menu is added
+
+---
+
+## Task 29: Ship the production tuner — lock defaults, simple screen, persisted preset/custom settings
+
+**Status:** planned
+**Blocked by:** Task 27, Task 28
+**Reference:** `docs/tuner-pitch-detection.md` (the "ship a tuner with zero sliders — just start/stop and the dial" goal), `docs/tuner-web-workers.md`, `app/src/components/ui/TunerDial.tsx`, `app/src/components/ui/TunerControls.tsx`, `app/src/screens/TunerTest.tsx`, `docs/react-instructions.md` (Zustand + localStorage persist), `docs/ux-spec.md`
+
+Tasks 27–28 find good detection + stability defaults on the **hidden test pages**. This task turns that into the actual user-facing tuner — the **"fast, easy to use"** half of the goal: calm, zero-config by default, with an optional settings menu that remembers each player's preferences. Both earlier tasks explicitly deferred this (production UI + settings persistence were out of scope), so it needs its own task.
+
+### Product direction
+
+- Opening the tuner just works: **no sliders**, start/stop + the dial + a note/cents readout.
+- The detection + smoothing knobs from Tasks 27–28 are baked in as defaults; tweaking them is an *optional* menu, not the default surface.
+- Per-player preferences survive reloads.
+
+### Requirements
+
+1. **Lock the empirical defaults.** Bake the values chosen on the test pages (clarity threshold, sensitivity / volume gate, window size, smoothing amount, note-confirm hysteresis) into the default tuner settings so the default experience needs no adjustment.
+
+2. **Production tuner screen.** A real (non-`/test`) route showing only: start/stop, the `TunerDial`, and the note + cents readout. Mobile-first inside the centred ~390 px viewport; fine on desktop. No debug controls visible by default. Reuse `TunerDial` / `TunerControls` rather than rebuilding.
+
+3. **Optional settings menu** (behind a gear / "Asetukset" control): **resettable presets + user-saved custom values**, with a clear "reset to preset" action. This is the architecture Tasks 27–28 kept deferring — build it here, reusing the control/state shapes they prepared.
+
+4. **Persistence.** Save the player's tuner preferences in local storage via a Zustand `persist` store (follow `docs/react-instructions.md` and the existing `stores/` pattern — e.g. `tunerStore.ts`).
+
+5. **Entry point.** Decide where the tuner is reached from (Home card and/or Harjoittelu) and wire it into the router + `DesktopNavBar` as appropriate. The hidden `/test/...` pages stay for future tuning work.
+
+6. **Validation.** Manual: default tuner is calm and accurate on sustained violin notes with zero configuration; a changed preset/custom value persists across reload; "reset to preset" restores defaults.
+
+### Out of scope
+
+- Algorithm changes (Task 27) and smoothing logic (Task 28) — this task only *locks and exposes* them.
+- AudioWorklet / Web Worker offloading — not needed (`docs/tuner-web-workers.md`).
+- A full automated audio test harness.
+
+### Files (likely)
+
+- `app/src/screens/Tuner.tsx` (new) — production tuner screen
+- `app/src/stores/tunerStore.ts` (new) — persisted settings (presets + custom + reset)
+- `app/src/components/ui/TunerDial.tsx`, `app/src/components/ui/TunerControls.tsx` — reuse / refine for production
+- `app/src/App.tsx` — register the production route
+- Home / Harjoittelu screen + `app/src/components/ui/DesktopNavBar.tsx` — entry point
+- `docs/ux-spec.md`, `docs/ui-components.md` — document the tuner screen + settings menu
+- `CLAUDE.md` — reference entry if a dedicated tuner doc is added

@@ -21,6 +21,7 @@ Unprioritised list of future ideas for the app. Just a bucket — no specs, no o
 - 8va clef so high notes are easy to read
 - Metronome with audio samples in various time signatures
 - Chord progression backgrounds for practice
+- Listening game (Pelikaanin aarteet), see `listening-game.md`: 1. basic necklace game — 2. multiple jewellery tiers — 3. bronze/silver/gold note-help versions
 
 
 # Abandoned ideas

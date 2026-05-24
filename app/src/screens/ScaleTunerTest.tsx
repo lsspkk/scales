@@ -14,7 +14,7 @@ import { DEFAULT_TUNER_SETTINGS } from '../lib/audio/tuner.ts'
 import { TunerDial } from '../components/ui/TunerDial.tsx'
 import { TunerControls } from '../components/ui/TunerControls.tsx'
 import { MusicCanvas } from '../components/ui/MusicCanvas.tsx'
-import { getScale } from '../lib/musicScale.ts'
+import { getScale, getKeyList, getModeList } from '../lib/musicScale.ts'
 import { assignAscendingOctaves, SCALE_START_OCTAVE, formatNoteSPN, formatNoteFi } from '../lib/noteOctave.ts'
 import { noteNameToMidi } from '../lib/audio/tuning.ts'
 
@@ -45,6 +45,8 @@ function scaleDisplayName(key: string, mode: string): string {
 export function ScaleTunerTest() {
   const scaleKey = useMusicStore((s) => s.key)
   const mode = useMusicStore((s) => s.mode)
+  const setKey = useMusicStore((s) => s.setKey)
+  const setMode = useMusicStore((s) => s.setMode)
 
   const [accuracyCents, setAccuracyCents] = useState(20)
   const [holdSeconds, setHoldSeconds] = useState(0.5)
@@ -52,11 +54,13 @@ export function ScaleTunerTest() {
   const [targetIndex, setTargetIndex] = useState(0)
   const [holdProgress, setHoldProgress] = useState(0)
   const [sensitivity, setSensitivity] = useState(DEFAULT_TUNER_SETTINGS.sensitivity)
-  const [noiseReduction, setNoiseReduction] = useState(DEFAULT_TUNER_SETTINGS.noiseReduction)
+  const [clarityThreshold, setClarityThreshold] = useState(DEFAULT_TUNER_SETTINGS.clarityThreshold)
   const [filterEnabled, setFilterEnabled] = useState(true)
+  const [smoothingFrames, setSmoothingFrames] = useState(DEFAULT_TUNER_SETTINGS.smoothingFrames)
+  const [confirmFrames, setConfirmFrames] = useState(DEFAULT_TUNER_SETTINGS.confirmFrames)
   const holdStartRef = useRef<number | null>(null)
 
-  const pitch = useMicPitch({ sensitivity, noiseReduction, filterEnabled })
+  const pitch = useMicPitch({ sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames })
 
   // Ascending scale notes (8 entries; last is the octave repeat of the root).
   const scaleNotes = useMemo(() => {
@@ -87,6 +91,32 @@ export function ScaleTunerTest() {
     })
   }, [randomize, scaleNotes.length])
 
+  // Back to the first note + cleared hold timer. Called after a roll so the new
+  // scale always starts fresh.
+  const resetTarget = useCallback(() => {
+    setTargetIndex(0)
+    setHoldProgress(0)
+    holdStartRef.current = null
+  }, [])
+
+  // Roll a random root / mode (avoid repeating the current one so a roll always
+  // visibly changes the drawn scale); the store update redraws the canvas.
+  const rollRoot = useCallback(() => {
+    const keys = getKeyList()
+    let next = keys[Math.floor(Math.random() * keys.length)]
+    if (keys.length > 1 && next === scaleKey) next = keys[(keys.indexOf(next) + 1) % keys.length]
+    setKey(next)
+    resetTarget()
+  }, [scaleKey, setKey, resetTarget])
+
+  const rollScale = useCallback(() => {
+    const modes = getModeList()
+    let next = modes[Math.floor(Math.random() * modes.length)]
+    if (modes.length > 1 && next === mode) next = modes[(modes.indexOf(next) + 1) % modes.length]
+    setMode(next)
+    resetTarget()
+  }, [mode, setMode, resetTarget])
+
   // Hold timer: while the right note stays in tune, fill the progress bar;
   // when it tops out, advance to the next target. Re-runs on each mic frame.
   useEffect(() => {
@@ -106,17 +136,31 @@ export function ScaleTunerTest() {
     }
   }, [inTune, pitch.cents, pitch.midi, pitch.listening, holdSeconds, advance])
 
-  return (
-    <div className='flex min-h-screen flex-col items-center gap-4 bg-[#fffbe9] p-4'>
-      <Link
-        to='/test'
-        className='flex min-h-[44px] items-center self-start rounded-xl border-2 border-[#5a2d0c] px-3 py-2 text-sm font-bold text-[#5a2d0c]'
-      >
-        ← Testisivut
-      </Link>
+  const rollBtn =
+    'flex min-h-[30px] shrink-0 items-center gap-1 rounded-lg border-2 border-[#8B4513] px-2 text-xs font-bold text-[#5a2d0c]'
 
-      <div className='flex w-full max-w-[420px] flex-col gap-4'>
-        <h1 className='text-xl font-bold text-[#5a2d0c]'>Asteikkoviritin · {scaleDisplayName(scaleKey, mode)}</h1>
+  return (
+    <div className='flex min-h-screen flex-col items-center bg-[#fffbe9] p-2'>
+      <div className='flex w-full max-w-[420px] flex-col gap-2'>
+        {/* header: rolls + scale name + back, all on one row */}
+        <div className='flex items-center gap-1'>
+          <button onClick={rollRoot} aria-label='Arvo uusi pohjasävel' className={rollBtn}>
+            <span aria-hidden>🎲</span> Sävel
+          </button>
+          <button onClick={rollScale} aria-label='Arvo uusi asteikko' className={rollBtn}>
+            <span aria-hidden>🎲</span> Asteikko
+          </button>
+          <span className='flex-1 truncate text-center text-xs font-bold text-[#5a2d0c]'>
+            {scaleDisplayName(scaleKey, mode)}
+          </span>
+          <Link
+            to='/test'
+            aria-label='Takaisin testisivuille'
+            className='flex min-h-[30px] shrink-0 items-center rounded-lg border-2 border-[#5a2d0c] px-2 text-xs font-bold text-[#5a2d0c]'
+          >
+            ←
+          </Link>
+        </div>
 
         <MusicCanvas
           scaleKey={scaleKey}
@@ -124,54 +168,49 @@ export function ScaleTunerTest() {
           staves={1}
           highlightNotes={[targetKey]}
           highlightColor={HIGHLIGHT_COLOR}
-          className='w-full aspect-[2/1] rounded-xl border-2 border-[#8B4513] bg-white'
+          className='w-full aspect-[5/2] rounded-lg border-2 border-[#8B4513] bg-white'
         />
 
-        <div className='flex flex-col items-center'>
-          <span className='text-sm text-[#5a2d0c]'>Soita sävel</span>
-          <span className='text-4xl font-bold' style={{ color: HIGHLIGHT_COLOR }}>
+        {/* target note collapsed to one line above the dial */}
+        <p className='text-center text-xs text-[#5a2d0c]'>
+          Soita{' '}
+          <span className='text-lg font-bold text-[#a0563f]'>
             {target.letter}
             {target.accidental ?? ''}
-          </span>
-          <span className='text-xs text-[#8B4513]'>{formatNoteFi(target)}</span>
+          </span>{' '}
+          <span className='text-[10px] text-[#8B4513]'>({formatNoteFi(target)})</span>
+        </p>
+
+        <div className='flex justify-center'>
+          <TunerDial noteName={pitch.noteName} cents={pitch.cents} accuracyCents={accuracyCents} inTune={inTune} />
         </div>
 
-        <TunerDial
-          noteName={pitch.noteName}
-          cents={pitch.cents}
-          accuracyCents={accuracyCents}
-          inTune={inTune}
-        />
-
         {/* hold progress */}
-        <div className='h-3 w-full overflow-hidden rounded-full bg-[#f0dbb8]'>
+        <div className='h-2 w-full overflow-hidden rounded-full bg-[#f0dbb8]'>
           <div
             className='h-full rounded-full bg-[#86c98a] transition-[width] duration-100'
             style={{ width: `${Math.round(holdProgress * 100)}%` }}
           />
         </div>
 
-        {/* accuracy */}
-        <div className='flex flex-col gap-1'>
-          <span className='text-sm font-bold text-[#5a2d0c]'>Tarkkuus</span>
-          <div className='flex gap-2'>
-            {ACCURACY_OPTIONS.map((opt) => (
-              <button
-                key={opt.cents}
-                onClick={() => setAccuracyCents(opt.cents)}
-                className={`min-h-[44px] flex-1 rounded-lg px-2 text-sm font-bold ${
-                  accuracyCents === opt.cents ? 'bg-[#5a2d0c] text-white' : 'bg-[#f0dbb8] text-[#5a2d0c]'
-                }`}
-              >
-                {opt.label} (±{opt.cents}¢)
-              </button>
-            ))}
-          </div>
+        {/* accuracy presets */}
+        <div className='flex gap-1'>
+          {ACCURACY_OPTIONS.map((opt) => (
+            <button
+              key={opt.cents}
+              onClick={() => setAccuracyCents(opt.cents)}
+              className={`min-h-[32px] flex-1 rounded-lg px-1 text-xs font-bold ${
+                accuracyCents === opt.cents ? 'bg-[#5a2d0c] text-white' : 'bg-[#f0dbb8] text-[#5a2d0c]'
+              }`}
+            >
+              {opt.label} ±{opt.cents}¢
+            </button>
+          ))}
         </div>
 
-        {/* hold time */}
-        <div className='flex flex-col gap-1'>
-          <span className='text-sm font-bold text-[#5a2d0c]'>Kesto: {holdSeconds.toFixed(1)} s</span>
+        {/* hold time — label + slider on one row */}
+        <label className='flex items-center gap-2 text-xs font-bold text-[#5a2d0c]'>
+          <span className='shrink-0'>Kesto {holdSeconds.toFixed(1)} s</span>
           <input
             type='range'
             min={0.2}
@@ -179,26 +218,26 @@ export function ScaleTunerTest() {
             step={0.1}
             value={holdSeconds}
             onChange={(e) => setHoldSeconds(Number(e.target.value))}
-            className='h-11 w-full accent-[#a0563f]'
+            className='h-6 flex-1 accent-[#a0563f]'
           />
-        </div>
+        </label>
 
         {/* randomize */}
-        <label className='flex min-h-[44px] items-center gap-3 text-sm font-bold text-[#5a2d0c]'>
+        <label className='flex items-center gap-2 text-xs font-bold text-[#5a2d0c]'>
           <input
             type='checkbox'
             checked={randomize}
             onChange={(e) => setRandomize(e.target.checked)}
-            className='h-5 w-5 accent-[#a0563f]'
+            className='h-4 w-4 accent-[#a0563f]'
           />
           Arvo seuraava sävel satunnaisesti
         </label>
 
-        {pitch.error && <p className='text-center text-sm text-red-700'>{pitch.error}</p>}
+        {pitch.error && <p className='text-center text-xs text-red-700'>{pitch.error}</p>}
 
         <button
           onClick={() => (pitch.listening ? pitch.stop() : void pitch.start())}
-          className={`min-h-[48px] rounded-xl px-6 text-base font-bold text-white ${
+          className={`min-h-[40px] rounded-lg px-4 text-sm font-bold text-white ${
             pitch.listening ? 'bg-[#a0563f]' : 'bg-[#5a2d0c]'
           }`}
         >
@@ -207,16 +246,27 @@ export function ScaleTunerTest() {
 
         <TunerControls
           sensitivity={sensitivity}
-          noiseReduction={noiseReduction}
+          clarityThreshold={clarityThreshold}
           filterEnabled={filterEnabled}
+          smoothingFrames={smoothingFrames}
+          confirmFrames={confirmFrames}
           onSensitivity={setSensitivity}
-          onNoiseReduction={setNoiseReduction}
+          onClarityThreshold={setClarityThreshold}
           onFilterToggle={() => setFilterEnabled((v) => !v)}
-          readout={
+          onSmoothingFrames={setSmoothingFrames}
+          onConfirmFrames={setConfirmFrames}
+          readout={[
+            `clarity ${pitch.clarity.toFixed(2)}`,
             pitch.hz != null
-              ? `${pitch.hz.toFixed(1)} Hz · clarity ${pitch.confidence.toFixed(2)}`
-              : `RMS ${pitch.rms.toFixed(3)} / portti ${pitch.gate.toFixed(3)}`
-          }
+              ? `${pitch.hz.toFixed(1)} Hz`
+              : `RMS ${pitch.rms.toFixed(3)} / portti ${pitch.gate.toFixed(3)}`,
+            pitch.rawCents != null && pitch.cents != null
+              ? `raaka ${pitch.rawCents > 0 ? '+' : ''}${pitch.rawCents}¢→tasattu ${pitch.cents > 0 ? '+' : ''}${pitch.cents}¢`
+              : null,
+            pitch.held ? 'pidossa' : null,
+          ]
+            .filter(Boolean)
+            .join(' · ')}
         />
       </div>
     </div>

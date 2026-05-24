@@ -1,37 +1,69 @@
-import { detectPitch } from './pitchDetect.ts'
+import { PitchDetector } from 'pitchy'
+import { hzToMidiAndCents, midiToNoteName } from './tuning.ts'
 
 /**
- * Live-tuner service: documented detection settings + an adaptive noise floor,
- * wrapping the pure YIN detector. The browser hook (useMicPitch) owns the audio
- * graph and feeds frames here; all gating/smoothing lives in this module so the
- * defaults sit in one place. See docs/tuner-research.md.
+ * Live-tuner service. Pitch detection is the McLeod Pitch Method (MPM) via the
+ * `pitchy` library, which returns a single comparable **clarity** value per
+ * frame — that clarity is the accept/reject signal (see
+ * docs/tuner-pitch-detection.md). This module owns the gating + smoothing so
+ * the defaults sit in one place; the browser hook (useMicPitch) owns the audio
+ * graph and feeds frames here.
+ *
+ * The offline sample CLI (`scripts/detect-pitch.mjs`) keeps using the YIN
+ * detector in `pitchDetect.ts`; only this live path moved to `pitchy`.
  */
 
 export const TUNER_FFT_SIZE = 2048
-export const YIN_THRESHOLD = 0.15
 export const TUNER_MIN_HZ = 180 // just below open-G (≈197 Hz)
 export const TUNER_MAX_HZ = 2800
 
-const SMOOTHING_FRAMES = 5
+// MPM accept gate: surface a note only when clarity ≥ this. ~0.9 is pitchy's
+// "reliable" cutoff for a clean monophonic tone (docs/tuner-pitch-detection.md).
+export const DEFAULT_CLARITY_THRESHOLD = 0.9
+
+// Stability defaults (Task 28). Frame counts run at the rAF rate (~60 fps), so
+// ~8 frames ≈ 130 ms of cents smoothing and ~4 frames ≈ 65 ms to commit a new
+// note label. Chosen to feel calm on a sustained violin note without lagging a
+// real pitch change past a usable tuning latency.
+export const DEFAULT_SMOOTHING_FRAMES = 8
+export const DEFAULT_CONFIRM_FRAMES = 4
+export const SMOOTHING_FRAMES_MAX = 15
+export const CONFIRM_FRAMES_MAX = 10
+
+// Beyond `confirmFrames`, a committed note is held this many extra unclear
+// frames before it's released — stops a sustained note flickering away in the
+// gaps between clear frames (~8 frames ≈ 130 ms of decay).
+const HOLD_EXTRA_FRAMES = 8
+
 const NOISE_FLOOR_MIN = 0.001
 const NOISE_FLOOR_MAX = 0.05
 const NOISE_FLOOR_EMA = 0.05
 const GATE_MAX = 0.2
 
-/** Two simple 0..1 knobs surfaced as sliders on the test pages. */
+/**
+ * Tuner knobs. `sensitivity` is the single user-facing concept (the volume
+ * gate); `clarityThreshold` is an internal default exposed only as a secondary
+ * slider on the test pages for finding the right value empirically.
+ */
 export interface TunerSettings {
-  /** Higher = detects quieter notes (gate closer to the noise floor). */
+  /** Higher = detects quieter notes (RMS gate closer to the adaptive floor). */
   sensitivity: number
-  /** Higher = rejects noisier/less-clear detections more strictly. */
-  noiseReduction: number
+  /** Minimum MPM clarity (0..1) to accept a note. Internal default ~0.9. */
+  clarityThreshold: number
   /** When false, bypass the gates + smoothing and emit raw detection. */
   filterEnabled: boolean
+  /** Median window length over cents readings; higher = calmer needle (1 = off). */
+  smoothingFrames: number
+  /** Consecutive frames on a new note required before its label is committed; higher = steadier note (1 = instant). */
+  confirmFrames: number
 }
 
 export const DEFAULT_TUNER_SETTINGS: TunerSettings = {
   sensitivity: 0.5,
-  noiseReduction: 0.4,
+  clarityThreshold: DEFAULT_CLARITY_THRESHOLD,
   filterEnabled: true,
+  smoothingFrames: DEFAULT_SMOOTHING_FRAMES,
+  confirmFrames: DEFAULT_CONFIRM_FRAMES,
 }
 
 export interface TunerReading {
@@ -39,12 +71,17 @@ export interface TunerReading {
   midi: number | null
   noteName: string | null
   cents: number | null
-  confidence: number
+  /** Unsmoothed cents of this frame's raw detection (null when nothing detected this frame). */
+  rawCents: number | null
+  /** Raw MPM clarity in [0,1] for this frame — reported even when gated out. */
+  clarity: number
   rms: number
   noiseFloor: number
   gate: number
-  /** True when the reading passed every gate (a real, clear note). */
+  /** True when a confirmed note is being shown (includes the brief hold frames). */
   detected: boolean
+  /** True when this reading is a held/decayed note, not a fresh detection this frame. */
+  held: boolean
 }
 
 const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v))
@@ -52,10 +89,39 @@ const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v
 export class Tuner {
   private noiseFloor = 0.005
   private centsHistory: number[] = []
+  private detector: PitchDetector<Float32Array> | null = null
+  private detectorSize = 0
+
+  // Note-confirm hysteresis + hold state (Task 28). `committedMidi` is the note
+  // currently shown; a *different* note must be seen for `confirmFrames` frames
+  // before it replaces the committed one, and a committed note survives a short
+  // run of unclear frames (`holdFrames`) before being released. `lastCents` /
+  // `lastHz` are the last smoothed values, frozen and re-shown during a hold.
+  private committedMidi: number | null = null
+  private candidateMidi: number | null = null
+  private candidateCount = 0
+  private missCount = 0
+  private lastCents: number | null = null
+  private lastHz: number | null = null
 
   reset(): void {
     this.noiseFloor = 0.005
     this.centsHistory = []
+    this.committedMidi = null
+    this.candidateMidi = null
+    this.candidateCount = 0
+    this.missCount = 0
+    this.lastCents = null
+    this.lastHz = null
+  }
+
+  /** MPM detector sized to the frame length, created once and reused. */
+  private getDetector(size: number): PitchDetector<Float32Array> {
+    if (!this.detector || this.detectorSize !== size) {
+      this.detector = PitchDetector.forFloat32Array(size)
+      this.detectorSize = size
+    }
+    return this.detector
   }
 
   process(samples: Float32Array, sampleRate: number, settings: TunerSettings): TunerReading {
@@ -63,62 +129,119 @@ export class Tuner {
     for (let i = 0; i < samples.length; i++) sumSq += samples[i] * samples[i]
     const rms = Math.sqrt(sumSq / samples.length)
 
-    const result = detectPitch(samples, sampleRate, {
-      minHz: TUNER_MIN_HZ,
-      maxHz: TUNER_MAX_HZ,
-      threshold: YIN_THRESHOLD,
-    })
+    const [rawHz, clarity] = this.getDetector(samples.length).findPitch(samples, sampleRate)
+    // Clamp to the violin range; out-of-range = sub-/super-harmonic octave error.
+    const hz = rawHz >= TUNER_MIN_HZ && rawHz <= TUNER_MAX_HZ ? rawHz : null
 
-    // Raw bypass — show whatever the detector returns.
+    // Raw bypass — show whatever the detector returns, no gate/smoothing/hysteresis.
     if (!settings.filterEnabled) {
-      const detected = result.hz !== null
-      return { ...result, rms, noiseFloor: this.noiseFloor, gate: 0, detected }
+      if (hz == null) return this.noNote(clarity, rms, 0)
+      const { midi, cents } = hzToMidiAndCents(hz)
+      return { hz, midi, noteName: midiToNoteName(midi), cents, rawCents: cents, clarity, rms, noiseFloor: this.noiseFloor, gate: 0, detected: true, held: false }
     }
 
-    // sensitivity → gate as a multiple of the adaptive noise floor (6× .. 1.5×).
+    // sensitivity → RMS gate as a multiple of the adaptive noise floor (6× .. 1.5×).
     const k = 6 - settings.sensitivity * 4.5
     const gate = clamp(this.noiseFloor * k, NOISE_FLOOR_MIN, GATE_MAX)
-    // noiseReduction → required YIN confidence. >0.85 ⇒ a real CMND dip crossed
-    // the threshold (not the fallback global minimum).
-    const confidenceFloor = 0.8 + settings.noiseReduction * 0.17
-
     const loud = rms >= gate
-    const clear = result.hz !== null && result.cents !== null && result.confidence >= confidenceFloor
+    const clear = hz != null && clarity >= settings.clarityThreshold
 
-    if (!loud || !clear) {
-      // Adapt the noise floor from frames that are not a clear note. Clamped so
-      // a loud unclear sound can't drag it up to a real note's level.
-      this.noiseFloor = clamp(this.noiseFloor + (rms - this.noiseFloor) * NOISE_FLOOR_EMA, NOISE_FLOOR_MIN, NOISE_FLOOR_MAX)
-      this.centsHistory = []
-      return {
-        hz: null,
-        midi: null,
-        noteName: null,
-        cents: null,
-        confidence: result.confidence,
-        rms,
-        noiseFloor: this.noiseFloor,
-        gate,
-        detected: false,
+    if (loud && clear) {
+      const { midi, cents } = hzToMidiAndCents(hz as number)
+      return this.commit(midi, cents, hz as number, settings, clarity, rms, gate)
+    }
+
+    // Not a clear note this frame: adapt the noise floor from it (clamped so a
+    // loud unclear sound can't drag the floor up to a real note's level), then
+    // hold the last committed note briefly or report silence.
+    this.noiseFloor = clamp(this.noiseFloor + (rms - this.noiseFloor) * NOISE_FLOOR_EMA, NOISE_FLOOR_MIN, NOISE_FLOOR_MAX)
+    return this.release(settings, clarity, rms, gate)
+  }
+
+  /** Fold a clear detection into the hysteresis state and return what to show. */
+  private commit(midi: number, rawCents: number, hz: number, settings: TunerSettings, clarity: number, rms: number, gate: number): TunerReading {
+    this.missCount = 0
+    const confirmFrames = Math.max(1, Math.round(settings.confirmFrames))
+
+    if (midi === this.committedMidi) {
+      this.candidateMidi = null
+      this.candidateCount = 0
+    } else {
+      // A note other than the committed one — require N consecutive frames of it.
+      if (midi === this.candidateMidi) this.candidateCount++
+      else {
+        this.candidateMidi = midi
+        this.candidateCount = 1
+      }
+      if (this.candidateCount >= confirmFrames) {
+        this.committedMidi = midi
+        this.candidateMidi = null
+        this.candidateCount = 0
+        this.centsHistory = [] // fresh smoothing window for the new note
       }
     }
 
-    const hist = this.centsHistory
-    hist.push(result.cents as number)
-    while (hist.length > SMOOTHING_FRAMES) hist.shift()
-    const sorted = [...hist].sort((a, b) => a - b)
-    const cents = sorted[sorted.length >> 1]
-
-    return {
-      hz: result.hz,
-      midi: result.midi,
-      noteName: result.noteName,
-      cents,
-      confidence: result.confidence,
-      rms,
-      noiseFloor: this.noiseFloor,
-      gate,
-      detected: true,
+    if (this.committedMidi === null) {
+      // Still confirming the first note — show nothing yet (report raw for debug).
+      return { hz, midi: null, noteName: null, cents: null, rawCents, clarity, rms, noiseFloor: this.noiseFloor, gate, detected: false, held: false }
     }
+
+    if (midi === this.committedMidi) {
+      // Smooth cents only across frames that belong to the committed note.
+      const hist = this.centsHistory
+      hist.push(rawCents)
+      const window = Math.max(1, Math.round(settings.smoothingFrames))
+      while (hist.length > window) hist.shift()
+      const sorted = [...hist].sort((a, b) => a - b)
+      const cents = sorted[sorted.length >> 1]
+      this.lastCents = cents
+      this.lastHz = hz
+      return { hz, midi, noteName: midiToNoteName(midi), cents, rawCents, clarity, rms, noiseFloor: this.noiseFloor, gate, detected: true, held: false }
+    }
+
+    // A different note is detected but not yet confirmed — hold the committed
+    // note's last smoothed reading instead of flickering to the unconfirmed one.
+    return { hz: this.lastHz, midi: this.committedMidi, noteName: midiToNoteName(this.committedMidi), cents: this.lastCents, rawCents, clarity, rms, noiseFloor: this.noiseFloor, gate, detected: true, held: true }
   }
+
+  /** No clear note this frame — hold the committed note briefly, then release. */
+  private release(settings: TunerSettings, clarity: number, rms: number, gate: number): TunerReading {
+    // An unclear frame breaks any note we were building confidence in.
+    this.candidateMidi = null
+    this.candidateCount = 0
+
+    if (this.committedMidi !== null) {
+      this.missCount++
+      const holdFrames = Math.max(1, Math.round(settings.confirmFrames)) + HOLD_EXTRA_FRAMES
+      if (this.missCount <= holdFrames) {
+        return { hz: this.lastHz, midi: this.committedMidi, noteName: midiToNoteName(this.committedMidi), cents: this.lastCents, rawCents: null, clarity, rms, noiseFloor: this.noiseFloor, gate, detected: true, held: true }
+      }
+      // Held long enough with no signal — release the note.
+      this.committedMidi = null
+      this.lastCents = null
+      this.lastHz = null
+      this.centsHistory = []
+    }
+    return this.noNote(clarity, rms, gate)
+  }
+
+  private noNote(clarity: number, rms: number, gate: number): TunerReading {
+    return { hz: null, midi: null, noteName: null, cents: null, rawCents: null, clarity, rms, noiseFloor: this.noiseFloor, gate, detected: false, held: false }
+  }
+}
+
+/**
+ * One-shot MPM detection over a buffer. Used by the offline `--pitchy` path in
+ * `scripts/detect-pitch.mjs` to validate this exact live algorithm without a
+ * mic. Windows the middle of long files so the FFT stays cheap.
+ */
+export function detectPitchMPM(samples: Float32Array, sampleRate: number) {
+  const WINDOW = 16384
+  const size = Math.min(WINDOW, samples.length)
+  const start = Math.max(0, (samples.length - size) >> 1)
+  const buf = samples.subarray(start, start + size)
+  const [hz, clarity] = PitchDetector.forFloat32Array(buf.length).findPitch(buf, sampleRate)
+  if (!isFinite(hz) || hz <= 0) return { hz: null, clarity, midi: null, noteName: null, cents: null }
+  const { midi, cents } = hzToMidiAndCents(hz)
+  return { hz, clarity, midi, noteName: midiToNoteName(midi), cents }
 }

@@ -56,9 +56,12 @@ export function MusicCanvas({
     const highlightSet = highlightNotes && highlightNotes.length > 0 ? new Set(highlightNotes) : null
 
     const draw = () => {
-      const rect = wrapper.getBoundingClientRect()
-      const cssW = Math.max(1, Math.round(rect.width))
-      const wrapperH = Math.max(1, Math.round(rect.height))
+      // Measure the content box (clientWidth/Height), not getBoundingClientRect()
+      // which is the border-box: feeding a border-box height back into the
+      // canvas's *content* height overflows the box and makes the ResizeObserver
+      // grow the wrapper by the border width on every callback (infinite loop).
+      const cssW = Math.max(1, wrapper.clientWidth)
+      const wrapperH = Math.max(1, wrapper.clientHeight)
       const cssH = Math.max(1, Math.round(wrapperH * (!isDesktop && staves === 1 ? 0.9 : 1)))
       const dpr = window.devicePixelRatio || 1
 

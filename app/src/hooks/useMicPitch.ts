@@ -17,27 +17,32 @@ const SILENT: MicPitchState = {
   midi: null,
   noteName: null,
   cents: null,
-  confidence: 0,
+  rawCents: null,
+  clarity: 0,
   rms: 0,
   noiseFloor: 0,
   gate: 0,
   detected: false,
+  held: false,
   listening: false,
   error: null,
 }
 
 export function useMicPitch(settings: Partial<TunerSettings> = {}) {
-  const { sensitivity, noiseReduction, filterEnabled } = { ...DEFAULT_TUNER_SETTINGS, ...settings }
+  const { sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames } = {
+    ...DEFAULT_TUNER_SETTINGS,
+    ...settings,
+  }
   const [state, setState] = useState<MicPitchState>(SILENT)
   const ctxRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const rafRef = useRef<number | null>(null)
   const lastEmitRef = useRef(0)
   const tunerRef = useRef<Tuner>(new Tuner())
-  const settingsRef = useRef<TunerSettings>({ sensitivity, noiseReduction, filterEnabled })
+  const settingsRef = useRef<TunerSettings>({ sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames })
   useEffect(() => {
-    settingsRef.current = { sensitivity, noiseReduction, filterEnabled }
-  }, [sensitivity, noiseReduction, filterEnabled])
+    settingsRef.current = { sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames }
+  }, [sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames])
 
   const stop = useCallback(() => {
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current)

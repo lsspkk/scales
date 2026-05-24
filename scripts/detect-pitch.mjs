@@ -4,14 +4,19 @@
  *
  *   node scripts/detect-pitch.mjs path/to/sample.mp3
  *   node scripts/detect-pitch.mjs --json path/to/sample.mp3
+ *   node scripts/detect-pitch.mjs --pitchy path/to/sample.mp3
  *
  * Decoding is done by piping the file through system `ffmpeg` to raw
- * 32-bit float mono PCM, then the pure-TS `detectPitch` from
- * app/src/lib/audio/pitchDetect.ts is run against the resulting buffer.
+ * 32-bit float mono PCM, then a pure-TS detector is run against the buffer.
  *
- * The core detector is environment-agnostic; this CLI is the file-I/O
- * wrapper. The same `detectPitch` will later be reused by an in-app
- * tuner fed by an AnalyserNode / AudioWorklet.
+ * Two detectors are available, both environment-agnostic:
+ *   - default: YIN (`detectPitch` from app/src/lib/audio/pitchDetect.ts).
+ *   - `--pitchy`: the MPM detector used by the live tuner
+ *     (`detectPitchMPM` from app/src/lib/audio/tuner.ts). This is the cheap
+ *     offline aid for confirming the live algorithm returns the right note +
+ *     high clarity without a mic (Task 27).
+ *
+ * This CLI is just the file-I/O wrapper; the same detectors run in-browser.
  */
 
 import { spawn } from 'node:child_process'
@@ -22,23 +27,21 @@ import { dirname } from 'node:path'
 
 const __dirname = dirname(fileURLToPath(import.meta.url))
 
-async function loadDetector() {
-  // Lazy-import the TS source via tsx-style runtime. Node 22+ supports type
-  // stripping for plain .ts files when --experimental-strip-types is on.
-  // To keep things portable we transpile manually here: read the TS as text,
-  // strip the `import type` lines and run it through a minimal sucrase-less
-  // path... Actually, simpler: spawn the algorithm as JS by re-exporting it
-  // from a small JS shim. We keep ONE source of truth by translating on the
-  // fly using `--experimental-strip-types`. If that's unavailable, fall back.
-  const tsPath = resolve(__dirname, '../app/src/lib/audio/pitchDetect.ts')
+async function loadDetector(usePitchy) {
+  // Lazy-import the TS source. Node ≥ 22.6 strips types from plain .ts files
+  // when --experimental-strip-types is on (the npm `detect-pitch` script sets
+  // it). Importing the TS via its file URL keeps ONE source of truth: the same
+  // detector code that ships in the browser. For --pitchy this imports
+  // tuner.ts, whose `import 'pitchy'` resolves from app/node_modules because
+  // the module lives under app/src.
+  const rel = usePitchy ? '../app/src/lib/audio/tuner.ts' : '../app/src/lib/audio/pitchDetect.ts'
+  const tsPath = resolve(__dirname, rel)
   const tuningPath = resolve(__dirname, '../app/src/lib/audio/tuning.ts')
   if (!existsSync(tsPath) || !existsSync(tuningPath)) {
     throw new Error(`Missing TS source files at ${tsPath} / ${tuningPath}`)
   }
-  // Use Node's built-in type stripping (Node ≥ 22.6 with --experimental-strip-types).
-  const url = pathToFileURL(tsPath).href
-  const mod = await import(url)
-  return mod
+  const mod = await import(pathToFileURL(tsPath).href)
+  return usePitchy ? mod.detectPitchMPM : mod.detectPitch
 }
 
 function decodeToFloat32(filePath) {
@@ -65,13 +68,15 @@ function decodeToFloat32(filePath) {
 async function main() {
   const args = process.argv.slice(2)
   const wantJson = args.includes('--json')
+  const usePitchy = args.includes('--pitchy')
   const fileArgs = args.filter((a) => !a.startsWith('--'))
   if (fileArgs.length === 0) {
-    process.stderr.write('Usage: detect-pitch.mjs [--json] <file> [<file>...]\n')
+    process.stderr.write('Usage: detect-pitch.mjs [--json] [--pitchy] <file> [<file>...]\n')
     process.exit(1)
   }
 
-  const { detectPitch } = await loadDetector()
+  const detect = await loadDetector(usePitchy)
+  const metric = usePitchy ? 'clarity' : 'confidence'
 
   const results = []
   for (const file of fileArgs) {
@@ -83,16 +88,17 @@ async function main() {
     }
     try {
       const { samples, sampleRate } = await decodeToFloat32(abs)
-      const result = detectPitch(samples, sampleRate)
+      const result = detect(samples, sampleRate)
       results.push({ file, ...result })
       if (!wantJson) {
-        const { hz, midi, noteName, cents, confidence } = result
+        const { hz, midi, noteName, cents } = result
+        const score = (usePitchy ? result.clarity : result.confidence) ?? 0
         if (hz == null) {
-          process.stdout.write(`${file}: no confident pitch (confidence ${confidence.toFixed(2)})\n`)
+          process.stdout.write(`${file}: no confident pitch (${metric} ${score.toFixed(2)})\n`)
         } else {
           const sign = cents >= 0 ? '+' : ''
           process.stdout.write(
-            `${file}: ${noteName} (${hz.toFixed(2)} Hz, MIDI ${midi}, ${sign}${cents} cents) confidence ${confidence.toFixed(2)}\n`,
+            `${file}: ${noteName} (${hz.toFixed(2)} Hz, MIDI ${midi}, ${sign}${cents} cents) ${metric} ${score.toFixed(2)}\n`,
           )
         }
       }

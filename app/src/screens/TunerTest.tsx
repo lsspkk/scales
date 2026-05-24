@@ -13,17 +13,27 @@ import { TunerControls } from '../components/ui/TunerControls.tsx'
 
 const ACCURACY_CENTS = 10
 
+const fmtCents = (c: number) => `${c > 0 ? '+' : ''}${Math.round(c)}¢`
+
 export function TunerTest() {
   const [sensitivity, setSensitivity] = useState(DEFAULT_TUNER_SETTINGS.sensitivity)
-  const [noiseReduction, setNoiseReduction] = useState(DEFAULT_TUNER_SETTINGS.noiseReduction)
+  const [clarityThreshold, setClarityThreshold] = useState(DEFAULT_TUNER_SETTINGS.clarityThreshold)
   const [filterEnabled, setFilterEnabled] = useState(true)
-  const pitch = useMicPitch({ sensitivity, noiseReduction, filterEnabled })
+  const [smoothingFrames, setSmoothingFrames] = useState(DEFAULT_TUNER_SETTINGS.smoothingFrames)
+  const [confirmFrames, setConfirmFrames] = useState(DEFAULT_TUNER_SETTINGS.confirmFrames)
+  const pitch = useMicPitch({ sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames })
   const inTune = pitch.cents != null && Math.abs(pitch.cents) <= ACCURACY_CENTS
 
-  const readout =
-    pitch.hz != null
-      ? `${pitch.hz.toFixed(1)} Hz · clarity ${pitch.confidence.toFixed(2)}`
-      : `RMS ${pitch.rms.toFixed(3)} / portti ${pitch.gate.toFixed(3)}`
+  // Lead with clarity (does the frame clear the gate?), then show raw→smoothed
+  // cents so the calming is visibly the detector's, not just the dial easing.
+  const readout = [
+    `clarity ${pitch.clarity.toFixed(2)}`,
+    pitch.hz != null ? `${pitch.hz.toFixed(1)} Hz` : `RMS ${pitch.rms.toFixed(3)} / portti ${pitch.gate.toFixed(3)}`,
+    pitch.rawCents != null && pitch.cents != null ? `raaka ${fmtCents(pitch.rawCents)}→tasattu ${fmtCents(pitch.cents)}` : null,
+    pitch.held ? 'pidossa' : null,
+  ]
+    .filter(Boolean)
+    .join(' · ')
 
   return (
     <div className='flex min-h-screen flex-col items-center gap-5 bg-[#fffbe9] p-4'>
@@ -52,18 +62,22 @@ export function TunerTest() {
       <div className='w-full max-w-[420px]'>
         <TunerControls
           sensitivity={sensitivity}
-          noiseReduction={noiseReduction}
+          clarityThreshold={clarityThreshold}
           filterEnabled={filterEnabled}
+          smoothingFrames={smoothingFrames}
+          confirmFrames={confirmFrames}
           onSensitivity={setSensitivity}
-          onNoiseReduction={setNoiseReduction}
+          onClarityThreshold={setClarityThreshold}
           onFilterToggle={() => setFilterEnabled((v) => !v)}
+          onSmoothingFrames={setSmoothingFrames}
+          onConfirmFrames={setConfirmFrames}
           readout={readout}
         />
       </div>
 
       <p className='max-w-[280px] text-center text-xs text-[#8B4513]'>
-        Salli mikrofoni ja soita yksi sävel kerrallaan. Kohinaportti säätyy automaattisesti; herkkyys ja
-        kohinanvaimennus hienosäätävät sitä.
+        Salli mikrofoni ja soita yksi sävel kerrallaan. Kohinaportti säätyy automaattisesti; herkkyys päästää
+        hiljaisemmat sävelet läpi, selkeysraja karsii epävarmat tunnistukset.
       </p>
     </div>
   )
