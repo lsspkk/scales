@@ -112,7 +112,12 @@ export function TunerControls({
         </label>
       </div>
 
-      {readout && <p className='font-mono text-[10px] leading-tight text-[#8B4513]'>{readout}</p>}
+      {readout && (
+        <div className='rounded-lg border-2 border-[#e3d1ad] bg-[#fffbe9] px-2 py-1'>
+          <span className='text-[10px] font-bold text-[#7c6fd6]'>Kuulen</span>
+          <p className='font-mono text-[11px] leading-snug text-[#5a2d0c]'>{readout}</p>
+        </div>
+      )}
     </div>
   )
 }

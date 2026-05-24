@@ -13,21 +13,29 @@ import { hzToMidiAndCents, midiToNoteName } from './tuning.ts'
  * detector in `pitchDetect.ts`; only this live path moved to `pitchy`.
  */
 
-export const TUNER_FFT_SIZE = 2048
-export const TUNER_MIN_HZ = 180 // just below open-G (≈197 Hz)
+// 4096 (not 2048) so the lowest string sits across enough cycles to detect
+// reliably: viola open-C (≈131 Hz) is only ~5–6 cycles in a 2048 window but
+// ~11 in 4096. Costs a little latency, fine for tuning.
+export const TUNER_FFT_SIZE = 4096
+// Below the viola open-C (C3 ≈ 131 Hz at A=442) so it isn't clamped away, but
+// well above its ~66 Hz sub-harmonic so octave errors are still rejected.
+export const TUNER_MIN_HZ = 120
 export const TUNER_MAX_HZ = 2800
 
-// MPM accept gate: surface a note only when clarity ≥ this. ~0.9 is pitchy's
-// "reliable" cutoff for a clean monophonic tone (docs/tuner-pitch-detection.md).
-export const DEFAULT_CLARITY_THRESHOLD = 0.9
+// MPM accept gate: surface a note only when clarity ≥ this. 0.9 was too strict
+// for a violin's weaker strings (the open D barely cleared it), so the filter
+// "hardly registered anything"; 0.8 still rejects noise but lets every bowed
+// string through (docs/tuner-pitch-detection.md). It's slider-adjustable.
+export const DEFAULT_CLARITY_THRESHOLD = 0.8
 
 // Stability defaults (Task 28). Frame counts run at the rAF rate (~60 fps), so
-// ~8 frames ≈ 130 ms of cents smoothing and ~4 frames ≈ 65 ms to commit a new
-// note label. Chosen to feel calm on a sustained violin note without lagging a
+// ~12 frames ≈ 200 ms of cents smoothing and ~4 frames ≈ 65 ms to commit a new
+// note label. A longer smoothing window than before makes the needle settle
+// slowly on a held note instead of darting frame-to-frame, without lagging a
 // real pitch change past a usable tuning latency.
-export const DEFAULT_SMOOTHING_FRAMES = 8
+export const DEFAULT_SMOOTHING_FRAMES = 12
 export const DEFAULT_CONFIRM_FRAMES = 4
-export const SMOOTHING_FRAMES_MAX = 15
+export const SMOOTHING_FRAMES_MAX = 24
 export const CONFIRM_FRAMES_MAX = 10
 
 // Beyond `confirmFrames`, a committed note is held this many extra unclear
@@ -140,8 +148,9 @@ export class Tuner {
       return { hz, midi, noteName: midiToNoteName(midi), cents, rawCents: cents, clarity, rms, noiseFloor: this.noiseFloor, gate: 0, detected: true, held: false }
     }
 
-    // sensitivity → RMS gate as a multiple of the adaptive noise floor (6× .. 1.5×).
-    const k = 6 - settings.sensitivity * 4.5
+    // sensitivity → RMS gate as a multiple of the adaptive noise floor (4.5× .. 1×).
+    // Gentler than before so a quietly bowed string still clears the volume gate.
+    const k = 4.5 - settings.sensitivity * 3.5
     const gate = clamp(this.noiseFloor * k, NOISE_FLOOR_MIN, GATE_MAX)
     const loud = rms >= gate
     const clear = hz != null && clarity >= settings.clarityThreshold

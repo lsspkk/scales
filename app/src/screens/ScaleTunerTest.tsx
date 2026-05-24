@@ -188,7 +188,7 @@ export function ScaleTunerTest() {
         {/* hold progress */}
         <div className='h-2 w-full overflow-hidden rounded-full bg-[#f0dbb8]'>
           <div
-            className='h-full rounded-full bg-[#86c98a] transition-[width] duration-100'
+            className='h-full rounded-full bg-[#7c6fd6] transition-[width] duration-100'
             style={{ width: `${Math.round(holdProgress * 100)}%` }}
           />
         </div>

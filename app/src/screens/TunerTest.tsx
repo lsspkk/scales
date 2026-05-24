@@ -36,30 +36,31 @@ export function TunerTest() {
     .join(' · ')
 
   return (
-    <div className='flex min-h-screen flex-col items-center gap-5 bg-[#fffbe9] p-4'>
-      <Link
-        to='/test'
-        className='flex min-h-[44px] items-center self-start rounded-xl border-2 border-[#5a2d0c] px-3 py-2 text-sm font-bold text-[#5a2d0c]'
-      >
-        ← Testisivut
-      </Link>
+    <div className='flex min-h-screen flex-col items-center bg-[#fffbe9] p-2'>
+      <div className='flex w-full max-w-[420px] flex-col gap-2'>
+        {/* back + start/stop on one row */}
+        <div className='flex items-center gap-2'>
+          <Link
+            to='/test'
+            aria-label='Takaisin testisivuille'
+            className='flex min-h-[30px] shrink-0 items-center rounded-lg border-2 border-[#5a2d0c] px-2 text-xs font-bold text-[#5a2d0c]'
+          >
+            ←
+          </Link>
+          <button
+            onClick={() => (pitch.listening ? pitch.stop() : void pitch.start())}
+            className={`min-h-[34px] flex-1 rounded-lg text-sm font-bold text-white ${
+              pitch.listening ? 'bg-[#a0563f]' : 'bg-[#5a2d0c]'
+            }`}
+          >
+            {pitch.listening ? 'Lopeta' : 'Aloita kuuntelu'}
+          </button>
+        </div>
 
-      <h1 className='text-lg font-bold text-[#5a2d0c]'>Kromaattinen viritin</h1>
+        {pitch.error && <p className='text-center text-xs text-red-700'>{pitch.error}</p>}
 
-      <TunerDial noteName={pitch.noteName} cents={pitch.cents} accuracyCents={ACCURACY_CENTS} inTune={inTune} />
+        <TunerDial noteName={pitch.noteName} cents={pitch.cents} accuracyCents={ACCURACY_CENTS} inTune={inTune} />
 
-      {pitch.error && <p className='max-w-[280px] text-center text-sm text-red-700'>{pitch.error}</p>}
-
-      <button
-        onClick={() => (pitch.listening ? pitch.stop() : void pitch.start())}
-        className={`min-h-[48px] rounded-xl px-6 text-base font-bold text-white ${
-          pitch.listening ? 'bg-[#a0563f]' : 'bg-[#5a2d0c]'
-        }`}
-      >
-        {pitch.listening ? 'Lopeta' : 'Aloita kuuntelu'}
-      </button>
-
-      <div className='w-full max-w-[420px]'>
         <TunerControls
           sensitivity={sensitivity}
           clarityThreshold={clarityThreshold}
@@ -74,11 +75,6 @@ export function TunerTest() {
           readout={readout}
         />
       </div>
-
-      <p className='max-w-[280px] text-center text-xs text-[#8B4513]'>
-        Salli mikrofoni ja soita yksi sävel kerrallaan. Kohinaportti säätyy automaattisesti; herkkyys päästää
-        hiljaisemmat sävelet läpi, selkeysraja karsii epävarmat tunnistukset.
-      </p>
     </div>
   )
 }

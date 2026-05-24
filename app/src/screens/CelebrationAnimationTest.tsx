@@ -43,15 +43,14 @@ export function CelebrationAnimationTest() {
   const replay = () => setRunId((n) => n + 1)
 
   return (
-    <div className='min-h-screen bg-[#fffbe9] p-4 flex flex-col items-center gap-4'>
+    <div className='min-h-screen bg-[#fffbe9] p-2 flex flex-col items-center gap-3'>
       <Link
         to='/test'
-        className='flex min-h-11 items-center self-start rounded-xl border-2 border-[#5a2d0c] px-3 py-2 text-sm font-bold text-[#5a2d0c]'
+        aria-label='Takaisin testisivuille'
+        className='flex min-h-[30px] shrink-0 items-center self-start rounded-lg border-2 border-[#5a2d0c] px-2 text-xs font-bold text-[#5a2d0c]'
       >
-        ← Testisivut
+        ←
       </Link>
-
-      <h1 className='text-[#5a2d0c] text-lg font-bold'>Pelikaanin valmis-animaatio</h1>
 
       {/* Demo container — same sizing rules as Soittohetki's animation slot */}
       <div className='w-full max-w-130'>

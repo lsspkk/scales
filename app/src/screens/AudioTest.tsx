@@ -87,17 +87,16 @@ export function AudioTest() {
   }
 
   return (
-    <div className='min-h-screen bg-[#fffbe9] p-4 flex flex-col items-center gap-5'>
+    <div className='min-h-screen bg-[#fffbe9] p-2 flex flex-col items-center gap-3'>
       <Link
         to='/test'
-        className='flex min-h-[44px] items-center self-start rounded-xl border-2 border-[#5a2d0c] px-3 py-2 text-sm font-bold text-[#5a2d0c]'
+        aria-label='Takaisin testisivuille'
+        className='flex min-h-[30px] shrink-0 items-center self-start rounded-lg border-2 border-[#5a2d0c] px-2 text-xs font-bold text-[#5a2d0c]'
       >
-        ← Testisivut
+        ←
       </Link>
 
-      <div className='w-full max-w-[640px] flex flex-col gap-5'>
-        <h1 className='text-[#5a2d0c] text-lg font-bold'>Äänimoottorin testi</h1>
-
+      <div className='w-full max-w-[640px] flex flex-col gap-3'>
         <section className='flex flex-col gap-2'>
           <h2 className='text-sm font-bold text-[#5a2d0c]'>Sample</h2>
           <div className='flex flex-wrap gap-2'>

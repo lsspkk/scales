@@ -38,6 +38,10 @@ export function useMicPitch(settings: Partial<TunerSettings> = {}) {
   const streamRef = useRef<MediaStream | null>(null)
   const rafRef = useRef<number | null>(null)
   const lastEmitRef = useRef(0)
+  // Bumped on every stop()/start(); an in-flight async start() compares against
+  // it after each await and bails (releasing its stream) if it's been torn down
+  // or superseded — so unmounting mid-permission-prompt can't leave the mic on.
+  const sessionRef = useRef(0)
   const tunerRef = useRef<Tuner>(new Tuner())
   const settingsRef = useRef<TunerSettings>({ sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames })
   useEffect(() => {
@@ -45,6 +49,7 @@ export function useMicPitch(settings: Partial<TunerSettings> = {}) {
   }, [sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames])
 
   const stop = useCallback(() => {
+    sessionRef.current++ // invalidate any start() still awaiting permission/resume
     if (rafRef.current != null) cancelAnimationFrame(rafRef.current)
     rafRef.current = null
     streamRef.current?.getTracks().forEach((t) => t.stop())
@@ -56,14 +61,29 @@ export function useMicPitch(settings: Partial<TunerSettings> = {}) {
 
   const start = useCallback(async () => {
     if (streamRef.current) return
+    const session = ++sessionRef.current
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { echoCancellation: false, noiseSuppression: false, autoGainControl: false },
       })
+      // Unmounted or stopped while the permission prompt was open: don't go live,
+      // just release the mic we were just granted.
+      if (session !== sessionRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
+        return
+      }
       streamRef.current = stream
       const ctx = new AudioContext()
       ctxRef.current = ctx
       if (ctx.state === 'suspended') await ctx.resume()
+      // Torn down during resume(): tear back down what we opened and stop.
+      if (session !== sessionRef.current) {
+        stream.getTracks().forEach((t) => t.stop())
+        void ctx.close()
+        streamRef.current = null
+        ctxRef.current = null
+        return
+      }
 
       const source = ctx.createMediaStreamSource(stream)
       const analyser = ctx.createAnalyser()
@@ -92,6 +112,23 @@ export function useMicPitch(settings: Partial<TunerSettings> = {}) {
   }, [])
 
   useEffect(() => () => stop(), [stop])
+
+  // Release the mic the moment the page is backgrounded — switching apps or
+  // locking the phone fires `visibilitychange` → hidden (the page is not
+  // unmounted, so the unmount cleanup above won't run), and `pagehide` covers
+  // tab close / bfcache. Coming back requires tapping start again, which is the
+  // correct behaviour: the mic indicator must not linger while the app is away.
+  useEffect(() => {
+    const onHidden = () => {
+      if (document.visibilityState === 'hidden') stop()
+    }
+    document.addEventListener('visibilitychange', onHidden)
+    window.addEventListener('pagehide', stop)
+    return () => {
+      document.removeEventListener('visibilitychange', onHidden)
+      window.removeEventListener('pagehide', stop)
+    }
+  }, [stop])
 
   return { ...state, start, stop }
 }
