@@ -425,7 +425,7 @@ Example intent only; final wording can be adjusted during implementation:
 **Status:** done
 **Reference:** `docs/tuner-pitch-detection.md` (the design decision + `pitchy` audit + integration snippet), `app/src/lib/audio/tuner.ts`, `app/src/hooks/useMicPitch.ts`, `app/src/screens/TunerTest.tsx`, `app/src/screens/ScaleTunerTest.tsx`
 
-> **Rewritten** (was "Tuner filter reliability" built on the hand-rolled YIN). We decided to switch the live path to the **`pitchy`** MPM library — see `docs/tuner-pitch-detection.md`. This both fixes the "real notes rejected" problem and *removes* the work the old version planned: MPM returns a single **clarity** value, so there is no "real dip vs fallback global-minimum" flag to add — you just gate on clarity.
+> **Rewritten** (was "Tuner filter reliability" built on the hand-rolled YIN). We decided to switch the live path to the **`pitchy`** MPM library — see `docs/tuner-pitch-detection.md`. This both fixes the "real notes rejected" problem and _removes_ the work the old version planned: MPM returns a single **clarity** value, so there is no "real dip vs fallback global-minimum" flag to add — you just gate on clarity.
 
 The live tuner currently behaves badly in the two states that matter most during manual testing:
 
@@ -448,7 +448,7 @@ Fix the filtered path by adopting MPM and gating on clarity, and define one clea
    - Preserve the violin frequency bounds (clamp `hz` to ≈180–2800 Hz).
 
 2. **Clarity-gated filtered behaviour** (replaces the old real-dip/fallback machinery)
-   - Surface a note only when `clarity ≥` the internal threshold; below it, emit "no note". There is no separate fallback flag to track anymore — clarity *is* the accept/reject signal.
+   - Surface a note only when `clarity ≥` the internal threshold; below it, emit "no note". There is no separate fallback flag to track anymore — clarity _is_ the accept/reject signal.
    - Keep the adaptive noise-floor / volume gate for silence, tuned so sustained violin notes are not dropped.
 
 3. **Raw/debug behaviour**
@@ -462,7 +462,7 @@ Fix the filtered path by adopting MPM and gating on clarity, and define one clea
 
 5. **Validation**
    - **Manual (required):** with filtering on, sustained violin notes are detected across a practical loudness range; weak/noisy frames produce no stable false note name.
-   - **Cheap offline aid (optional, reuses existing infra — not a new test harness):** add a `pitchy` path/flag to `scripts/detect-pitch.mjs` and run it on 2–3 reference violin notes (recorded, or open-string / scale recordings from Wikimedia Commons) to confirm the algorithm returns the right note + high clarity *without the mic*. This shortens the slow manual loop for the algorithm itself; the mic/UI path still needs manual testing.
+   - **Cheap offline aid (optional, reuses existing infra — not a new test harness):** add a `pitchy` path/flag to `scripts/detect-pitch.mjs` and run it on 2–3 reference violin notes (recorded, or open-string / scale recordings from Wikimedia Commons) to confirm the algorithm returns the right note + high clarity _without the mic_. This shortens the slow manual loop for the algorithm itself; the mic/UI path still needs manual testing.
 
 ### Out of scope
 
@@ -505,10 +505,10 @@ After filter reliability is fixed, the next tuner problem is stability: the dete
 
 3. **Test-screen experimentation controls**
    - The hidden tuner test screens should expose one or more controls so smoothing behaviour can be tuned empirically.
-    - Start with **two sliders** on the test screens:
-       - smoothing amount
-       - note-confirm delay / hysteresis
-    - More advanced controls can be added later only if these two are not enough.
+   - Start with **two sliders** on the test screens:
+     - smoothing amount
+     - note-confirm delay / hysteresis
+   - More advanced controls can be added later only if these two are not enough.
    - The production-facing concept should remain simple even if the test page exposes more detail.
    - Prefer reusable controls/components and state shapes that can later be moved into a real tuner configuration menu.
 
@@ -572,7 +572,7 @@ Tasks 27–28 find good detection + stability defaults on the **hidden test page
 ### Product direction
 
 - Opening the tuner just works: **no sliders**, start/stop + the dial + a note/cents readout.
-- The detection + smoothing knobs from Tasks 27–28 are baked in as defaults; tweaking them is an *optional* menu, not the default surface.
+- The detection + smoothing knobs from Tasks 27–28 are baked in as defaults; tweaking them is an _optional_ menu, not the default surface.
 - Per-player preferences survive reloads.
 
 ### Requirements
@@ -591,7 +591,7 @@ Tasks 27–28 find good detection + stability defaults on the **hidden test page
 
 ### Out of scope
 
-- Algorithm changes (Task 27) and smoothing logic (Task 28) — this task only *locks and exposes* them.
+- Algorithm changes (Task 27) and smoothing logic (Task 28) — this task only _locks and exposes_ them.
 - AudioWorklet / Web Worker offloading — not needed (`docs/tuner-web-workers.md`).
 - A full automated audio test harness.
 
