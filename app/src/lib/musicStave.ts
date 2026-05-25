@@ -19,6 +19,8 @@ import {
 
 export { type NoteWithOctave, getAbsoluteNoteY } from './noteOctave'
 
+export type ScaleDirection = 'ascending' | 'descending'
+
 /** Configuration for staff layout and sizing. All units are CSS pixels. */
 export interface StaveLayout {
   width: number
@@ -348,6 +350,7 @@ export function renderScale(
   highlightNotes?: ReadonlySet<string> | null,
   highlightColor: string = '#a0563f',
   basicNoteColor?: string,
+  direction: ScaleDirection = 'ascending',
 ): void {
   ctx.clearRect(0, 0, layout.width, layout.height)
 
@@ -357,7 +360,8 @@ export function renderScale(
   const scale = getScale(key, mode)
   const rootLetter = key.replace(/[#b].*$/, '')
   const startOctave = SCALE_START_OCTAVE[key] ?? SCALE_START_OCTAVE[rootLetter] ?? 4
-  const notes = assignAscendingOctaves(scale, startOctave)
+  const ascendingNotes = assignAscendingOctaves(scale, startOctave)
+  const notes = layout.staves === 1 && direction === 'descending' ? [...ascendingNotes].reverse() : ascendingNotes
 
   const upperStaffLines = layout.staffLines
   const lowerStaffLines = layout.staffLines.map((y) => y + layout.staffGap)
@@ -377,7 +381,7 @@ export function renderScale(
   })
 
   if (layout.staves === 2) {
-    const reversed = [...notes].reverse()
+    const reversed = [...ascendingNotes].reverse()
     const descShift = reversed[0]?.accidental ? layout.accidentalOffsetX : 0
     reversed.forEach((note, i) => {
       const x = layout.noteStartX + descShift + i * layout.noteSpacing

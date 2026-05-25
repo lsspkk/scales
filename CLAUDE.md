@@ -23,6 +23,7 @@
 | `docs/harjoittelu-row-challenges.md` | Per-row variation roll + hide-two-notes challenge in Harjoittelu: button placement, state model, canvas dimming, marquee details |
 | `docs/tuner-pitch-detection.md` | Tuner pitch-detection design decision: adopt MPM via the `pitchy` library, library audit, concrete settings, why the old hand-rolled YIN/confidence approach was weak, test-page controls — plus the shipped Task 27 (clarity gate, sensitivity knob, `--pitchy` CLI) and Task 28 (detector-side cents smoothing + note-confirm hysteresis + hold/decay, defaults, the two test-page stability sliders) implementation notes |
 | `docs/tuner-web-workers.md` | Should tuner detection run off the main thread? Web Worker vs AudioWorklet analysis (mobile-focused); verdict + minimal AudioWorklet sketch |
+| `docs/tuner-tuning-worksheet.md` | Manual-testing worksheet for the tuner test pages (`#/test/tuner`, `#/test/scaletuner`): settings reference, scenarios, blank sweep tables to fill on a real phone + violin, and a findings table for locking defaults/ranges |
 
 ## Project Structure
 

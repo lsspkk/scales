@@ -6,6 +6,12 @@ import type { TunerReading, TunerSettings } from '../lib/audio/tuner.ts'
  * Live microphone → pitch hook. Owns getUserMedia + the AudioContext/analyser
  * graph and the rAF loop; all detection settings, gating and the adaptive noise
  * floor live in the Tuner service. Settings update live via a ref (no restart).
+ *
+ * The knobs are the `TunerSettings` fields (sensitivity, clarityThreshold,
+ * filterEnabled, smoothingFrames, confirmFrames) — each is documented on the
+ * interface in `lib/audio/tuner.ts`, which is also where their defaults and the
+ * algorithm that reads them live. Pass any subset; the rest fall back to
+ * DEFAULT_TUNER_SETTINGS.
  */
 export interface MicPitchState extends TunerReading {
   listening: boolean
@@ -29,10 +35,6 @@ const SILENT: MicPitchState = {
 }
 
 export function useMicPitch(settings: Partial<TunerSettings> = {}) {
-  const { sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames } = {
-    ...DEFAULT_TUNER_SETTINGS,
-    ...settings,
-  }
   const [state, setState] = useState<MicPitchState>(SILENT)
   const ctxRef = useRef<AudioContext | null>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -43,10 +45,13 @@ export function useMicPitch(settings: Partial<TunerSettings> = {}) {
   // or superseded — so unmounting mid-permission-prompt can't leave the mic on.
   const sessionRef = useRef(0)
   const tunerRef = useRef<Tuner>(new Tuner())
-  const settingsRef = useRef<TunerSettings>({ sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames })
+  // Mirror the latest settings into a ref the rAF loop reads, so changes apply
+  // live without restarting the mic. No deps array: re-merge after every commit
+  // regardless of whether the caller passes a stable object or a fresh literal.
+  const settingsRef = useRef<TunerSettings>({ ...DEFAULT_TUNER_SETTINGS, ...settings })
   useEffect(() => {
-    settingsRef.current = { sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames }
-  }, [sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames])
+    settingsRef.current = { ...DEFAULT_TUNER_SETTINGS, ...settings }
+  })
 
   const stop = useCallback(() => {
     sessionRef.current++ // invalidate any start() still awaiting permission/resume

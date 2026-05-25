@@ -2,6 +2,7 @@
 @import './styles/pelican.css';
 @import './styles/pelican-walking.css';
 @import './styles/pelican-flying.css';
+@import './styles/star-fly.css';
 
 /* Mobile shell: center a ~390px viewport on desktop */
 body {

@@ -161,6 +161,67 @@ sideways move, not an upgrade. There is no newer, lighter, *better* option for t
 Note ↔ Hz ↔ cents math is already correct in `tuning.ts`
 (`12·log₂(f/ref)`, `cents = 1200·log₂(f/f_nearest)`) — unchanged.
 
+### Clarity threshold by use case
+
+The accept gate (`clarityThreshold` in `TunerSettings`) is the single MPM clarity
+value a frame must clear to register as a note. Good starting ranges by signal type:
+
+| Range | Use case | Notes |
+|---|---|---|
+| **0.90–0.95** | Instrument tuning (guitar, violin, piano) | The "golden standard." Instruments produce clean, periodic waveforms, so clarity sits high. The MPM/Tartini work uses ~**0.93** as its baseline (see the caveat below). |
+| **0.80–0.88** | Singing / human voice | Vocal cords have micro-variation, vibrato and breathiness that pull clarity below a string's. Push above ~0.88 and a sustained voice can randomly drop out mid-note. |
+| **0.65–0.75** | Lenient / noisy rooms, cheap phone mics | Registers pitches through background hum, at the cost of occasionally latching onto noise as a "note." |
+
+**Accuracy caveat on the 0.93.** That number is MPM's internal **peak-pick constant
+`k`** (pick the first NSDF peak ≥ `k·nmax`), not the accept threshold — it's a
+different knob in the same neighbourhood, and `pitchy` already applies it internally
+at its default. Our `clarityThreshold` is the *downstream* accept gate on the returned
+clarity. So treat the ranges above as practical accept-gate guidance; they're sound,
+just don't conflate them with `k`.
+
+**Why this app ships 0.60, below even the lenient range** (defaults: `sensitivity
+0.9`, `clarityThreshold 0.6`)**:** the goal is that a quietly- *or* roughly-bowed
+violin on a phone mic still gets tuned. In real device testing the weak strings and
+off-centre bowing only cleared the gate near the slider's 0.5 minimum, and the
+volume gate needed near-max sensitivity, so the defaults are deliberately permissive.
+The note-confirm hysteresis (`confirmFrames`) + the 120–2800 Hz clamp do the noise
+rejection the low clarity gate gives up — random noise rarely holds the same note
+for several consecutive frames. The test-page sliders re-tune this per device; raise
+clarity / lower sensitivity if a quiet room makes the readout twitch on noise.
+
+### Smoothing vs. confirmation — two stages, not redundant (researched, settled)
+
+`smoothingFrames` ("Smoothing") and `confirmFrames` ("Confirm") look similar but
+stabilize **two different quantities**, and each fixes a defect the other can't.
+This is standard tuner practice — confirmed by external sources (below), so it does
+not need re-researching.
+
+| Knob | Stabilizes | Defect it fixes | Standard name in the literature |
+|---|---|---|---|
+| **Smoothing** (`smoothingFrames`) | the **continuous cents value** — needle position *within* a note | per-frame jitter: the needle/readout twitching ±a few cents on a steadily-held note | display / pitch-contour smoothing — "smooth the display so it doesn't flash a new value every frame"; median windows are the usual tool (e.g. the *Smart-Median* real-time pitch smoother) |
+| **Confirm** (`confirmFrames`) | the **discrete note label** — *which* note is shown | note flicker: a single bad frame flipping the note to an octave or neighbour | "sticky" pitch / hysteresis / debounce — "make the earlier pitch sticky so a single frame detecting a different candidate (e.g. an octave) is ignored" |
+
+**Why neither covers the other:** the cents-smoothing window **resets on every note
+change** (`tuner.ts`, `this.centsHistory = []` in `commit()`). So the two run *in
+sequence*: confirmation decides *which note* first, then smoothing calms the cents
+*within* that confirmed note. Smoothing therefore gives zero protection against a
+note flip (the window just resets), and confirmation does nothing for cents jitter
+(the note identity isn't changing). Proof by turning one off:
+
+- `confirmFrames = 1`, smoothing high → a stray octave-error frame instantly flips
+  the *note name*; smoothing can't catch it.
+- `smoothingFrames = 1`, confirm high → the note label is rock-steady, but the
+  *needle* stays nervous on a held note because MPM's per-frame Hz estimate has noise.
+
+**Verdict: keep both.** They are orthogonal — Confirm = stability of *which note*,
+Smoothing = stability of *how in-tune*. The only thing they share is a little added
+latency, which is why the defaults are modest.
+
+Sources confirming both as standard, separate techniques:
+- alexanderell.is, *Detecting pitch with the Web Audio API and autocorrelation* — the "sticky"/hysteresis approach for octave flips, **and** smoothing the display so it doesn't flash every frame — https://alexanderell.is/posts/tuner/
+- *Smart-Median: A New Real-Time Algorithm for Smoothing Singing Pitch Contours* (MDPI, 2022) — median-window smoothing of the continuous pitch contour in real time — https://www.mdpi.com/2076-3417/12/14/7026
+- FrequencyDetector.com — hysteresis used to keep detected pitch within a note's twelve-tone quantization range — https://frequencydetector.com/pitch-detector/
+
 ---
 
 ## Optional robustness (from 29a.ch — add only if the basics aren't enough)

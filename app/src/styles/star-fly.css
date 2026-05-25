@@ -1,0 +1,33 @@
+/* Flying celebration stars for the scale-tuner game (#/test/scaletuner).
+   Each star starts at the bottom of the viewport and rises off the top in ~1s,
+   spinning and shrinking-in then fading out near the top. */
+@keyframes star-fly-up {
+  0% {
+    transform: translateY(0) scale(0.5) rotate(0deg);
+    opacity: 0;
+  }
+  12% {
+    opacity: 1;
+  }
+  80% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-95vh) scale(1) rotate(35deg);
+    opacity: 0;
+  }
+}
+
+.star-fly {
+  position: absolute;
+  bottom: 0;
+  animation: star-fly-up 1s ease-out forwards;
+  will-change: transform, opacity;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .star-fly {
+    animation-duration: 1ms;
+    opacity: 0;
+  }
+}

@@ -8,6 +8,7 @@ import { useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useMicPitch } from '../hooks/useMicPitch.ts'
 import { DEFAULT_TUNER_SETTINGS } from '../lib/audio/tuner.ts'
+import type { TunerSettings } from '../lib/audio/tuner.ts'
 import { TunerDial } from '../components/ui/TunerDial.tsx'
 import { TunerControls } from '../components/ui/TunerControls.tsx'
 
@@ -16,12 +17,8 @@ const ACCURACY_CENTS = 10
 const fmtCents = (c: number) => `${c > 0 ? '+' : ''}${Math.round(c)}¢`
 
 export function TunerTest() {
-  const [sensitivity, setSensitivity] = useState(DEFAULT_TUNER_SETTINGS.sensitivity)
-  const [clarityThreshold, setClarityThreshold] = useState(DEFAULT_TUNER_SETTINGS.clarityThreshold)
-  const [filterEnabled, setFilterEnabled] = useState(true)
-  const [smoothingFrames, setSmoothingFrames] = useState(DEFAULT_TUNER_SETTINGS.smoothingFrames)
-  const [confirmFrames, setConfirmFrames] = useState(DEFAULT_TUNER_SETTINGS.confirmFrames)
-  const pitch = useMicPitch({ sensitivity, clarityThreshold, filterEnabled, smoothingFrames, confirmFrames })
+  const [settings, setSettings] = useState<TunerSettings>(DEFAULT_TUNER_SETTINGS)
+  const pitch = useMicPitch(settings)
   const inTune = pitch.cents != null && Math.abs(pitch.cents) <= ACCURACY_CENTS
 
   // Lead with clarity (does the frame clear the gate?), then show raw→smoothed
@@ -62,16 +59,8 @@ export function TunerTest() {
         <TunerDial noteName={pitch.noteName} cents={pitch.cents} accuracyCents={ACCURACY_CENTS} inTune={inTune} />
 
         <TunerControls
-          sensitivity={sensitivity}
-          clarityThreshold={clarityThreshold}
-          filterEnabled={filterEnabled}
-          smoothingFrames={smoothingFrames}
-          confirmFrames={confirmFrames}
-          onSensitivity={setSensitivity}
-          onClarityThreshold={setClarityThreshold}
-          onFilterToggle={() => setFilterEnabled((v) => !v)}
-          onSmoothingFrames={setSmoothingFrames}
-          onConfirmFrames={setConfirmFrames}
+          settings={settings}
+          onChange={(patch) => setSettings((s) => ({ ...s, ...patch }))}
           readout={readout}
         />
       </div>

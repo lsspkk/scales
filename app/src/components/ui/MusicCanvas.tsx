@@ -1,5 +1,11 @@
 import { useRef, useEffect } from 'react'
-import { computeLayout, renderScale, renderArpeggio, type NoteWithOctave } from '../../lib/musicStave'
+import {
+  computeLayout,
+  renderScale,
+  renderArpeggio,
+  type NoteWithOctave,
+  type ScaleDirection,
+} from '../../lib/musicStave'
 import { useViewport } from '../../lib/useViewport'
 
 interface MusicCanvasProps {
@@ -7,6 +13,8 @@ interface MusicCanvasProps {
   mode?: string
   staves?: 1 | 2
   arpeggioNotes?: NoteWithOctave[]
+  /** Single-stave scale render direction. Two-stave scales keep the normal up-then-down layout. */
+  scaleDirection?: ScaleDirection
   /**
    * Pitch-class strings to dim to 10% opacity (e.g. "F#", "Bb", "C").
    * Used by the hidden-note challenge in Harjoittelu (Task 26).
@@ -35,6 +43,7 @@ export function MusicCanvas({
   mode,
   staves = 2,
   arpeggioNotes,
+  scaleDirection = 'ascending',
   hiddenNotes,
   highlightNotes,
   highlightColor,
@@ -77,7 +86,17 @@ export function MusicCanvas({
       if (arpeggioNotes) {
         renderArpeggio(ctx, arpeggioNotes, layout, hiddenSet)
       } else if (scaleKey && mode) {
-        renderScale(ctx, scaleKey, mode, layout, hiddenSet, highlightSet, highlightColor, basicNoteColor)
+        renderScale(
+          ctx,
+          scaleKey,
+          mode,
+          layout,
+          hiddenSet,
+          highlightSet,
+          highlightColor,
+          basicNoteColor,
+          scaleDirection,
+        )
       }
     }
 
@@ -93,7 +112,18 @@ export function MusicCanvas({
       io.disconnect()
       clearTimeout(t)
     }
-  }, [scaleKey, mode, staves, arpeggioNotes, hiddenNotes, highlightNotes, highlightColor, isDesktop])
+  }, [
+    scaleKey,
+    mode,
+    staves,
+    arpeggioNotes,
+    scaleDirection,
+    hiddenNotes,
+    highlightNotes,
+    highlightColor,
+    basicNoteColor,
+    isDesktop,
+  ])
 
   return (
     <div ref={wrapperRef} className={className} style={style}>

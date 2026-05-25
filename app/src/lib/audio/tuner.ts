@@ -22,11 +22,17 @@ export const TUNER_FFT_SIZE = 4096
 export const TUNER_MIN_HZ = 120
 export const TUNER_MAX_HZ = 2800
 
-// MPM accept gate: surface a note only when clarity ≥ this. 0.9 was too strict
-// for a violin's weaker strings (the open D barely cleared it), so the filter
-// "hardly registered anything"; 0.8 still rejects noise but lets every bowed
-// string through (docs/tuner-pitch-detection.md). It's slider-adjustable.
-export const DEFAULT_CLARITY_THRESHOLD = 0.8
+// MPM accept gate: surface a note only when clarity ≥ this. Practical ranges by
+// signal type: 0.90–0.95 clean instruments, 0.80–0.88 voice, 0.65–0.75 noisy
+// rooms / cheap mics (see docs/tuner-pitch-detection.md for the breakdown — note
+// the MPM paper's ~0.93 is the internal peak-pick constant k, not this gate).
+// We ship 0.6 — below even the lenient range — because on a real phone mic a
+// quietly- or roughly-bowed violin (weak strings, off-centre bowing) only cleared
+// the gate near the slider's 0.5 minimum. The note-confirm hysteresis + the
+// 120–2800 Hz clamp do the noise rejection the low gate gives up: random noise
+// rarely holds the same note for `confirmFrames` frames. Slider-adjustable on the
+// test page; raise it if a quiet room makes the readout twitch on noise.
+export const DEFAULT_CLARITY_THRESHOLD = 0.6
 
 // Stability defaults (Task 28). Frame counts run at the rAF rate (~60 fps), so
 // ~12 frames ≈ 200 ms of cents smoothing and ~4 frames ≈ 65 ms to commit a new
@@ -67,7 +73,9 @@ export interface TunerSettings {
 }
 
 export const DEFAULT_TUNER_SETTINGS: TunerSettings = {
-  sensitivity: 0.5,
+  // 0.9 = volume gate at ~1.35× the noise floor (1× at max). High by default so a
+  // quietly-bowed violin clears it; real phone-mic testing needed near-max here.
+  sensitivity: 0.9,
   clarityThreshold: DEFAULT_CLARITY_THRESHOLD,
   filterEnabled: true,
   smoothingFrames: DEFAULT_SMOOTHING_FRAMES,
