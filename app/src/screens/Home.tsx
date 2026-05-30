@@ -24,6 +24,16 @@ const ViolinIcon = (
   </svg>
 )
 
+const TunerGaugeIcon = (
+  <svg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' width='80' height='80'>
+    {/* Boxicons v3.0.8 — gauge — https://docs.boxicons.com/free */}
+    <g fill='rgba(255,251,233,0.9)'>
+      <path d='M10.94 15.5c.71.46 1.65.27 2.12-.44l3.96-6.04v-.03c0-.02-.03-.02-.04-.01l-6.04 3.96c-.71.46-.91 1.41-.44 2.12.12.18.27.33.44.44' />
+      <path d='M5.08 20h13.85c.71 0 1.37-.37 1.72-.97a9.98 9.98 0 0 0 1.29-6.2c-.52-4.58-4.23-8.26-8.81-8.77-2.84-.31-5.69.6-7.8 2.49C3.22 8.45 2 11.16 2 14c0 1.77.47 3.51 1.36 5.03.35.6 1.01.97 1.72.97M6.66 8.04A7.93 7.93 0 0 1 11.99 6c.3 0 .61.02.92.05 3.66.4 6.62 3.35 7.04 7.01.2 1.74-.15 3.45-1.02 4.95s-13.84.02-13.84.02a8 8 0 0 1-1.08-4.02c0-2.27.97-4.44 2.66-5.96Z' />
+    </g>
+  </svg>
+)
+
 export function Home() {
   const navigate = useNavigate()
   const { isDesktop } = useViewport()
@@ -36,6 +46,7 @@ export function Home() {
       <div className={`flex gap-5 ${isDesktop ? 'flex-row justify-center' : 'flex-col flex-1'}`}>
         <HomeCard icon={BookMusicIcon} label='Moodit' subtitle='Kirkkosävellajien perusteet' color='brown' onClick={() => navigate('/moodit')} />
         <HomeCard icon={ViolinIcon} label='Harjoittelu' subtitle='Sävellajit viululla' color='red' onClick={() => navigate('/harjoittelu')} />
+        <HomeCard icon={TunerGaugeIcon} label='Virittäminen' subtitle='Viritä viulu' onClick={() => navigate('/virittaminen')} />
       </div>
     </div>
   )

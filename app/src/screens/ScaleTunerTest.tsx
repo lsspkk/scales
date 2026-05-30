@@ -312,7 +312,7 @@ export function ScaleTunerTest() {
             pitch.listening ? 'bg-[#a0563f]' : 'bg-[#5a2d0c]'
           }`}
         >
-          {pitch.listening ? 'Lopeta' : 'Aloita kuuntelu'}
+          {pitch.listening ? 'Sulje mikrofoni' : 'Avaa mikrofoni'}
         </button>
 
         <TunerControls

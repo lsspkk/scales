@@ -9,6 +9,7 @@ interface NavLinkDef {
 const NAV_LINKS: NavLinkDef[] = [
   { to: '/moodit', label: 'Moodit' },
   { to: '/harjoittelu', label: 'Harjoittelu' },
+  { to: '/virittaminen', label: 'Virittäminen' },
 ]
 
 function isActive(pathname: string, to: string): boolean {

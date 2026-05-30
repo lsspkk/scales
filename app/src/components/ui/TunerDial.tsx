@@ -24,6 +24,7 @@ const NEEDLE_LEN = 86
 
 const VIOLET = '#7c6fd6' // in-tune sector + needle accent (replaces the old green)
 const TICK_CENTS = [-50, -40, -30, -20, -10, 0, 10, 20, 30, 40, 50]
+const TICK_CENTS_MINOR = [-45, -35, -25, -15, -5, 5, 15, 25, 35, 45]
 
 const toRad = (deg: number) => (deg * Math.PI) / 180
 
@@ -58,23 +59,74 @@ export function TunerDial({ noteName, cents, accuracyCents = 20, inTune = false 
   const half = Math.min(1, accuracyCents / MAX_CENTS)
   const sL = arcPoint(-half)
   const sR = arcPoint(half)
-  const sectorPath = `M ${CX} ${CY} L ${sL.x.toFixed(1)} ${sL.y.toFixed(1)} A ${RX} ${RY} 0 0 1 ${sR.x.toFixed(1)} ${sR.y.toFixed(1)} Z`
+  const inTuneArcPath = `M ${sL.x.toFixed(1)} ${sL.y.toFixed(1)} A ${RX} ${RY} 0 0 1 ${sR.x.toFixed(1)} ${sR.y.toFixed(1)}`
+
+  // Closed ring path: outer arc left→right, then inner arc right→left (sweep flipped)
+  const BO = 1.065
+  const BI = 0.935
+  const boL = arcPoint(-1, BO); const boR = arcPoint(1, BO)
+  const biL = arcPoint(-1, BI); const biR = arcPoint(1, BI)
+  const bandPath = [
+    `M ${boL.x.toFixed(1)} ${boL.y.toFixed(1)}`,
+    `A ${(RX * BO).toFixed(1)} ${(RY * BO).toFixed(1)} 0 0 1 ${boR.x.toFixed(1)} ${boR.y.toFixed(1)}`,
+    `L ${biR.x.toFixed(1)} ${biR.y.toFixed(1)}`,
+    `A ${(RX * BI).toFixed(1)} ${(RY * BI).toFixed(1)} 0 0 0 ${biL.x.toFixed(1)} ${biL.y.toFixed(1)}`,
+    'Z',
+  ].join(' ')
+  const outerRimPath = `M ${boL.x.toFixed(1)} ${boL.y.toFixed(1)} A ${(RX * BO).toFixed(1)} ${(RY * BO).toFixed(1)} 0 0 1 ${boR.x.toFixed(1)} ${boR.y.toFixed(1)}`
 
   return (
     <div className='flex flex-col items-center'>
       <svg viewBox={`0 0 ${W} ${H}`} className='h-[110px] w-[260px]' role='img' aria-label='Viritysmittari'>
-        {/* in-tune sector (violet, brighter on pitch) */}
-        <path d={sectorPath} fill={VIOLET} fillOpacity={inTune ? 0.8 : 0.55} />
+        <defs>
+          <linearGradient id='arcBandGrad' x1='0' y1='0' x2='0' y2='1'>
+            <stop offset='0%' stopColor='#f0e4c8' />
+            <stop offset='45%' stopColor='#d8c090' />
+            <stop offset='100%' stopColor='#7a5020' />
+          </linearGradient>
+          <radialGradient id='hubGrad' cx='35%' cy='30%' r='65%'>
+            <stop offset='0%' stopColor='#cc3333' />
+            <stop offset='100%' stopColor='#550000' />
+          </radialGradient>
+        </defs>
+
+        {/* gradient ring band — bevel depth behind the track */}
+        <path d={bandPath} fill='url(#arcBandGrad)' />
 
         {/* arc track */}
-        <path d={trackPath} fill='none' stroke='#e3d1ad' strokeWidth={10} strokeLinecap='round' />
+        <path d={trackPath} fill='none' stroke='#e3d1ad' strokeWidth={10} strokeLinecap='butt' />
 
-        {/* cent ticks */}
+        {/* in-tune zone — violet arc slightly wider than the track, below ticks */}
+        <path d={inTuneArcPath} fill='none' stroke={VIOLET} strokeWidth={12} strokeLinecap='butt' strokeOpacity={inTune ? 0.9 : 0.55} />
+
+        {/* outer rim — dark outline on the top edge of the arc band */}
+        <path d={outerRimPath} fill='none' stroke='#5d2c0a' strokeWidth={5.25} strokeLinecap='butt' />
+
+        {/* minor ticks every 5¢ — super thin, short */}
+        {TICK_CENTS_MINOR.map((c) => {
+          const frac = c / MAX_CENTS
+          const outer = arcPoint(frac, 1.015)
+          const inner = arcPoint(frac, 0.975)
+          return (
+            <line
+              key={`m${c}`}
+              x1={outer.x.toFixed(1)}
+              y1={outer.y.toFixed(1)}
+              x2={inner.x.toFixed(1)}
+              y2={inner.y.toFixed(1)}
+              stroke='#b09878'
+              strokeWidth={0.8}
+              strokeLinecap='butt'
+            />
+          )
+        })}
+
+        {/* major ticks every 10¢ — three lengths: centre/ends, mid, normal */}
         {TICK_CENTS.map((c) => {
           const frac = c / MAX_CENTS
           const major = c === 0 || Math.abs(c) === MAX_CENTS
           const outer = arcPoint(frac, 1.02)
-          const inner = arcPoint(frac, major ? 0.92 : 0.92)
+          const inner = arcPoint(frac, major ? 0.88 : 0.93)
           return (
             <line
               key={c}
@@ -82,9 +134,9 @@ export function TunerDial({ noteName, cents, accuracyCents = 20, inTune = false 
               y1={outer.y.toFixed(1)}
               x2={inner.x.toFixed(1)}
               y2={inner.y.toFixed(1)}
-              stroke={major ? '#8B4513' : '#b9975f'}
-              strokeWidth={major ? 3 : 2}
-              strokeLinecap='round'
+              stroke={major ? '#6B3010' : '#9a7050'}
+              strokeWidth={major ? 2 : 1.2}
+              strokeLinecap='butt'
             />
           )
         })}
@@ -93,33 +145,23 @@ export function TunerDial({ noteName, cents, accuracyCents = 20, inTune = false 
         <text x={(left.x - 13).toFixed(1)} y={(left.y + 5).toFixed(1)} fontSize={15} fill='#8B4513' textAnchor='middle'>
           ♭
         </text>
-        <text
-          x={(right.x + 13).toFixed(1)}
-          y={(right.y + 5).toFixed(1)}
-          fontSize={15}
-          fill='#8B4513'
-          textAnchor='middle'
-        >
+        <text x={(right.x + 13).toFixed(1)} y={(right.y + 5).toFixed(1)} fontSize={15} fill='#8B4513' textAnchor='middle'>
           ♯
         </text>
 
-        {/* needle — eased toward the smoothed cents value */}
+        {/* needle */}
         <g
           transform={`rotate(${needleDeg.toFixed(2)} ${CX} ${CY})`}
           className='transition-transform duration-300 ease-out'
         >
-          <line
-            x1={CX}
-            y1={CY}
-            x2={CX}
-            y2={CY - NEEDLE_LEN}
-            stroke={inTune ? VIOLET : '#7a2d4c'}
-            strokeWidth={3.5}
-            strokeLinecap='round'
+          <path
+            d={`M ${CX - 1.75} ${CY} L ${CX + 1.75} ${CY} L ${CX + 1.75} ${CY - (NEEDLE_LEN - 7)} L ${CX} ${CY - NEEDLE_LEN - 4} L ${CX - 1.75} ${CY - (NEEDLE_LEN - 7)} Z`}
+            fill={inTune ? VIOLET : '#aa0000'}
           />
         </g>
-        {/* pivot hub */}
-        <circle cx={CX} cy={CY} r={8} fill='#5a2d0c' />
+
+        {/* pivot hub with metallic radial gradient */}
+        <circle cx={CX} cy={CY} r={8} fill='url(#hubGrad)' />
       </svg>
 
       <div className='mt-1 flex gap-2 items-center w-30 justify-center'>

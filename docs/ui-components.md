@@ -242,3 +242,27 @@ Calm "digital display" right-to-left marquee for inline text that may or may not
 - **CSS keyframe + observed overflow, not a JS rAF loop.** Cheap, runs only when needed, and pauses cleanly on `prefers-reduced-motion` if we extend the rule later.
 - **Wrapper is `overflow-hidden whitespace-nowrap`**, the inner span is `inline-block`. That isolates the marquee from line-wrap behaviour of the surrounding flex/grid container.
 - **One CSS custom property carries the distance** (`--marquee-distance`) so the keyframe is generic and reusable; no per-string tweaking.
+
+## SimpleTunerControls (Task 29)
+
+**File:** `app/src/components/ui/SimpleTunerControls.tsx`
+
+The production tuner's only control — a single 5-step "calmness" slider. Distinct
+from the four-knob `TunerControls`, which stays test-page-only.
+
+### Props
+
+| Prop       | Type                     | Description                                                          |
+| ---------- | ------------------------ | -------------------------------------------------------------------- |
+| `calmness` | `number`                 | Current step, 1 (Nopea) .. 5 (Hidas).                                |
+| `onChange` | `(step: number) => void` | Set a new step (wired to `tunerStore`).                              |
+| `onReset`  | `() => void`             | Restore the default step (button disabled while already at default). |
+
+### Design decisions
+
+- **One slider, calming-only.** It drives just the smoothing stage
+  (`smoothingFrames` / `confirmFrames`); gating is pinned permissive. Higher =
+  calmer, never pickier. Step→settings mapping + rationale live in
+  `docs/virittaminen.md` and `docs/tuner-pitch-detection.md`.
+- **Finnish labels:** title **Herkkyys**, ends **Nopea** / **Hidas**,
+  reset button **Oletus**. Value persists via `tunerStore`.

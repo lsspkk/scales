@@ -28,7 +28,7 @@ Read this file before implementing any screen or UI change. It is the source of 
 
 - The bar spans full viewport width (brown `#5a2d0c`); its inner content is clamped to `max-w-[1200px]`, so brand/links stay aligned with the screen body.
 - Brand "Sävellajit" (`font-medieval`) on the left links to `/`.
-- Primary links: **Moodit** → `/moodit`, **Harjoittelu** → `/harjoittelu`. 44px tap targets, visible focus ring, `aria-current="page"` on the active link. Active style: filled red chip + underline.
+- Primary links: **Moodit** → `/moodit`, **Harjoittelu** → `/harjoittelu`, **Virittäminen** → `/virittaminen`. 44px tap targets, visible focus ring, `aria-current="page"` on the active link. Active style: filled red chip + underline.
 - Sub-routes highlight their parent: `/harjoittelu/tietoa` keeps **Harjoittelu** active.
 - Right side reserved for optional screen-local secondary actions (passed in via the `rightActions` prop). These stay inside the `max-w` container — never flush with the viewport edge.
 - **Soittohetki** is a leaf screen and has no entry in the nav.
@@ -39,9 +39,18 @@ Read this file before implementing any screen or UI change. It is the source of 
 
 ---
 
+## Screen: Virittäminen (production tuner, Task 29)
+
+**Purpose:** Zero-config violin tuner. Route `/virittaminen`, nav/menu title
+"Virittäminen", red Home card (gauge icon). Shows only start/stop, the
+`TunerDial` (which carries the note + cents readout), and one 5-step
+"calmness" slider (`SimpleTunerControls`); **no debug info**. Mobile renders the
+red `ScreenHeader`; desktop relies on the nav bar. Full spec, the slider
+step→settings mapping, and persistence: `docs/virittaminen.md`.
+
 ## Screen: Home (hub)
 
-**Purpose:** Navigation hub. Two cards, no header bar.
+**Purpose:** Navigation hub. Three cards (Moodit, Harjoittelu, Virittäminen), no header bar.
 
 ```
 Mobile (<=768px)               Desktop (>768px)

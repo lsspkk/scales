@@ -26,7 +26,9 @@ export function TunerTest() {
   const readout = [
     `clarity ${pitch.clarity.toFixed(2)}`,
     pitch.hz != null ? `${pitch.hz.toFixed(1)} Hz` : `RMS ${pitch.rms.toFixed(3)} / portti ${pitch.gate.toFixed(3)}`,
-    pitch.rawCents != null && pitch.cents != null ? `raaka ${fmtCents(pitch.rawCents)}→tasattu ${fmtCents(pitch.cents)}` : null,
+    pitch.rawCents != null && pitch.cents != null
+      ? `raaka ${fmtCents(pitch.rawCents)}→tasattu ${fmtCents(pitch.cents)}`
+      : null,
     pitch.held ? 'pidossa' : null,
   ]
     .filter(Boolean)
@@ -50,7 +52,7 @@ export function TunerTest() {
               pitch.listening ? 'bg-[#a0563f]' : 'bg-[#5a2d0c]'
             }`}
           >
-            {pitch.listening ? 'Lopeta' : 'Aloita kuuntelu'}
+            {pitch.listening ? 'Sulje mikrofoni' : 'Avaa mikrofoni'}
           </button>
         </div>
 

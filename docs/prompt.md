@@ -14,6 +14,10 @@ Implement that task fully:
 3. Keep the implementation simple: minimum viable code that satisfies the requirements.
 4. **Documentation:** after implementation, create or update a doc file in `docs/` that describes what was built (architecture, usage, key decisions). If a relevant doc already exists, update it. If it is a new topic, create a new file. Then update `CLAUDE.md` — add or update the reference to that doc in the reference table with a one-line description.
 5. After completing the work, update `docs/todo.md` — change the task's `**Status:**` from `pending` to `done`.
-6. Append one entry to `docs/log.md` using the format defined in that file.
+6. Record the work in the log by running (do **not** open or edit `docs/log.md`):
+   ```
+   node scripts/log-task.mjs "Task N" "<one-line summary of what shipped + key file>"
+   ```
+   The script stamps the date and guarantees a single line — keep the summary to one sentence; the deep detail belongs in the doc from step 4.
 
 Do not start on the next task. Stop after completing and logging one task.

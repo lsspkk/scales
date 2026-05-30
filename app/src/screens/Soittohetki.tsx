@@ -360,7 +360,10 @@ export function Soittohetki() {
   }
 
   const activeHiddenNotes = hiddenNoteState?.active ? hiddenNoteState.notes : undefined
-  const scaleLineText = variation ? `Soita: ${variation.text}` : scaleNotes.join(' – ')
+  // Drop the same notes the canvas hides (matched by name) so the note-name line stays in sync.
+  const hiddenSet = new Set(activeHiddenNotes)
+  const visibleNotes = scaleNotes.filter((note) => !hiddenSet.has(note))
+  const scaleLineText = variation ? `Soita: ${variation.text}` : visibleNotes.join(' – ')
 
   // Build the sound list: tonic drone first, then diatonic chord suggestions.
   const soundOptions = useMemo<SoundOption[]>(() => {
@@ -476,124 +479,126 @@ export function Soittohetki() {
       <div className='flex-1 min-h-0 flex flex-col md:flex-row md:items-start md:justify-center md:gap-6 md:overflow-y-auto'>
         {/* Outer flex-col: fills remaining screen on mobile, auto height on desktop */}
         <div className='flex-1 min-h-0 flex flex-col w-full md:max-w-130 md:flex-none md:min-h-fit md:px-4 md:py-4'>
-        {/* Row 1: Canvas — fixed by content */}
-        <div className='w-full shrink-0'>
-          {view === 'scale' ? (
-            <>
-              <MusicCanvas
-                scaleKey={root}
-                mode={mode}
-                staves={1}
-                hiddenNotes={activeHiddenNotes}
-                className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
-              />
-              <div className='mt-1 flex items-center gap-1 pl-4 pr-2 md:mt-2 md:gap-1.5 md:px-0'>
-                <MarqueeText
-                  text={scaleLineText}
-                  className={`min-w-0 flex-1 text-xs md:text-sm ${variation ? 'text-[#8B2500] font-medium' : 'text-[#8B4513]'}`}
+          {/* Row 1: Canvas — fixed by content */}
+          <div className='w-full shrink-0'>
+            {view === 'scale' ? (
+              <>
+                <MusicCanvas
+                  scaleKey={root}
+                  mode={mode}
+                  staves={1}
+                  hiddenNotes={activeHiddenNotes}
+                  className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
                 />
-                <VariationActions
-                  variation={variation}
-                  hiddenNotesActive={hiddenNoteState?.active ?? false}
-                  onRollVariation={handleRollVariation}
-                  onToggleHiddenNotes={handleToggleHiddenNotes}
-                  onShowInfo={isDesktop ? undefined : () => setShowInfo(true)}
+                <div className='mt-1 flex items-center gap-1 pl-4 pr-2 md:mt-2 md:gap-1.5 md:px-0'>
+                  <MarqueeText
+                    text={scaleLineText}
+                    className={`min-w-0 flex-1 text-xs md:text-sm ${variation ? 'text-[#8B2500] font-medium' : 'text-[#8B4513]'}`}
+                  />
+                  <VariationActions
+                    variation={variation}
+                    hiddenNotesActive={hiddenNoteState?.active ?? false}
+                    onRollVariation={handleRollVariation}
+                    onToggleHiddenNotes={handleToggleHiddenNotes}
+                    onShowInfo={isDesktop ? undefined : () => setShowInfo(true)}
+                  />
+                </div>
+              </>
+            ) : (
+              <>
+                <MusicCanvas
+                  arpeggioNotes={arpeggioNotes}
+                  staves={1}
+                  className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
                 />
-              </div>
-            </>
-          ) : (
-            <>
-              <MusicCanvas
-                arpeggioNotes={arpeggioNotes}
-                staves={1}
-                className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
-              />
-              <div className='mt-1 flex items-center gap-1 pl-4 pr-2 md:mt-2 md:gap-1.5 md:px-0'>
-                <p className='min-w-0 flex-1 text-xs md:text-sm text-[#8B4513] text-center md:text-left'>
-                  {arpeggioNotes.map((n) => `${n.letter}${n.accidental ?? ''}`).join(' – ')}
-                </p>
-                {!isDesktop && <InfoButton onClick={() => setShowInfo(true)} />}
-              </div>
-            </>
-          )}
-        </div>
+                <div className='mt-1 flex items-center gap-1 pl-4 pr-2 md:mt-2 md:gap-1.5 md:px-0'>
+                  <p className='min-w-0 flex-1 text-xs md:text-sm text-[#8B4513] text-center md:text-left'>
+                    {arpeggioNotes.map((n) => `${n.letter}${n.accidental ?? ''}`).join(' – ')}
+                  </p>
+                  {!isDesktop && <InfoButton onClick={() => setShowInfo(true)} />}
+                </div>
+              </>
+            )}
+          </div>
 
-        {/* Row 2: fills remaining vertical space on mobile */}
-        <div className='flex-1 min-h-0 flex flex-col gap-3 md:pt-4 px-1 w-full md:px-0'>
-          {/* Animation + shared controls */}
-          <div className='@container flex-1 min-h-0 flex items-center justify-center overflow-hidden'>
-            <div className='relative w-full h-[min(100cqh,100cqw)] max-h-full rounded-2xl overflow-hidden bg-[#fffbe9] md:w-full md:h-[35svh] md:min-h-[180px] md:max-h-[360px]'>
-              {showCelebration ? (
-                <PelicanCelebration variant={animationVariant} />
-              ) : (
-                <PelicanTimer
-                  key={`${animationVariant}-${durationMs}-${runId}`}
-                  variant={animationVariant}
-                  durationMs={durationMs}
-                  isRunning={isRunning}
-                />
-              )}
-              <div className='absolute top-1 right-1 z-10 flex gap-0.5 md:top-1.5 md:right-1.5 md:gap-1'>
-                <button
-                  onClick={() => {
-                    dismissCelebration()
-                    setView('scale')
-                  }}
-                  className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors shadow-sm md:w-9 md:h-9 md:rounded-lg ${
-                    view === 'scale' ? 'bg-[#8B2500] text-white' : 'bg-[#f0dbb8]/90 text-[#5a2d0c] active:bg-[#e0c590]'
-                  }`}
-                  aria-pressed={view === 'scale'}
-                  aria-label='Asteikko'
-                >
-                  <svg className='w-4 h-4 md:w-5 md:h-5' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
-                    <circle cx='4' cy='18' r='2.2' />
-                    <circle cx='10' cy='13' r='2.2' />
-                    <circle cx='16' cy='8' r='2.2' />
-                    <circle cx='22' cy='3' r='2.2' />
-                  </svg>
-                </button>
-                <button
-                  onClick={() => {
-                    dismissCelebration()
-                    setView('arpeggio')
-                  }}
-                  className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors shadow-sm md:w-9 md:h-9 md:rounded-lg ${
-                    view === 'arpeggio'
-                      ? 'bg-[#8B2500] text-white'
-                      : 'bg-[#f0dbb8]/90 text-[#5a2d0c] active:bg-[#e0c590]'
-                  }`}
-                  aria-pressed={view === 'arpeggio'}
-                  aria-label='Arpeggio'
-                >
-                  <svg className='w-4 h-4 md:w-5 md:h-5' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
-                    <rect x='3' y='17' width='4' height='7' rx='0.5' />
-                    <rect x='9' y='12' width='4' height='12' rx='0.5' />
-                    <rect x='15' y='7' width='4' height='17' rx='0.5' />
-                  </svg>
-                </button>
+          {/* Row 2: fills remaining vertical space on mobile */}
+          <div className='flex-1 min-h-0 flex flex-col gap-3 md:pt-4 px-1 w-full md:px-0'>
+            {/* Animation + shared controls */}
+            <div className='@container flex-1 min-h-0 flex items-center justify-center overflow-hidden'>
+              <div className='relative w-full h-[min(100cqh,100cqw)] max-h-full rounded-2xl overflow-hidden bg-[#fffbe9] md:w-full md:h-[35svh] md:min-h-[180px] md:max-h-[360px]'>
+                {showCelebration ? (
+                  <PelicanCelebration variant={animationVariant} />
+                ) : (
+                  <PelicanTimer
+                    key={`${animationVariant}-${durationMs}-${runId}`}
+                    variant={animationVariant}
+                    durationMs={durationMs}
+                    isRunning={isRunning}
+                  />
+                )}
+                <div className='absolute top-1 right-1 z-10 flex gap-0.5 md:top-1.5 md:right-1.5 md:gap-1'>
+                  <button
+                    onClick={() => {
+                      dismissCelebration()
+                      setView('scale')
+                    }}
+                    className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors shadow-sm md:w-9 md:h-9 md:rounded-lg ${
+                      view === 'scale'
+                        ? 'bg-[#8B2500] text-white'
+                        : 'bg-[#f0dbb8]/90 text-[#5a2d0c] active:bg-[#e0c590]'
+                    }`}
+                    aria-pressed={view === 'scale'}
+                    aria-label='Asteikko'
+                  >
+                    <svg className='w-4 h-4 md:w-5 md:h-5' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+                      <circle cx='4' cy='18' r='2.2' />
+                      <circle cx='10' cy='13' r='2.2' />
+                      <circle cx='16' cy='8' r='2.2' />
+                      <circle cx='22' cy='3' r='2.2' />
+                    </svg>
+                  </button>
+                  <button
+                    onClick={() => {
+                      dismissCelebration()
+                      setView('arpeggio')
+                    }}
+                    className={`w-7 h-7 rounded-md flex items-center justify-center transition-colors shadow-sm md:w-9 md:h-9 md:rounded-lg ${
+                      view === 'arpeggio'
+                        ? 'bg-[#8B2500] text-white'
+                        : 'bg-[#f0dbb8]/90 text-[#5a2d0c] active:bg-[#e0c590]'
+                    }`}
+                    aria-pressed={view === 'arpeggio'}
+                    aria-label='Arpeggio'
+                  >
+                    <svg className='w-4 h-4 md:w-5 md:h-5' viewBox='0 0 24 24' fill='currentColor' aria-hidden='true'>
+                      <rect x='3' y='17' width='4' height='7' rx='0.5' />
+                      <rect x='9' y='12' width='4' height='12' rx='0.5' />
+                      <rect x='15' y='7' width='4' height='17' rx='0.5' />
+                    </svg>
+                  </button>
+                </div>
               </div>
             </div>
+            <div className='justify-self-end'>
+              <SoundControlsRow
+                volume={volume}
+                onVolumeChange={handleVolumeChange}
+                sampleId={sampleId}
+                onSampleChange={setSampleId}
+                soundOptions={soundOptions}
+                selectedSoundId={selectedSoundId}
+                onSoundClick={handleSoundClick}
+              />
+              <TimerControlsRow
+                durationMin={durationMin}
+                isRunning={isRunning}
+                remainingMs={remainingMs}
+                onSelectDuration={setDurationMin}
+                onStart={handleStart}
+                onPause={pause}
+              />
+            </div>
           </div>
-          <div className='justify-self-end'>
-            <SoundControlsRow
-              volume={volume}
-              onVolumeChange={handleVolumeChange}
-              sampleId={sampleId}
-              onSampleChange={setSampleId}
-              soundOptions={soundOptions}
-              selectedSoundId={selectedSoundId}
-              onSoundClick={handleSoundClick}
-            />
-            <TimerControlsRow
-              durationMin={durationMin}
-              isRunning={isRunning}
-              remainingMs={remainingMs}
-              onSelectDuration={setDurationMin}
-              onStart={handleStart}
-              onPause={pause}
-            />
-          </div>
-        </div>
         </div>
 
         {isDesktop && (

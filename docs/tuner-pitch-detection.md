@@ -365,6 +365,50 @@ Manual validation (browser, sustained violin): note label, cents, and needle are
 noticeably calmer at the defaults; a genuine pitch change still commits within a
 practical tuning latency (~65 ms + smoothing).
 
+## Production filter — one "calmness" slider, permissive gating (Task 29)
+
+The test-page `TunerControls` expose four independent knobs (Herkkyys/sensitivity,
+Selkeysraja/clarity, Tasaus/smoothing, Sävelvarmistus/confirm). That is right for
+*finding* defaults but wrong for players. For the production screen
+(`SimpleTunerControls`) we collapse them to a single **5-step slider**, and the
+mapping is chosen deliberately, not just for fewer widgets.
+
+**The old "Filter ON" felt worse because it conflated two unrelated jobs:**
+
+1. **Gating** — `sensitivity` (volume floor) + `clarityThreshold` (tone-quality
+   floor) *reject* frames. Too aggressive ⇒ real notes get dropped ⇒ the needle
+   goes dead. A violin into a phone mic is a rough signal (bow noise, room, mic
+   AGC), so its clarity number runs lower than a clean studio tone — a high
+   `clarityThreshold` rejects perfectly good playing. This is what made
+   "filter on" measurably worse than "filter off" in informal testing.
+2. **Smoothing** — `smoothingFrames` / `confirmFrames` only *slow/calm* the
+   reading (see Task 28 above). They never reject a note; worst case is a slightly
+   laggy needle, never a dead one.
+
+**Decision:** the 5-step slider drives **only the smoothing stage**, and never
+re-tightens gating. So every step still sees every note — higher steps are just
+calmer/steadier, not pickier. Concretely:
+
+| Slider | smoothing/confirm | sensitivity | clarityThreshold |
+|---|---|---|---|
+| **1** (raw/fast) | minimal (≈ off) | **max** | permissive (locked, low) |
+| **3** (default) | ≈ Task 28 defaults | **max** | permissive (locked, low) |
+| **5** (calm/steady) | high | **max** | permissive (locked, low) |
+
+- **`sensitivity` is pinned at max** at every step — we want to hear quiet notes;
+  the volume floor was never the thing that helped.
+- **`clarityThreshold` is locked at one low/permissive value (~0.6), not ramped.**
+  The slider means "how calm," not "how picky"; if clarity rode the slider too,
+  step 1 would also get noisier in a second, confusing dimension. We bias toward
+  the known-good "filter off" behaviour (accept almost anything pitch-like) and
+  can raise the locked value later **once we have real mobile-violin measurements**
+  — none exist yet, so we start permissive on purpose.
+- **Default = step 3:** noticeably calmer than raw, still responsive. The user can
+  slide on the phone to taste; the result persists (`tunerStore`).
+
+Net: the worst case is a slightly jumpy-but-accurate needle, never a silent one —
+the failure mode that actually hurt before.
+
 ### Sources
 
 - McLeod & Wyvill, *A Smarter Way to Find Pitch* (2005) — http://dl.icdst.org/pdfs/files4/b56e1f975f0b9b3fca904fb2a7778c15.pdf
