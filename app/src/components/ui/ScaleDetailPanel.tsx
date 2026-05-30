@@ -1,31 +1,22 @@
 import { type ScaleDetail } from '../../lib/practiceMethod'
-import { MusicCanvas } from './MusicCanvas'
 
 interface ScaleDetailPanelProps {
   detail: ScaleDetail
-  /**
-   * Pitch-class strings (e.g. "F#", "Bb") to render at 10% opacity in both
-   * the scale and arpeggio canvases. Used by the hidden-note challenge from
-   * Harjoittelu (Task 26).
-   */
-  hiddenNotes?: ReadonlyArray<string>
 }
 
-/** Renders detailed practice guidance for a single scale. Used in both desktop side panel and mobile modal. */
-export function ScaleDetailPanel({ detail, hiddenNotes }: ScaleDetailPanelProps) {
+/**
+ * Textual practice guidance for a single scale: note names, octave count, hand
+ * positions, shift fingering + the routine to practise shifts efficiently, and
+ * the arpeggio. The notation itself is already drawn by the Soittohetki canvas,
+ * so this panel renders no staves — it only complements the canvas with words.
+ */
+export function ScaleDetailPanel({ detail }: ScaleDetailPanelProps) {
   return (
     <div className='space-y-5'>
       {/* Nuotit (Notes) */}
       <section>
-        <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Nuotit</h3>
-        <MusicCanvas
-          scaleKey={detail.scaleKey}
-          mode={detail.scaleMode}
-          staves={1}
-          hiddenNotes={hiddenNotes}
-          className='w-full aspect-[4/1] bg-[#fff3c9]'
-        />
-        <p className='text-xs text-[#8B4513] mt-1'>{detail.notes.join(' – ')}</p>
+        <h3 className='text-base font-bold text-[#5a2d0c] mb-1'>Nuotit</h3>
+        <p className='text-base text-[#3a1a00]'>{detail.notes.join(' – ')}</p>
         <p className='text-sm text-[#8B4513] mt-1'>
           {detail.octaves} oktaavia, {detail.positionLabel}
         </p>
@@ -34,7 +25,7 @@ export function ScaleDetailPanel({ detail, hiddenNotes }: ScaleDetailPanelProps)
       {/* Asemavaihto (Shift) — only for Level 2+ */}
       {detail.shiftExercise && (
         <section>
-          <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Asemavaihto</h3>
+          <h3 className='text-base font-bold text-[#5a2d0c] mb-1'>Asemavaihto</h3>
           <p className='text-base text-[#3a1a00]'>{detail.shiftExercise}</p>
         </section>
       )}
@@ -42,7 +33,7 @@ export function ScaleDetailPanel({ detail, hiddenNotes }: ScaleDetailPanelProps)
       {/* Harjoitusrutiini (Practice routine) — only for Level 2+ */}
       {detail.shiftRoutine && (
         <section>
-          <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Harjoitusrutiini</h3>
+          <h3 className='text-base font-bold text-[#5a2d0c] mb-1'>Harjoitusrutiini</h3>
           <ol className='list-decimal list-inside space-y-1 text-base text-[#3a1a00]'>
             {detail.shiftRoutine.map((step, i) => (
               <li key={i}>{step}</li>
@@ -53,15 +44,9 @@ export function ScaleDetailPanel({ detail, hiddenNotes }: ScaleDetailPanelProps)
 
       {/* Arpeggio */}
       <section>
-        <h3 className='text-base font-bold text-[#5a2d0c] mb-2'>Arpeggio</h3>
-        <MusicCanvas
-          arpeggioNotes={detail.arpeggioNotesWithOctave}
-          staves={1}
-          hiddenNotes={hiddenNotes}
-          className='w-full aspect-[4/1] bg-[#fff3c9]'
-        />
-        <p className='text-xs text-[#8B4513] mt-1'>{detail.arpeggioNotes}</p>
-        <p className='text-xs text-[#8B4513]'>{detail.arpeggioDescription}</p>
+        <h3 className='text-base font-bold text-[#5a2d0c] mb-1'>Arpeggio</h3>
+        <p className='text-base text-[#3a1a00]'>{detail.arpeggioNotes}</p>
+        <p className='text-sm text-[#8B4513] mt-1'>{detail.arpeggioDescription}</p>
       </section>
     </div>
   )

@@ -1,11 +1,8 @@
-import { useState, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
-import { ScaleDetailPanel } from '../components/ui/ScaleDetailPanel'
-import { ScaleDetailModal } from '../components/ui/ScaleDetailModal'
 import { useViewport } from '../lib/useViewport'
 import { usePracticeStore } from '../stores/practiceStore'
-import { formatScaleLabel, formatPositions, getScaleDetail, getScaleKey, type ScaleEntry } from '../lib/practiceMethod'
+import { formatScaleLabel, formatPositions, getScaleKey, type ScaleEntry } from '../lib/practiceMethod'
 
 function pickRandomAnimationVariant(): 'walking' | 'flying' {
   return Math.random() < 0.5 ? 'walking' : 'flying'
@@ -45,18 +42,14 @@ function LevelSelector({ selectedLevel, onSelect }: { selectedLevel: number; onS
 function PracticeListItem({
   item,
   index,
-  selected,
   isMobile,
   onToggleDone,
-  onSelectInfo,
   onPlay,
 }: {
   item: { scale: ScaleEntry; done: boolean }
   index: number
-  selected: boolean
   isMobile: boolean
   onToggleDone: (index: number) => void
-  onSelectInfo: () => void
   onPlay: () => void
 }) {
   const baseClasses = isMobile
@@ -96,32 +89,6 @@ function PracticeListItem({
       <button
         onClick={(e) => {
           e.stopPropagation()
-          onSelectInfo()
-        }}
-        className={`flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full transition-colors ${
-          selected ? 'bg-[#8B2500] text-white' : 'text-[#8B4513] hover:bg-[#f0dbb8]'
-        }`}
-        aria-label='Näytä tiedot'
-      >
-        <svg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'>
-          <circle cx='10' cy='10' r='9' stroke='currentColor' strokeWidth='1.5' />
-          <text
-            x='10'
-            y='14.5'
-            textAnchor='middle'
-            fill='currentColor'
-            fontSize='12'
-            fontWeight='600'
-            fontFamily='serif'
-          >
-            i
-          </text>
-        </svg>
-      </button>
-
-      <button
-        onClick={(e) => {
-          e.stopPropagation()
           onPlay()
         }}
         className='flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-[#8B4513] hover:bg-[#f0dbb8] transition-colors'
@@ -141,13 +108,7 @@ function PracticeListItem({
   )
 }
 
-function PracticeBody({
-  selectedScale,
-  onSelectScale,
-}: {
-  selectedScale: ScaleEntry | null
-  onSelectScale: (scale: ScaleEntry | null) => void
-}) {
+function PracticeBody() {
   const { isDesktop } = useViewport()
   const navigateToSoittohetki = useNavigate()
   const selectedLevel = usePracticeStore((s) => s.selectedLevel)
@@ -173,19 +134,13 @@ function PracticeBody({
         <p className='text-base text-[#3a1a00] mb-6'>Kaikki {totalCount} asteikkoa harjoiteltu!</p>
         <div className='flex flex-col gap-3 w-full max-w-xs'>
           <button
-            onClick={() => {
-              resetProgress()
-              onSelectScale(null)
-            }}
+            onClick={resetProgress}
             className='min-h-[44px] px-6 py-3 rounded-lg bg-[#8B2500] text-white font-semibold text-base'
           >
             Sama järjestys
           </button>
           <button
-            onClick={() => {
-              reshuffleSet()
-              onSelectScale(null)
-            }}
+            onClick={reshuffleSet}
             className='min-h-[44px] px-6 py-3 rounded-lg bg-[#5a2d0c] text-white font-semibold text-base'
           >
             Arvo uusi järjestys
@@ -206,10 +161,7 @@ function PracticeBody({
           harjoittelu pysyy monipuolisena.
         </p>
         <button
-          onClick={() => {
-            generatePracticeSet()
-            onSelectScale(null)
-          }}
+          onClick={generatePracticeSet}
           className='min-h-[44px] w-full px-6 py-3 rounded-lg bg-[#8B2500] text-white font-bold text-base'
         >
           Aloita harjoittelu
@@ -218,18 +170,14 @@ function PracticeBody({
     )
   }
 
-  // The practice list (used in both single-column mobile and left-column desktop)
-  const practiceList = (
+  return (
     <div className='space-y-2'>
       <div className='flex items-center justify-between'>
         <p className='text-base font-bold text-[#5a2d0c]'>
           {doneCount} / {totalCount} harjoiteltu
         </p>
         <button
-          onClick={() => {
-            clearSession()
-            onSelectScale(null)
-          }}
+          onClick={clearSession}
           className={`text-sm text-[#8B4513] underline px-2 ${isDesktop ? 'min-h-[44px]' : ''}`}
         >
           Uusi harjoitussessio
@@ -258,15 +206,14 @@ function PracticeBody({
               key={rowKey}
               item={item}
               index={index}
-              selected={selectedScale === item.scale}
               isMobile={!isDesktop}
               onToggleDone={toggleDone}
-              onSelectInfo={() => onSelectScale(selectedScale === item.scale ? null : item.scale)}
               onPlay={() => {
                 const params = new URLSearchParams({
                   root: item.scale.key,
                   mode: item.scale.mode,
                   octaves: String(item.scale.octaves),
+                  level: String(item.scale.level),
                   anim: pickRandomAnimationVariant(),
                 })
                 navigateToSoittohetki(`/soittohetki?${params.toString()}`)
@@ -276,43 +223,6 @@ function PracticeBody({
         })}
       </div>
     </div>
-  )
-
-  // Desktop: two-column layout with side panel
-  if (isDesktop) {
-    const detail = selectedScale ? getScaleDetail(selectedScale) : null
-    return (
-      <div className='flex gap-6'>
-        <div className='flex-1 min-w-0'>{practiceList}</div>
-        <div className='flex-1 min-w-0'>
-          {detail ? (
-            <div className='sticky top-4 bg-[#faf3d8] border border-[#c9a96e] rounded-xl p-4'>
-              <h3 className='text-lg font-bold text-[#5a2d0c] mb-4 pb-2 border-b border-[#c9a96e]'>{detail.label}</h3>
-              <ScaleDetailPanel detail={detail} />
-            </div>
-          ) : (
-            <div className='sticky top-4 bg-[#faf3d8] border border-[#c9a96e] rounded-xl p-4 text-center'>
-              <p className='text-base text-[#8B4513] italic'>Valitse asteikko nähdäksesi tiedot</p>
-            </div>
-          )}
-        </div>
-      </div>
-    )
-  }
-
-  // Mobile: practice list + modal when scale is selected
-  return (
-    <>
-      {practiceList}
-      {selectedScale && (
-        <ScaleDetailModal
-          title={`${formatScaleLabel(selectedScale)} — ${formatPositions(selectedScale)} as.`}
-          onClose={() => onSelectScale(null)}
-        >
-          <ScaleDetailPanel detail={getScaleDetail(selectedScale)} />
-        </ScaleDetailModal>
-      )}
-    </>
   )
 }
 
@@ -329,11 +239,6 @@ const InfoIcon = (
 export function Harjoittelu() {
   const navigate = useNavigate()
   const { isDesktop } = useViewport()
-  const [selectedScale, setSelectedScale] = useState<ScaleEntry | null>(null)
-
-  const handleSelectScale = useCallback((scale: ScaleEntry | null) => {
-    setSelectedScale(() => scale)
-  }, [])
 
   return (
     <div className='flex flex-col h-full bg-[#fffbe9]'>
@@ -378,8 +283,8 @@ export function Harjoittelu() {
         </div>
       )}
       <div className='flex-1 overflow-y-auto'>
-        <div className={isDesktop ? 'max-w-[1200px] mx-auto px-8 py-6' : 'px-4 pt-3 pb-4'}>
-          <PracticeBody selectedScale={selectedScale} onSelectScale={handleSelectScale} />
+        <div className={isDesktop ? 'max-w-[640px] mx-auto px-8 py-6' : 'px-4 pt-3 pb-4'}>
+          <PracticeBody />
         </div>
       </div>
     </div>

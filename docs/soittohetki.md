@@ -4,7 +4,7 @@ A kid-friendly "playing moment" timer. The user picks a duration, hits play, and
 
 ## Entry point
 
-A small round button with an inline stick-figure SVG sits next to the info button on each row of the Harjoittelu practice list (`app/src/screens/Harjoittelu.tsx`). Clicking it navigates to `/soittohetki` with the scale's parameters in the URL.
+A small round button with an inline stick-figure SVG sits on each row of the Harjoittelu practice list (`app/src/screens/Harjoittelu.tsx`). Clicking it navigates to `/soittohetki` with the scale's parameters in the URL. (The per-row "ⓘ" scale-detail button used to live here too; it has moved into Soittohetki — see [Scale detail](#scale-detail).)
 
 ## Route
 
@@ -20,7 +20,8 @@ Registered in `app/src/App.tsx` as `path="/soittohetki"`, lazy-loaded like the o
 | --------- | ----------------------------- | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `root`    | letter `[A-G]` + opt. `#`/`b` | `C`                  | Passed through verbatim — no validation against a key list.                                                                                                |
 | `mode`    | `ionian` \| `aeolian`         | `ionian`             | Matches the internal `ScaleEntry.mode` values; readable and parseable.                                                                                     |
-| `octaves` | `1` \| `2` \| `3`             | `2`                  | Used only for the header label.                                                                                                                            |
+| `octaves` | `1` \| `2` \| `3`             | `2`                  | Used for the header label and to pick the closest matching practice entry for the scale-detail panel.                                                      |
+| `level`   | `1` \| `2` \| `3`             | _(unset)_            | Practice level, passed from Harjoittelu so the scale-detail panel resolves the exact `ScaleEntry` (correct shift guidance). Optional; omitted = best octave match. |
 | `min`     | `1` \| `3` \| `5` \| `10`     | `3`                  | Selected duration; written back with `replace: true` so back-nav stays clean.                                                                              |
 | `anim`    | `walking` \| `flying`         | random on first open | Selects the pelican timer animation variant (Task 21). When opened from Harjoittelu, one of the two variants is picked at random and written into the URL. |
 
@@ -36,7 +37,7 @@ Invalid values fall back to defaults — no error screen, no redirect.
 | +----------------------------+ |
 | |  music canvas (4:1)        | |  notes from getScale() or arpeggio
 | +----------------------------+ |
-| C – D – E – F – G – A – B – C [🎲][👁] |  marquee note line + challenge buttons in scale mode
+| C – D – E – F – G – A – B – C [🎲][👁][ⓘ] |  marquee + challenge buttons; ⓘ (mobile) opens scale-detail modal
 |                                |
 |  +------------------------+    |
 |  |   pelican animation    |    |  PelicanTimer / PelicanCelebration
@@ -48,8 +49,8 @@ Invalid values fall back to defaults — no error screen, no redirect.
 ```
 
 - The toggle drives a local `view` state (`'scale' | 'arpeggio'`). Switching re-renders the `MusicCanvas` with either `scaleKey`/`mode` or `arpeggioNotes` props.
-- In scale mode, the note line below the canvas is a compact flex row: `MarqueeText` on the left, dice + hide buttons on the right. The marquee shows either `scaleNotes.join(' – ')` or the rolled variation text.
-- In arpeggio mode, the old plain text line remains: arpeggio notes (letter + accidental, dropping the octave number), no extra buttons.
+- In scale mode, the note line below the canvas is a compact flex row: `MarqueeText` on the left, dice + hide buttons on the right (plus an ⓘ scale-detail button last, on mobile only). The marquee shows either `scaleNotes.join(' – ')` or the rolled variation text.
+- In arpeggio mode, the line below the canvas shows the arpeggio notes (letter + accidental, dropping the octave number) with the ⓘ scale-detail button on the right (mobile only) — no dice/hide buttons.
 - Duration chips are disabled while the timer is running so the user can't change the duration mid-countdown.
 - The play button swaps to a pause button while running. The reset button only appears once the timer has moved off its initial state.
 
@@ -61,6 +62,17 @@ Only the **scale** view gets the extra controls below the canvas.
 2. **Hide-two-notes button** — cycles hide → reveal → hide new pair for two non-tonic notes from the current scale. The dimming is passed to `MusicCanvas` through `hiddenNotes`.
 
 The challenge state is local to `Soittohetki` and resets when a different root/mode is opened.
+
+## Scale detail
+
+The scale-detail view lives here now — it was moved out of Harjoittelu. Because Soittohetki always has exactly one active scale (known from the URL), there is no selection state: the detail is resolved directly via `findScaleDetail(root, mode, octaves, level)` in `app/src/lib/practiceMethod.ts` and rendered with the shared `ScaleDetailPanel`.
+
+`ScaleDetailPanel` is **text only** — it does not redraw the staves (the Soittohetki canvas already shows the notation). It complements the canvas with words: note names, octave count + hand positions (`positionLabel`), and, when the scale needs shifts (Level 2+), the shift fingering (`shiftExercise`) plus the step-by-step routine to practise the shift efficiently (`shiftRoutine`). It closes with the arpeggio note names + description.
+
+- **Desktop** — an always-open panel sits to the right of the play column (parchment card, `ScaleDetailPanel`). The outer container becomes a `md:flex-row` so the play column and panel sit side by side.
+- **Mobile** — an ⓘ button (shared `InfoButton`) opens a fullscreen `ScaleDetailModal`; browser back / the X closes it. In scale view it sits **last** in the dice/hide row (`VariationActions`); in arpeggio view it sits to the right of the note line.
+
+`findScaleDetail` prefers the `ScaleEntry` whose `level` matches the `level` param; failing that it falls back to the closest octave match, then to a synthetic first-position entry for keys outside the practice set.
 
 ## Timer logic
 

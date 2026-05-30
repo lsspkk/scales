@@ -449,3 +449,33 @@ export function getScaleDetail(scale: ScaleEntry): ScaleDetail {
     arpeggioNotesWithOctave,
   }
 }
+
+/**
+ * Resolve a ScaleDetail directly from URL-style scale params. Used by Soittohetki,
+ * which always has exactly one active scale known from its query string. When the
+ * practice level is supplied it pins the exact SCALES entry (so shift guidance is
+ * correct); otherwise it falls back to the closest octave match, then to a
+ * synthetic first-position entry for keys outside the practice set.
+ */
+export function findScaleDetail(
+  key: string,
+  mode: 'ionian' | 'aeolian',
+  octaves: number,
+  level?: number
+): ScaleDetail {
+  const matches = SCALES.filter((s) => s.key === key && s.mode === mode)
+  const entry: ScaleEntry =
+    (level != null ? matches.find((s) => s.level === level) : undefined) ??
+    matches.find((s) => s.octaves === octaves) ??
+    matches[0] ?? {
+      key,
+      mode,
+      level: 1,
+      positions: ['1st'],
+      octaves,
+      shiftPattern: null,
+      arpeggio: mode === 'ionian' ? 'major' : 'minor',
+      arpeggioOctaves: 1,
+    }
+  return getScaleDetail(entry)
+}

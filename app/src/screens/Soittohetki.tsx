@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ScreenHeader } from '../components/ui/ScreenHeader'
+import { ScaleDetailPanel } from '../components/ui/ScaleDetailPanel'
+import { ScaleDetailModal } from '../components/ui/ScaleDetailModal'
 import { VolumeSlider } from '../components/ui/VolumeSlider'
 import { MarqueeText } from '../components/ui/MarqueeText'
 import { useViewport } from '../lib/useViewport'
@@ -10,14 +12,14 @@ import { PelicanCelebration } from '../components/animations/PelicanCelebration'
 import { useCountdownTimer } from '../lib/useCountdownTimer'
 import { useScaleVariationQueue } from '../hooks/useScaleVariationQueue'
 import { getScale } from '../lib/musicScale'
-import { buildArpeggioNotesWithOctave } from '../lib/practiceMethod'
+import { buildArpeggioNotesWithOctave, findScaleDetail } from '../lib/practiceMethod'
 import { getScaleChords } from '../lib/scaleChords'
 import { rollHiddenNotes, type ScaleVariation } from '../lib/scaleVariations'
 import { getChordType } from '../lib/audio/chords'
 import { SAMPLES } from '../lib/audio/samples'
 import { noteNameToMidi } from '../lib/audio/tuning'
 import { playChord, stopAll, setMasterVolume } from '../lib/audio/audioService'
-import { Dice5, EyeOff, Play, Square } from 'lucide-react'
+import { Dice5, EyeOff, Info, Play, Square } from 'lucide-react'
 
 type Mode = 'ionian' | 'aeolian'
 type View = 'scale' | 'arpeggio'
@@ -70,6 +72,8 @@ interface ScaleCanvasActionsProps {
   hiddenNotesActive: boolean
   onRollVariation: () => void
   onToggleHiddenNotes: () => void
+  /** When provided (mobile only), renders an info button last that opens the scale-detail modal. */
+  onShowInfo?: () => void
 }
 
 function parseMode(value: string | null): Mode {
@@ -213,11 +217,26 @@ function TimerControlsRow({
   )
 }
 
+/** Round neutral button that opens the scale-detail modal. Mobile only (desktop shows the panel inline). */
+function InfoButton({ onClick }: { onClick: () => void }) {
+  return (
+    <button
+      onClick={onClick}
+      className='inline-flex items-center justify-center rounded-md border transition-colors h-7 w-7 mb-1 bg-[#fffbe9] border-[#c9a96e] text-[#8B4513] active:bg-[#f0dbb8] text-sm'
+      aria-label='Näytä asteikon tiedot'
+      title='Näytä asteikon tiedot'
+    >
+      <Info size={18} aria-hidden='true' className='-m-1' />
+    </button>
+  )
+}
+
 function VariationActions({
   variation,
   hiddenNotesActive,
   onRollVariation,
   onToggleHiddenNotes,
+  onShowInfo,
 }: ScaleCanvasActionsProps) {
   const baseButtonClass = 'inline-flex  items-center justify-center rounded-md border transition-colors h-7 w-7 mb-1'
 
@@ -248,6 +267,7 @@ function VariationActions({
       >
         <EyeOff size={18} aria-hidden='true' className='-m-1' />
       </button>
+      {onShowInfo && <InfoButton onClick={onShowInfo} />}
     </div>
   )
 }
@@ -262,7 +282,15 @@ export function Soittohetki() {
   const root = searchParams.get('root') ?? 'C'
   const mode = parseMode(searchParams.get('mode'))
   const octaves = parseOctaves(searchParams.get('octaves'))
+  const levelParam = Number(searchParams.get('level'))
+  const level = levelParam === 1 || levelParam === 2 || levelParam === 3 ? levelParam : undefined
   const label = useMemo(() => buildLabel(root, mode, octaves), [root, mode, octaves])
+
+  // The active scale is always known from the URL, so its detail is resolved
+  // directly (no selection state). Shown as an always-open panel on desktop and
+  // behind an info button → modal on mobile.
+  const scaleDetail = useMemo(() => findScaleDetail(root, mode, octaves, level), [root, mode, octaves, level])
+  const [showInfo, setShowInfo] = useState(false)
 
   const scaleNotes = useMemo(() => getScale(root, mode), [root, mode])
   const arpeggioNotes = useMemo(() => buildArpeggioNotesWithOctave(scaleNotes, root), [scaleNotes, root])
@@ -444,8 +472,10 @@ export function Soittohetki() {
         <ScreenHeader title={label} color='red' onBack={() => navigate('/harjoittelu')} />
       )}
 
-      {/* Outer flex-col: fills remaining screen on mobile, auto height on desktop */}
-      <div className='flex-1 min-h-0 flex flex-col w-full md:max-w-130 md:mx-auto md:flex-none md:min-h-fit md:px-4 md:py-4'>
+      {/* On desktop, lay the play column beside an always-open scale-detail panel */}
+      <div className='flex-1 min-h-0 flex flex-col md:flex-row md:items-start md:justify-center md:gap-6 md:overflow-y-auto'>
+        {/* Outer flex-col: fills remaining screen on mobile, auto height on desktop */}
+        <div className='flex-1 min-h-0 flex flex-col w-full md:max-w-130 md:flex-none md:min-h-fit md:px-4 md:py-4'>
         {/* Row 1: Canvas — fixed by content */}
         <div className='w-full shrink-0'>
           {view === 'scale' ? (
@@ -467,6 +497,7 @@ export function Soittohetki() {
                   hiddenNotesActive={hiddenNoteState?.active ?? false}
                   onRollVariation={handleRollVariation}
                   onToggleHiddenNotes={handleToggleHiddenNotes}
+                  onShowInfo={isDesktop ? undefined : () => setShowInfo(true)}
                 />
               </div>
             </>
@@ -477,9 +508,12 @@ export function Soittohetki() {
                 staves={1}
                 className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
               />
-              <p className='px-4 md:mt-2 text-xs md:text-sm text-[#8B4513] text-center md:px-0'>
-                {arpeggioNotes.map((n) => `${n.letter}${n.accidental ?? ''}`).join(' – ')}
-              </p>
+              <div className='mt-1 flex items-center gap-1 pl-4 pr-2 md:mt-2 md:gap-1.5 md:px-0'>
+                <p className='min-w-0 flex-1 text-xs md:text-sm text-[#8B4513] text-center md:text-left'>
+                  {arpeggioNotes.map((n) => `${n.letter}${n.accidental ?? ''}`).join(' – ')}
+                </p>
+                {!isDesktop && <InfoButton onClick={() => setShowInfo(true)} />}
+              </div>
             </>
           )}
         </div>
@@ -560,7 +594,25 @@ export function Soittohetki() {
             />
           </div>
         </div>
+        </div>
+
+        {isDesktop && (
+          <aside className='w-[360px] shrink-0 md:py-4 md:pr-4'>
+            <div className='bg-[#faf3d8] border border-[#c9a96e] rounded-xl p-4'>
+              <h3 className='text-lg font-bold text-[#5a2d0c] mb-4 pb-2 border-b border-[#c9a96e]'>
+                {scaleDetail.label}
+              </h3>
+              <ScaleDetailPanel detail={scaleDetail} />
+            </div>
+          </aside>
+        )}
       </div>
+
+      {!isDesktop && showInfo && (
+        <ScaleDetailModal title={label} onClose={() => setShowInfo(false)}>
+          <ScaleDetailPanel detail={scaleDetail} />
+        </ScaleDetailModal>
+      )}
     </div>
   )
 }
