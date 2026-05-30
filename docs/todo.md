@@ -4,6 +4,48 @@ Active task list. Completed tasks are archived in `completed-tasks.md`; a one-li
 
 ---
 
+## Task 30: CI builds the app; pre-push hook prevents broken builds
+
+**Status:** pending
+**Blocked by:** —
+
+### Goal
+
+Two related improvements so that broken code never reaches Azure:
+
+1. **CI workflow builds before deploying.** The current `deploy-to-azure.yml` uploads whatever is in the local `dist/` folder — it never compiles. The workflow should run `npm ci && npm run build` inside `app/` first and deploy the freshly built output.
+
+2. **Pre-push git hook that builds locally.** A `pre-push` hook in `.git/hooks/` (or via a committed script + setup instructions) that runs `npm run build` inside `app/` before any `git push`. If the build fails the push is aborted.
+
+### Requirements
+
+1. **Workflow (`deploy-to-azure.yml`):**
+   - Add a Node.js setup step (`actions/setup-node`) before the Azure CLI step.
+   - Run `npm ci && npm run build` in `app/`.
+   - Deploy from the workflow-generated `dist/`, not from a committed folder.
+   - Remove `dist/` from git tracking (it should stay gitignored; the workflow is the only publisher).
+
+2. **Pre-push hook:**
+   - Script lives at `scripts/pre-push.sh` (committed, so it's visible in the repo).
+   - Running `npm run build` in `app/`; exits non-zero on failure to abort the push.
+   - A `scripts/install-hooks.sh` helper that symlinks/copies the script into `.git/hooks/pre-push` and makes it executable.
+   - Brief setup note in `README.md` or `docs/deployment.md` telling contributors to run `scripts/install-hooks.sh` once after cloning.
+
+### Out of scope
+
+- Changing the build command or Vite config.
+- Running tests in CI (separate concern).
+
+### Files (likely)
+
+- `.github/workflows/deploy-to-azure.yml` — add build steps, remove dist dependency
+- `scripts/pre-push.sh` (new) — the hook script
+- `scripts/install-hooks.sh` (new) — symlinks hook into `.git/hooks/`
+- `.gitignore` — ensure `dist/` is excluded at repo root
+- `docs/deployment.md` — document the one-time hook setup step
+
+---
+
 ## Task 29: Ship the production tuner — lock defaults, simple screen, persisted preset/custom settings
 
 **Status:** done
@@ -32,7 +74,7 @@ Tasks 27–28 find good detection + stability defaults on the **hidden test page
 
 6. **Validation.** Manual: default tuner is calm and accurate on sustained violin notes with zero configuration; a changed preset/custom value persists across reload; "reset to preset" restores defaults.
 
-### Out of scope
+### Out of scope (Task 29)
 
 - Algorithm changes (Task 27) and smoothing logic (Task 28) — this task only _locks and exposes_ them.
 - AudioWorklet / Web Worker offloading — not needed (`docs/tuner-web-workers.md`).
