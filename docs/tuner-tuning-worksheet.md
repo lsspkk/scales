@@ -115,14 +115,20 @@ Hold the other settings at their defaults, sweep the one under test, and record 
 
 Fill once the sweeps are done. "Works from/to" = the range that behaved acceptably.
 
+### Measured results (2026-06-06, phone mic + violin)
+
+Resolved sweet spots from a real device sweep (full per-scenario cells not logged —
+only the values that landed). These feed the **3-step "Mittausnopeus" slider** task
+(see `docs/todo.md`): the middle/default step uses the measured smoothing 5 / confirm 4.
+
 | Setting | Works from | Works to | Recommended default | Reason / notes |
 |---|---|---|---|---|
-| Sensitivity | | | | |
-| Clarity | | | | |
-| Smoothing | | | | |
-| Confirm | | | | |
-| Hold (scaletuner) | | | | |
-| Accuracy (scaletuner) | | | | |
+| Sensitivity | — | — | **1** | pinned max; quiet notes must still register |
+| Clarity | 0.5 | 0.6 | **0.5** | 0.5 is best; 0.6 also good |
+| Smoothing | 1 (fast reactions) | 12 (slow reactions) | **5** | 1 = fast/jumpy, 12 = slow/laggy; 5 is the balanced sweet spot |
+| Confirm | 1 (fast reactions) | 7 (slow reactions) | **4** | 1 = fast switching, 7 = slow switching; 4 is balanced |
+| Hold (scaletuner) | | | | not measured |
+| Accuracy (scaletuner) | | | | not measured |
 
 ## After filling this in
 

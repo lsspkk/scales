@@ -4,6 +4,161 @@ Active task list. Completed tasks are archived in `completed-tasks.md`; a one-li
 
 ---
 
+## Task 32: Skaalaviritin — leveling scale-practice tuner launched from the Harjoittelu list
+
+**Status:** done
+**Blocked by:** —
+**Reference:** `app/src/screens/ScaleTunerTest.tsx` (the hidden `#/test/scaletuner` page — closest existing prototype: up/down phase logic, target-note highlighting, `useMicPitch`, hold-to-advance, accuracy/hold settings), `app/src/screens/StarFlightTest.tsx` + `app/src/components/ui/StarFlight.tsx` + `app/src/components/ui/FlyingStar.tsx` (the multi-colour flying-star animation), `app/src/screens/Soittohetki.tsx` + `app/src/screens/Harjoittelu.tsx` (how the practice list launches a per-scale screen via URL params), `app/src/components/ui/SimpleTunerControls.tsx` + `app/src/stores/tunerStore.ts` (production sensitivity control), `app/src/components/ui/TunerDial.tsx`, `docs/react-instructions.md`, `docs/ux-spec.md`.
+
+### Goal
+
+A new **scale-practice mode** screen, `Skaalaviritin.tsx`, route/URL name **`skaalaviritin`**. The
+player picks a scale from the Harjoittelu practice list, then plays its notes in tune up to the top
+and back down. Each completed up-and-down run **hardens** the precision required (tighter cents + longer
+hold), across **5 difficulty levels**, with a flying-star celebration at each top and bottom. This is
+just the **first cut** of this practice mode — it will be extended later, so keep it simple and the
+tunables clearly editable.
+
+### Entry point
+
+- In the Harjoittelu practice list (`PracticeListItem` in `Harjoittelu.tsx`), add a **star icon button**
+  **next to** the existing "Aloita soittohetki" play button. Tapping it navigates to
+  `/skaalaviritin?...` passing the **same scale params** the play button passes to Soittohetki
+  (`root`, `mode`, `octaves`, `level`). Give it an `aria-label` like `Aloita skaalaviritin`.
+- Register the route in `app/src/App.tsx` (lazy, mirroring `/soittohetki`). The hidden `#/test/scaletuner`
+  page stays untouched — this is the real, user-facing screen.
+
+### Screen behaviour
+
+1. **Scale on one stave.** Draw the selected scale on a single stave (reuse `MusicCanvas`, `staves={1}`)
+   exactly like `ScaleTunerTest` does, highlighting the current target note. Scale/octaves come from the
+   URL params (read like Soittohetki does). When the player has played **all notes upward** (reached the
+   top note), the canvas flips to **descending** and the target walks back down from the top to the
+   bottom. Reuse the ascending/descending **phase + targetIndex** logic from `ScaleTunerTest`.
+2. **Tuner for the target note.** Below the stave: the `TunerDial` + note/cents readout, and a
+   **hold-progress** indicator. The player holds the highlighted note in tune long enough → advance to
+   the next note (reuse `useMicPitch` + the in-tune / hold-timer logic from `ScaleTunerTest`).
+3. **Aloita kuuntelu button.** Start/stop the mic. Label **"Aloita kuuntelu"** when stopped,
+   something like **"Lopeta kuuntelu"** when running.
+4. **Sensitivity control.** Reuse the production **`SimpleTunerControls`** ("Mittausnopeus") wired to the
+   persisted **`useTunerStore`** + `calmnessToSettings()` — that is this screen's tuner-sensitivity knob.
+   Do **not** reuse the four-knob debug `TunerControls`.
+5. **Level info text.** Directly **beneath the sensitivity slider**, a Finnish one-liner describing the
+   current difficulty, format e.g. **`Taso 1. Tarkkuus ±10 Aika 3s`** (level number, accuracy in cents,
+   hold time in seconds — read from the level table below).
+
+### Leveling + star animations
+
+- The screen runs through **5 levels**. The **current level number** also equals the **number of stars**
+  in each celebration (level 1 → 1 star, level 2 → 2 stars, … level 5 → 5 stars).
+- **Reaching the top** of the scale → a **silver** star animation. **Reaching the bottom** (one full
+  up-and-down run complete) → a **random-colour** star animation, then the level **hardens by one**.
+- **Final celebration:** the bottom of **level 5** must fly **5 golden** stars. After that, listening
+  **stops**; pressing **Aloita kuuntelu** again restarts from **level 1**.
+- **Tuner off during animations.** While a star animation plays the tuner/listening is **paused**, and
+  that period is **3 seconds**. Resume the run (or stop, if it was the final level-5 celebration) when it ends.
+- Use the `StarFlight` component (one component instance = one flying star; launch `level` of them).
+  This needs a **silver** tone — add a `silver` entry to `StarTone` + `STAR_PALETTES` in `FlyingStar.tsx`.
+  Random-colour picks from the existing non-gold/non-silver tones; the level-5 bottom is forced to `gold`.
+- **No always-visible star row.** Unlike `#/test/scaletuner`, do **not** render a persistent
+  `★★★…` strip — only the flying animations appear.
+
+### Tunables (must be clearly editable)
+
+Define the 5 levels in one clearly-named constant near the top of `Skaalaviritin.tsx` (or a small adjacent
+module) so they're trivial to tweak later — e.g.:
+
+```ts
+// Difficulty ladder for Skaalaviritin. Each completed up-and-down run advances one level;
+// tighter cents + longer hold = harder. Tune these freely.
+const PRACTICE_LEVELS = [
+  { cents: ??, holdSeconds: ?? }, // Taso 1 (easiest)
+  // … up to Taso 5 (hardest, tightest cents + longest hold)
+] as const
+```
+
+Pick a sensible progression (looser/shorter at level 1 → tighter/longer at level 5); the exact numbers are
+the implementer's call (the `Taso 1. Tarkkuus ±10 Aika 3s` above is just the **info-text format**, not a
+mandate). Also keep the **3 s animation/tuner-off duration** as a named constant.
+
+### Layout / responsiveness
+
+- Mobile-first **vertical** layout: the **stave, tuner dial, "Aloita kuuntelu", sensitivity control**, and
+  the level-info line must all **fit a phone in portrait** without scrolling (centred ~390 px viewport).
+  Keep it tight, in the established palette; fine on desktop too.
+
+### Out of scope (Task 32)
+
+- Persisting progress/levels across reloads (this is a first cut — in-memory state is fine).
+- Any detection-algorithm or smoothing changes (Tasks 27–28) — only *consume* the tuner.
+- The hidden `#/test/scaletuner` page's extra mechanics (10-run cap, root/mode rolling, congrats overlay,
+  always-visible star strip, debug `TunerControls`) — those stay on the test page.
+
+### Files (likely)
+
+- `app/src/screens/Skaalaviritin.tsx` (new) — the practice screen (route `skaalaviritin`)
+- `app/src/App.tsx` — register the lazy route
+- `app/src/screens/Harjoittelu.tsx` — star icon button next to the soittohetki play button, navigates with the same params
+- `app/src/components/ui/FlyingStar.tsx` — add a `silver` `StarTone` + palette
+- `app/src/components/ui/StarFlight.tsx`, `TunerDial.tsx`, `SimpleTunerControls.tsx`, `app/src/stores/tunerStore.ts`, `app/src/hooks/useMicPitch.ts` — reuse as-is
+- `docs/skaalaviritin.md` (new) + `CLAUDE.md` reference row; touch `docs/ux-spec.md` if the screen layout warrants it
+
+---
+
+## Task 31: Production tuner — replace the 5-step calmness slider with a 3-step "Mittausnopeus" speed slider
+
+**Status:** done
+**Blocked by:** —
+**Reference:** `docs/virittaminen.md` (current 5-step mapping), `docs/tuner-tuning-worksheet.md` ("Measured results (2026-06-06)"), `docs/tuner-pitch-detection.md`, `app/src/stores/tunerStore.ts`, `app/src/components/ui/SimpleTunerControls.tsx`, `app/src/screens/Virittaminen.tsx`
+
+### Goal
+
+A real-device sweep (worksheet "Measured results, 2026-06-06") settled the good
+detection values, so the production tuner no longer needs 5 fine steps. Collapse the
+single slider to **3 choices** and relabel it **Mittausnopeus** ("measurement speed").
+The middle step is the measured sweet spot; one step each side trades speed vs. steadiness.
+
+### Step → settings mapping (3 steps)
+
+| Step             | `smoothingFrames` | `confirmFrames` | `sensitivity` | `clarityThreshold` |
+| ---------------- | ----------------- | --------------- | ------------- | ------------------ |
+| 1 (Nopea)        | 1                 | 1               | **1** (max)   | 0.5 (locked)       |
+| **2 (default)**  | **5**             | **4**           | **1**         | **0.5**            |
+| 3 (Hidas)        | 12                | 7               | **1**         | 0.5                |
+
+- Step 2 = the measured defaults (smoothing 5 / confirm 4) and is the baked zero-config default.
+- `sensitivity` stays **pinned max**, `clarityThreshold` stays **locked permissive** — but
+  drop it from 0.6 to the measured-best **0.5**. The slider still only calms/quickens
+  the smoothing stage; it never re-tightens gating.
+- Step 1 = fast/responsive (smoothing ≈ off), step 3 = slow/steady.
+
+### Requirements
+
+1. **Store (`tunerStore.ts`).** Rework the slider model: range 1..3, default 2, new
+   `CALMNESS_FRAMES` (or rename to a "speed" concept) per the table above. Lower the
+   locked `clarityThreshold` to 0.5. Keep the persist key/shape working (existing
+   persisted values outside 1..3 must clamp, not crash).
+2. **Control (`SimpleTunerControls.tsx`).** Label **Mittausnopeus**, 3 ticks, ends still
+   **Nopea** / **Hidas**, **Oletus** reset disabled at default (step 2).
+3. **Screen (`Virittaminen.tsx`).** No structural change beyond the slider min/max/default.
+4. **Docs.** Update `docs/virittaminen.md` (mapping table + "5-step" wording → "3-step",
+   "calmness"/"Herkkyys" → "Mittausnopeus") and the relevant chapter in
+   `docs/tuner-pitch-detection.md`.
+
+### Out of scope
+
+- Detection algorithm or smoothing-logic changes (Tasks 27–28).
+- The hidden `/test/...` pages and the four-knob `TunerControls` — leave untouched.
+
+### Files (likely)
+
+- `app/src/stores/tunerStore.ts` — 3-step range/default/mapping, clarity 0.5
+- `app/src/components/ui/SimpleTunerControls.tsx` — relabel + 3 ticks
+- `app/src/screens/Virittaminen.tsx` — slider min/max/default
+- `docs/virittaminen.md`, `docs/tuner-pitch-detection.md` — sync the mapping + wording
+
+---
+
 ## Task 30: CI builds the app; pre-push hook prevents broken builds
 
 **Status:** pending

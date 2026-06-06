@@ -16,6 +16,7 @@
 | `docs/ui-components.md` | HomeCard, ScreenHeader, AccordionSection, and DesktopNavBar components: props, design decisions, and usage |
 | `docs/scale-practice-method.md` | Violin scale practice method: skill levels, key progression, shifts, arpeggios — data source for Harjoittelu |
 | `docs/soittohetki.md` | Soittohetki screen: URL params, layout, scale/arpeggio toggle, countdown timer hook |
+| `docs/skaalaviritin.md` | Skaalaviritin scale-practice tuner (route `/skaalaviritin`, launched from the Harjoittelu list via a star button): play the scale up-and-down in tune, 5 hardening levels (`PRACTICE_LEVELS`), silver/random/gold `StarFlight` celebrations (level = star count), 3 s tuner-off pause; reuses `MusicCanvas`/`TunerDial`/`SimpleTunerControls`/`useMicPitch` |
 | `docs/virittaminen.md` | Production tuner screen (route `/virittaminen`): zero-config layout, the one 5-step "calmness" slider (`SimpleTunerControls`) + its step→settings mapping, persisted `tunerStore`, gauge Home-card icon |
 | `docs/animations.md` | Pelican timer + time-up celebration animations: variants, CSS keyframe wiring, pause/reset model, anatomical pivots, debug routes |
 | `docs/audio-research.md` | Initial design notes for the audio engine: candidate APIs, A=442 pitch math, chord interval table, open questions |

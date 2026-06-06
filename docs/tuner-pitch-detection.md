@@ -365,13 +365,14 @@ Manual validation (browser, sustained violin): note label, cents, and needle are
 noticeably calmer at the defaults; a genuine pitch change still commits within a
 practical tuning latency (~65 ms + smoothing).
 
-## Production filter — one "calmness" slider, permissive gating (Task 29)
+## Production filter — one "Mittausnopeus" slider, permissive gating (Tasks 29, 31)
 
 The test-page `TunerControls` expose four independent knobs (Herkkyys/sensitivity,
 Selkeysraja/clarity, Tasaus/smoothing, Sävelvarmistus/confirm). That is right for
 *finding* defaults but wrong for players. For the production screen
-(`SimpleTunerControls`) we collapse them to a single **5-step slider**, and the
-mapping is chosen deliberately, not just for fewer widgets.
+(`SimpleTunerControls`) we collapse them to a single **3-step slider**
+(**Mittausnopeus** — "measurement speed"), and the mapping is chosen deliberately,
+not just for fewer widgets.
 
 **The old "Filter ON" felt worse because it conflated two unrelated jobs:**
 
@@ -385,26 +386,25 @@ mapping is chosen deliberately, not just for fewer widgets.
    reading (see Task 28 above). They never reject a note; worst case is a slightly
    laggy needle, never a dead one.
 
-**Decision:** the 5-step slider drives **only the smoothing stage**, and never
+**Decision:** the 3-step slider drives **only the smoothing stage**, and never
 re-tightens gating. So every step still sees every note — higher steps are just
 calmer/steadier, not pickier. Concretely:
 
 | Slider | smoothing/confirm | sensitivity | clarityThreshold |
 |---|---|---|---|
-| **1** (raw/fast) | minimal (≈ off) | **max** | permissive (locked, low) |
-| **3** (default) | ≈ Task 28 defaults | **max** | permissive (locked, low) |
-| **5** (calm/steady) | high | **max** | permissive (locked, low) |
+| **1** Nopea (fast/responsive) | minimal (≈ off) | **max** | 0.5 (locked) |
+| **2** default (measured sweet spot) | 5 / 4 | **max** | 0.5 (locked) |
+| **3** Hidas (slow/steady) | 12 / 7 | **max** | 0.5 (locked) |
 
 - **`sensitivity` is pinned at max** at every step — we want to hear quiet notes;
   the volume floor was never the thing that helped.
-- **`clarityThreshold` is locked at one low/permissive value (~0.6), not ramped.**
-  The slider means "how calm," not "how picky"; if clarity rode the slider too,
-  step 1 would also get noisier in a second, confusing dimension. We bias toward
-  the known-good "filter off" behaviour (accept almost anything pitch-like) and
-  can raise the locked value later **once we have real mobile-violin measurements**
-  — none exist yet, so we start permissive on purpose.
-- **Default = step 3:** noticeably calmer than raw, still responsive. The user can
-  slide on the phone to taste; the result persists (`tunerStore`).
+- **`clarityThreshold` is locked at 0.5** (measured best on a real phone + violin,
+  2026-06-06), not ramped. The slider means "how calm," not "how picky". The locked
+  value dropped from the initial 0.6 to 0.5 after the device sweep showed that 0.5
+  clears on weak strings and off-centre bowing without false positives.
+- **Default = step 2:** the measured sweet spot — smoothing 5 / confirm 4 —
+  noticeably calmer than raw, still responsive. The user can slide on the phone to
+  taste; the result persists (`tunerStore`).
 
 Net: the worst case is a slightly jumpy-but-accurate needle, never a silent one —
 the failure mode that actually hurt before.
