@@ -1,7 +1,7 @@
 import { CALMNESS_MIN, CALMNESS_MAX, DEFAULT_CALMNESS } from '../../stores/tunerStore.ts'
 
 interface SimpleTunerControlsProps {
-  /** Current calmness step (1..5). */
+  /** Current speed step (1..3). */
   calmness: number
   /** Set a new step. */
   onChange: (step: number) => void
@@ -10,18 +10,18 @@ interface SimpleTunerControlsProps {
 }
 
 /**
- * The production tuner's only control: one 5-step "calmness" slider. Step 1 is
- * raw/fast, step 5 is very calm/steady; it drives only the smoothing stage and
+ * The production tuner's only control: one 3-step "Mittausnopeus" slider. Step 1 is
+ * fast/responsive, step 3 is slow/steady; it drives only the smoothing stage and
  * never re-tightens gating, so every step still hears every note. The full
  * four-knob `TunerControls` stays on the hidden test pages. See
- * docs/tuner-pitch-detection.md, "Production filter — one calmness slider".
+ * docs/virittaminen.md for the mapping.
  */
 export function SimpleTunerControls({ calmness, onChange, onReset }: SimpleTunerControlsProps) {
   const atDefault = calmness === DEFAULT_CALMNESS
   return (
     <div className='flex w-full max-w-[320px] flex-col gap-2'>
       <div className='flex items-center justify-between'>
-        <span className='text-sm font-bold text-[#5a2d0c]'>Herkkyys</span>
+        <span className='text-sm font-bold text-[#5a2d0c]'>Mittausnopeus</span>
         <button
           onClick={onReset}
           disabled={atDefault}
@@ -38,7 +38,7 @@ export function SimpleTunerControls({ calmness, onChange, onReset }: SimpleTuner
         step={1}
         value={calmness}
         onChange={(e) => onChange(Number(e.target.value))}
-        aria-label='Herkkyys'
+        aria-label='Mittausnopeus'
         list='calmness-ticks'
         className='h-6 w-full accent-[#a0563f]'
       />

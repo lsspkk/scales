@@ -12,6 +12,7 @@ const HarjoitteluTietoa = lazy(() =>
 )
 const Soittohetki = lazy(() => import('./screens/Soittohetki').then((m) => ({ default: m.Soittohetki })))
 const Virittaminen = lazy(() => import('./screens/Virittaminen').then((m) => ({ default: m.Virittaminen })))
+const Skaalaviritin = lazy(() => import('./screens/Skaalaviritin').then((m) => ({ default: m.Skaalaviritin })))
 // DEBUG / TEST ROUTE — central entry for internal visual test pages.
 // Keep a stable /test landing page so individual leaf test routes can change
 // without needing a new "secret" URL to remember every time.
@@ -31,6 +32,8 @@ const AudioTest = lazy(() => import('./screens/AudioTest').then((m) => ({ defaul
 const TunerTest = lazy(() => import('./screens/TunerTest').then((m) => ({ default: m.TunerTest })))
 // DEBUG / TEST ROUTE — scale-playing tuner game. Reach from #/test or directly via #/test/scaletuner.
 const ScaleTunerTest = lazy(() => import('./screens/ScaleTunerTest').then((m) => ({ default: m.ScaleTunerTest })))
+// DEBUG / TEST ROUTE — light-indigo flying-star animation. Reach from #/test or directly via #/test/starflight.
+const StarFlightTest = lazy(() => import('./screens/StarFlightTest').then((m) => ({ default: m.StarFlightTest })))
 
 function LoadingSpinner() {
   return (
@@ -52,6 +55,7 @@ export function App() {
         <Route path='/harjoittelu/tietoa' element={<HarjoitteluTietoa />} />
         <Route path='/soittohetki' element={<Soittohetki />} />
         <Route path='/virittaminen' element={<Virittaminen />} />
+        <Route path='/skaalaviritin' element={<Skaalaviritin />} />
         {/* DEBUG / TEST ROUTES — grouped under /test so one stable route reveals the available previews. */}
         <Route path='/test' element={<TestMenu />} />
         <Route path='/test/animation/timer' element={<AnimationTest />} />
@@ -59,6 +63,7 @@ export function App() {
         <Route path='/test/audio' element={<AudioTest />} />
         <Route path='/test/tuner' element={<TunerTest />} />
         <Route path='/test/scaletuner' element={<ScaleTunerTest />} />
+        <Route path='/test/starflight' element={<StarFlightTest />} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
     </Suspense>

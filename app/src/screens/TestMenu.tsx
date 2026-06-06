@@ -45,6 +45,12 @@ const TEST_MENU_ITEMS: TestMenuItem[] = [
     description: 'Soita asteikon sävelet vireeseen — tarkkuus, kesto ja satunnaisarvonta.',
     tone: 'red',
   },
+  {
+    to: '/test/starflight',
+    title: 'Lentävä tähti',
+    description: 'Vaaleanindigonvärinen tähti lentää reunalta, kiertää ja katoaa toiselle reunalle.',
+    tone: 'brown',
+  },
 ]
 
 function getTestMenuLinkToneClasses(tone: TestMenuTone): string {

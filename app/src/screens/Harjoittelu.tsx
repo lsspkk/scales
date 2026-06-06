@@ -45,12 +45,14 @@ function PracticeListItem({
   isMobile,
   onToggleDone,
   onPlay,
+  onPlayTuner,
 }: {
   item: { scale: ScaleEntry; done: boolean }
   index: number
   isMobile: boolean
   onToggleDone: (index: number) => void
   onPlay: () => void
+  onPlayTuner: () => void
 }) {
   const baseClasses = isMobile
     ? 'w-full min-h-[44px] flex items-center gap-2 py-2 border-b border-[#c9a96e] transition-colors'
@@ -85,6 +87,19 @@ function PracticeListItem({
         </div>
         {item.scale.shiftPattern && <div className='text-xs mt-0.5 text-[#8B4513]'>{item.scale.shiftPattern}</div>}
       </div>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onPlayTuner()
+        }}
+        className='flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-[#8B4513] hover:bg-[#f0dbb8] transition-colors'
+        aria-label='Aloita skaalaviritin'
+      >
+        <svg width='20' height='20' viewBox='0 0 20 20' fill='currentColor' xmlns='http://www.w3.org/2000/svg'>
+          <path d='M10 1.5l2.47 5.27 5.78.62-4.32 3.88 1.2 5.68L10 14.1l-5.13 2.85 1.2-5.68L1.75 7.39l5.78-.62L10 1.5z' />
+        </svg>
+      </button>
 
       <button
         onClick={(e) => {
@@ -154,7 +169,7 @@ function PracticeBody() {
     return (
       <div className='space-y-6'>
         <LevelSelector selectedLevel={selectedLevel} onSelect={setSelectedLevel} />
-        <p className='text-sm leading-relaxed text-[#5a2d0c]'>
+        <p className='text-xs leading-snug text-[#5a2d0c]'>
           Sovellus arpoo valitun taitotason asteikot satunnaiseen järjestykseen ja luo harjoituslistan, jonka voit käydä
           läpi omaan tahtiisi. Satunnainen järjestys pakottaa sinut harjoittelemaan myös vähemmän tuttuja sävellajeja
           eikä vain suosikkejasi. Käy lista läpi viikon tai parin aikana ja arvo sitten uusi järjestys — näin
@@ -217,6 +232,15 @@ function PracticeBody() {
                   anim: pickRandomAnimationVariant(),
                 })
                 navigateToSoittohetki(`/soittohetki?${params.toString()}`)
+              }}
+              onPlayTuner={() => {
+                const params = new URLSearchParams({
+                  root: item.scale.key,
+                  mode: item.scale.mode,
+                  octaves: String(item.scale.octaves),
+                  level: String(item.scale.level),
+                })
+                navigateToSoittohetki(`/skaalaviritin?${params.toString()}`)
               }}
             />
           )

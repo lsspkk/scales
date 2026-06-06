@@ -17,10 +17,10 @@ export function HomeCard({ icon, label, subtitle, color = 'brown', onClick }: Ho
   return (
     <button
       onClick={onClick}
-      className={`flex flex-col items-center justify-center gap-3 rounded-2xl p-8 w-full transition-transform duration-100 ${color === 'red' ? red : brown}`}
+      className={`flex flex-col items-center justify-center gap-2 rounded-2xl p-4 w-full transition-transform duration-100 ${color === 'red' ? red : brown}`}
     >
-      <span className="w-20 h-20 flex items-center justify-center">{icon}</span>
-      <span className="text-2xl font-semibold leading-tight">{label}</span>
+      <span className="w-12 h-12 flex items-center justify-center">{icon}</span>
+      <span className="text-lg font-semibold leading-tight">{label}</span>
       {subtitle && <span className="text-sm opacity-80 font-normal">{subtitle}</span>}
     </button>
   )

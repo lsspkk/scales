@@ -3,7 +3,7 @@ import { HomeCard } from '../components/ui/HomeCard'
 import { useViewport } from '../lib/useViewport'
 
 const BookMusicIcon = (
-  <svg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' width='80' height='80'>
+  <svg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' width='48' height='48'>
     {/* Material Design Icons — mdi:book-music — Apache 2.0 */}
     <path
       fill='rgba(255,251,233,0.9)'
@@ -13,7 +13,7 @@ const BookMusicIcon = (
 )
 
 const ViolinIcon = (
-  <svg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' width='80' height='80'>
+  <svg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' width='48' height='48'>
     {/* Material Design Icons — mdi:violin — Apache 2.0 */}
     <g transform='rotate(-20 12 12)'>
       <path
@@ -25,7 +25,7 @@ const ViolinIcon = (
 )
 
 const TunerGaugeIcon = (
-  <svg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' width='80' height='80'>
+  <svg viewBox='0 0 24 24' xmlns='http://www.w3.org/2000/svg' width='48' height='48'>
     {/* Boxicons v3.0.8 — gauge — https://docs.boxicons.com/free */}
     <g fill='rgba(255,251,233,0.9)'>
       <path d='M10.94 15.5c.71.46 1.65.27 2.12-.44l3.96-6.04v-.03c0-.02-.03-.02-.04-.01l-6.04 3.96c-.71.46-.91 1.41-.44 2.12.12.18.27.33.44.44' />
@@ -39,14 +39,14 @@ export function Home() {
   const { isDesktop } = useViewport()
 
   return (
-    <div className={`flex flex-col h-full bg-[#fffbe9] px-6 pt-10 ${isDesktop ? 'items-center justify-center' : ''}`}>
+    <div className={`flex flex-col h-full bg-[#fffbe9] px-6 pt-5 ${isDesktop ? 'items-center justify-center' : ''}`}>
       {!isDesktop && (
-        <h1 className='font-medieval text-center text-[#5a2d0c] text-3xl mb-10 leading-tight'>Sävellajit</h1>
+        <h1 className='font-medieval text-center text-[#5a2d0c] text-2xl mb-4 leading-tight'>Sävellajit</h1>
       )}
-      <div className={`flex gap-5 ${isDesktop ? 'flex-row justify-center' : 'flex-col flex-1'}`}>
+      <div className={`flex gap-3 ${isDesktop ? 'flex-row justify-center' : 'flex-col flex-1'}`}>
         <HomeCard icon={BookMusicIcon} label='Moodit' subtitle='Kirkkosävellajien perusteet' color='brown' onClick={() => navigate('/moodit')} />
         <HomeCard icon={ViolinIcon} label='Harjoittelu' subtitle='Sävellajit viululla' color='red' onClick={() => navigate('/harjoittelu')} />
-        <HomeCard icon={TunerGaugeIcon} label='Virittäminen' subtitle='Viritä viulu' onClick={() => navigate('/virittaminen')} />
+        <HomeCard icon={TunerGaugeIcon} label='Virittäminen' subtitle='' onClick={() => navigate('/virittaminen')} />
       </div>
     </div>
   )

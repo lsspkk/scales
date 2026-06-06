@@ -20,7 +20,10 @@ function isActive(pathname: string, to: string): boolean {
 /** Fleur-de-lis (U+269C) — heraldic medieval symbol next to the brand. */
 function Flourish() {
   return (
-    <span className='inline-block font-medieval text-4xl text-[#5a2d0c] leading-none flex-shrink-0 -translate-y-[10%]'>
+    <span
+      aria-hidden='true'
+      className='inline-block font-medieval text-4xl text-[#5a2d0c] leading-none flex-shrink-0 -translate-y-[10%]'
+    >
       ⚜
     </span>
   )
