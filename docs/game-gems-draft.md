@@ -1,5 +1,14 @@
 # Listening Game — Pelikaanin aarteet ("The Pelican's Treasures")
 
+> **Graphics spike (Task 33):** hidden route `#/test/necklace` (also linked from `#/test`) renders the
+> necklace look-dev playground — no mic/tuner, buttons stand in for notes. It has two **layouts** (pseudo-3D
+> spinning *ring* that swings the next socket to the front, or a calm hanging *arc* with a spotlight pan),
+> two **gem** styles (smooth *cabochon* / *faceted* with quality-driven sparkle + perfect-note "fire"),
+> three **chain** styles (banded-metal *beads* / *rope* / *cable*) and three **themes** (metal = silver/gold/bronze,
+> dark backdrop + twinkle motif), plus gem-colour swatches. Animations: eased spin to the active socket, shiny
+> ore drop-in (ascending), ore→gem refine morph (descending), set-burst particles + glow bloom, roving metal sheen.
+> Code: pure `app/src/lib/necklace.ts` (heavily commented) + `NecklaceCanvas.tsx` wrapper + `NecklaceTest.tsx`.
+
 A pitch-listening game that turns scale practice into crafting jewellery for the
 pelican. Built on the existing tuner/listening engine (pitch detector, A=442,
 see `audio-architecture.md` and `tuner-pitch-detection.md`). Designed for an 8-year-old

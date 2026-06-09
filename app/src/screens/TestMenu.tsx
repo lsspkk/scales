@@ -51,6 +51,12 @@ const TEST_MENU_ITEMS: TestMenuItem[] = [
     description: 'Vaaleanindigonvärinen tähti lentää reunalta, kiertää ja katoaa toiselle reunalle.',
     tone: 'brown',
   },
+  {
+    to: '/test/necklace',
+    title: 'Kaulakorugrafiikka',
+    description: 'Pyörivä jalokivikaulakoru: malmi, hionta ja kimallus — muoto-, kivi-, ketju- ja teemavaihtoehdot.',
+    tone: 'red',
+  },
 ]
 
 function getTestMenuLinkToneClasses(tone: TestMenuTone): string {

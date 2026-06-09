@@ -34,6 +34,8 @@ const TunerTest = lazy(() => import('./screens/TunerTest').then((m) => ({ defaul
 const ScaleTunerTest = lazy(() => import('./screens/ScaleTunerTest').then((m) => ({ default: m.ScaleTunerTest })))
 // DEBUG / TEST ROUTE — light-indigo flying-star animation. Reach from #/test or directly via #/test/starflight.
 const StarFlightTest = lazy(() => import('./screens/StarFlightTest').then((m) => ({ default: m.StarFlightTest })))
+// DEBUG / TEST ROUTE — procedural necklace/gem graphics spike. Reach from #/test or directly via #/test/necklace.
+const NecklaceTest = lazy(() => import('./screens/NecklaceTest').then((m) => ({ default: m.NecklaceTest })))
 
 function LoadingSpinner() {
   return (
@@ -64,6 +66,7 @@ export function App() {
         <Route path='/test/tuner' element={<TunerTest />} />
         <Route path='/test/scaletuner' element={<ScaleTunerTest />} />
         <Route path='/test/starflight' element={<StarFlightTest />} />
+        <Route path='/test/necklace' element={<NecklaceTest />} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
     </Suspense>

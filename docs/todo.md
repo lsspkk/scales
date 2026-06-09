@@ -159,6 +159,50 @@ The middle step is the measured sweet spot; one step each side trades speed vs. 
 
 ---
 
+## Task 33: Necklace graphics spike — `#/test/necklace` (gem/necklace render + spin, no tuner)
+
+**Status:** done
+**Blocked by:** —
+**Reference:** `docs/game-necklace-ideas.md` (the full menu of techniques — layout/motion §2, gem rendering §3, metal §4, mining-vs-shaping phases §5, juice §8, and the opinionated MVP pick in §9; **this spike is how we answer the §10 open questions**), `docs/game-gems-draft.md` (game concept), `app/src/components/ui/MusicCanvas.tsx` + `app/src/lib/musicStave.ts` (canvas conventions: pure-lib draw + thin React wrapper, DPR-scaled bitmap, `computeLayout` pattern, `ResizeObserver` + `requestAnimationFrame` loop), `docs/architecture.md`, `docs/react-instructions.md`.
+
+### Goal
+
+A **hidden test page** (route `#/test/necklace`, like the other `#/test/...` pages — not in any menu) to develop the necklace/gem graphics **in isolation, with zero tuner/mic involvement and no detection delay**. This is a pure-visuals playground so a human can eyeball the 3D look and pick the best version; gameplay wiring comes later. Keep it simple — **do not over-engineer**; the implementor chooses the concrete look/animation that reads best.
+
+### What to build
+
+1. **Necklace fills most of the screen.** A procedurally-drawn necklace on canvas is the hero — give it nearly the whole viewport. Controls are small and out of the way.
+2. **Put the effort into the 3D feel + spin.** The headline of this spike is the **pseudo-3D necklace that rotates/turns so the next empty socket swings into view** (see ideas doc §2 Option B as a starting point — the implementor may try the arc/ribbon/flip alternatives too and keep whichever looks best). The spin should be smooth/eased, not snappy.
+3. **Bigger stones for gems, small neutral stones as the chain.** Use a necklace where the **gem sockets are the larger pebbles/stones**, with just a **few small neutral/metal stones in between** forming the chain. Pick a **simple metal technique** for those connectors (ideas doc §4 — e.g. the cheap rope/snake chain or a banded-gradient bead).
+4. **Simple gem graphics.** Choose a simple, good-looking gem render (ideas doc §3 — cabochon G1 is the easy base; sparkle/facets optional). Don't gold-plate it.
+5. **Ore phase already looks rewarding.** When a socket gets its raw material (ascending), it must **not** be a dull block of rock — at minimum a **shiny stone**, so even the ore stage feels like a small reward. Descending then **refines** that ore into the finished gem.
+
+### Controls (small buttons, off to the side)
+
+- **Add gem / next socket** — advances one socket: with a short **delay**, the necklace spins the next empty socket into view and an **ore** is selected/dropped in (the ascending "mine" step).
+- **Refine gem** — the descending step: turns the current ore into a polished gem (and/or steps back down a socket, implementor's call).
+- **Reset / new necklace** — clear, and/or **random-roll** a fresh necklace (new seed → different stones). A simple **colour selection** (a few swatches) to recolour the gems — **no full theme selection**, just colour.
+
+### Notes / constraints
+
+- Reuse the canvas conventions from `MusicCanvas`/`musicStave.ts` (pure `src/lib/necklace.ts` + thin `NecklaceCanvas` wrapper, DPR scaling, rAF loop, seeded PRNG) per `docs/react-instructions.md`.
+- **No mic, no `useMicPitch`, no tuner, no real scale logic** — buttons stand in for note events so iteration is instant.
+- In-memory state only; nothing persisted. Register the route alongside the other hidden test pages in `App.tsx`.
+
+### Out of scope (Task 33)
+
+- Wiring to real pitch/intonation, scales, levels, or the Harjoittelu list.
+- Themes/motifs, full juice pass, persistence — this is a look-dev spike only.
+
+### Files (likely)
+
+- `app/src/lib/necklace.ts` (new) — pure draw + layout + seeded PRNG
+- `app/src/components/ui/NecklaceCanvas.tsx` (new) — rAF/ResizeObserver wrapper (mirrors `MusicCanvas`)
+- `app/src/screens/NecklaceTest.tsx` (new) — the `#/test/necklace` playground + small controls
+- `app/src/App.tsx` — register the hidden `#/test/necklace` route
+
+---
+
 ## Task 30: CI builds the app; pre-push hook prevents broken builds
 
 **Status:** pending

@@ -55,7 +55,7 @@ function PracticeListItem({
   onPlayTuner: () => void
 }) {
   const baseClasses = isMobile
-    ? 'w-full min-h-[44px] flex items-center gap-2 py-2 border-b border-[#c9a96e] transition-colors'
+    ? 'w-full min-h-[44px] flex items-center gap-1 py-2 border-b border-[#c9a96e] transition-colors'
     : 'w-full min-h-[44px] flex items-center gap-2 px-3 py-2 rounded-lg transition-colors'
   const bgClasses = item.done
     ? 'bg-[#f0dbb8] opacity-60'
@@ -66,7 +66,7 @@ function PracticeListItem({
     <div className={`${baseClasses} ${bgClasses}`}>
       <button
         onClick={() => onToggleDone(index)}
-        className='flex-shrink-0 w-10 h-10 flex items-center justify-center'
+        className={`flex-shrink-0 ${isMobile ? 'w-8' : 'w-10'} h-10 flex items-center justify-center`}
         aria-label={item.done ? 'Merkitse harjoittelemattomaksi' : 'Merkitse harjoitelluksi'}
       >
         <span
@@ -93,7 +93,7 @@ function PracticeListItem({
           e.stopPropagation()
           onPlayTuner()
         }}
-        className='flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-[#8B4513] hover:bg-[#f0dbb8] transition-colors'
+        className={`flex-shrink-0 ${isMobile ? 'w-8 h-8' : 'w-10 h-10'} flex items-center justify-center rounded-full text-[#8B4513] hover:bg-[#f0dbb8] transition-colors`}
         aria-label='Aloita skaalaviritin'
       >
         <svg width='20' height='20' viewBox='0 0 20 20' fill='currentColor' xmlns='http://www.w3.org/2000/svg'>
@@ -106,7 +106,7 @@ function PracticeListItem({
           e.stopPropagation()
           onPlay()
         }}
-        className='flex-shrink-0 w-10 h-10 flex items-center justify-center rounded-full text-[#8B4513] hover:bg-[#f0dbb8] transition-colors'
+        className={`flex-shrink-0 ${isMobile ? 'w-8 h-8' : 'w-10 h-10'} flex items-center justify-center rounded-full text-[#8B4513] hover:bg-[#f0dbb8] transition-colors`}
         aria-label='Aloita soittohetki'
       >
         <svg width='20' height='20' viewBox='0 0 20 20' fill='none' xmlns='http://www.w3.org/2000/svg'>
