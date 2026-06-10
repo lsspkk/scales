@@ -4,6 +4,117 @@ Active task list. Completed tasks are archived in `completed-tasks.md`; a one-li
 
 ---
 
+## Task 34: Jalokivipeli — gem-necklace scale game (MVP: Level 1) launched from the Harjoittelu list
+
+**Status:** done
+**Blocked by:** —
+**Reference:**
+- `docs/game-necklace-in-tune-step.md` — **the settled gameplay spec this task implements** (active-socket ring §1, delayed note reveal + Level-1 timers §2, note-to-note cadence + octave-turn polish repeat + resolution rule §2.5, tuning bar §3, info dialog §4, on-screen summary). The Level-1 timers + the 10-level quality grading are the MVP.
+- `docs/game-necklace-ideas.md` + `docs/game-gems-draft.md` — the look-dev menu and the overall "Pelikaanin aarteet" game concept.
+- `app/src/screens/Skaalaviritin.tsx` — **the closest existing screen**: shows the exact reusable wiring — `useMicPitch(calmnessToSettings(calmness))`, `pitchClassOf`/`targetPc` pitch-class matching, `scaleNotes` via `getScale` + `assignAscendingOctaves`, the `phase`/`targetIndex` ascending↔descending walk, and `StarFlight` celebrations. (This game swaps Skaalaviritin's *hold-to-advance* for the doc's *phase-timer* evaluation; everything else is the same shape.)
+- `app/src/screens/NecklaceTest.tsx` (`#/test/necklace`) — already drives the same `empty → ore (ascending mine) → gem (descending refine)` loop with buttons; the game replaces those button clicks with note-evaluation results.
+- `app/src/lib/necklace.ts` + `app/src/components/ui/NecklaceCanvas.tsx` — the pure render engine + thin rAF wrapper (the scoreboard). Key API: `createNecklace(seed, socketCount, opts)`, mutate `model.sockets[i].fill` (`'empty'|'ore'|'gem'`), `model.sockets[i].quality` (0–1 → gem colour intensity, the *set* pass), `model.sockets[i].gem.polish` (0–1 → muddy→brilliant finish, the *polish* pass), and `model.activeIndex` (the ring auto-spins it to front via `ringSpinTarget`/`advanceDrawState`). `drawGlow` already pulses a halo on the active socket.
+- `app/src/hooks/useMicPitch.ts`, `app/src/stores/tunerStore.ts` (`calmnessToSettings`), `app/src/components/ui/TunerDial.tsx`/`CompactTunerControls.tsx` (for reference only — this screen uses a horizontal bar, not the dial), `app/src/components/ui/StarFlight.tsx` + `FlyingStar.tsx` (`StarTone`).
+- `app/src/lib/musicScale.ts` (`getScale`), `app/src/lib/noteOctave.ts` (`assignAscendingOctaves`, `SCALE_START_OCTAVE`, `formatNoteSPN`, `formatNoteFi`), `app/src/lib/audio/tuning.ts` (`noteNameToMidi`).
+- `docs/react-instructions.md`, `docs/ux-spec.md`, `app/src/App.tsx` (route registration).
+
+### Goal
+
+The **first playable level** of the gem-necklace scale game: the player plays the chosen scale **up and then down**, and the gem necklace records **how well each note was played**. Each note mines an ore (ascending) and polishes it into a gem (descending); **better intonation = a more vivid, better-polished gem**. One completed up-and-down run = one finished necklace. This is the **MVP — Level 1 only** (`game-necklace-in-tune-step.md` §2 ships only Level 1); keep timers/thresholds as clearly-named, editable constants so later levels and playtesting are easy.
+
+### Orientation — what is reused vs. genuinely new
+
+Almost all the hard parts already exist; budget the effort on the new timing state machine and the tuning bar.
+
+- **The necklace is the scoreboard, and it already grades.** `necklace.ts`/`NecklaceCanvas` already render the full `empty → ore (ascending mine) → gem (descending refine)` loop, auto-spin the active socket to front via `model.activeIndex` (`ringSpinTarget` + eased spin in `advanceDrawState`), and fire set-bursts/bloom on each transition. The doc's **10-level grading is two existing 0–1 fields**: `socket.quality` (set-pass colour intensity, ~50→100% saturation in `drawShapedGem`/`drawShapedCabochon`) and `gem.polish` (polish-pass muddy→brilliant finish). The game just **writes those fields from intonation** instead of `rollQuality`/`rollGemSpec` — no engine rewrite. `NecklaceTest.tsx` already drives this exact loop with buttons; the game replaces the button clicks with note-evaluation results.
+- **The tuner wiring is already solved in `Skaalaviritin.tsx`** — reuse its shape verbatim: `useMicPitch(calmnessToSettings(calmness))` → `{ midi, cents, noteName, listening, start, stop }`, `pitchClassOf`/`targetPc` pitch-class matching, the `scaleNotes` build (`getScale` + `assignAscendingOctaves` + `SCALE_START_OCTAVE`), the `phase`/`targetIndex` ascending↔descending walk, and `StarFlight` celebrations.
+- **The one real behavioural difference:** Skaalaviritin advances by *hold-to-advance* (fill a bar while in tune). This game uses the doc's **phase-timer** instead — identifier appears after the level delay, a fixed evaluation window runs, cents are **sampled/averaged across the window** into a 0–1 quality, then the note **always resolves and advances**. That state machine + the **horizontal tuning bar** (`TuningBar.tsx`) are the genuinely new code. The breathing focus ring and the note-letter label are small additions over the existing `drawGlow`.
+
+### Decisions (chosen defaults — flag if you disagree)
+
+- **Route + screen name: `jalokivipeli` / `Jalokivipeli.tsx`** ("gem game"). The broader game concept is "Pelikaanin aarteet"; if we want the route to carry that name instead (e.g. `aarteet`), change it here before building.
+- **No visible sensitivity slider for MVP.** The screen inherits the player's tuner sensitivity from the persisted `useTunerStore` (`calmnessToSettings`); the **tuning bar is the only readout**. If playtesting shows kids need to adjust it on this screen, add `CompactTunerControls` later (it is already wired for Skaalaviritin).
+
+### Entry point
+
+- In `PracticeListItem` (`app/src/screens/Harjoittelu.tsx`), add a **diamond/gem icon button** **next to** the existing star (skaalaviritin) and person (soittohetki) buttons. Tapping it navigates to the new route passing the **same scale params** the other two pass (`root`, `mode`, `octaves`, `level`). `aria-label` e.g. `Aloita jalokivipeli`.
+- New route **`jalokivipeli`** (lazy, mirroring `/skaalaviritin` / `/soittohetki`) registered in `app/src/App.tsx`. Read params with `useSearchParams` exactly like Skaalaviritin.
+
+### Screen layout (mobile-first, ~390 px, no scroll)
+
+Per the `game-necklace-in-tune-step.md` "what is on screen" summary:
+
+- **Necklace** (`NecklaceCanvas`) fills most of the viewport — the hero.
+- **Small fixed header**: scale name + note count (static, no attention needed). Info button lives here (see below).
+- **Note identifier**: the Finnish letter name (e.g. `H`, `Fis`) as a soft, low-contrast label in the **empty interior of the ring, above the active socket** — appears only when a note's evaluation window opens (mist fade-in ~1 s, max opacity ~0.55). Reuse `formatNoteFi`/the letter+accidental from the target note (as Skaalaviritin renders it).
+- **Tuning bar** (new component): a full-width bottom strip, low height (~14–18 px). Left = live **cents readout** (monospace, blank when disabled/silent), a thin **needle** sliding with `pitch.cents`, a shaded **good zone** (`GOOD_ZONE_CENTS` constant) that brightens when centred, right = **phase timer** (one decimal). Two states: **disabled** (present but quiet, needle parked centre) and **active** (during the evaluation window). On a poor result the bar yields its space to a neutral message for ~1 s.
+
+### Gameplay loop (the new part — replaces hold-to-advance)
+
+1. **Sockets = notes.** Build the necklace with one socket per scale note (`createNecklace`; socket count from the octave material — MVP can mirror Skaalaviritin's single ascending octave = 8 sockets, with the octave turn at note 8). All sockets start `empty`.
+2. **Round-start countdown** `4 3 2 1` (numbers only, ~1 s each) before the first note; the **first note's label is already visible** during the countdown; the first evaluation window starts immediately when it ends.
+3. **Per normal note:** ~1 s between-note pause (active socket centred, tuning bar disabled) → identifier fades in after the level delay → **evaluation window opens** (bar active, timer runs). During the window, **sample `pitch.cents` continuously** (only when the detected pitch-class matches `targetPc`; silence/wrong pitch counts against it) and aggregate to a **0–1 quality** (e.g. mean centeredness across the window). The note **always resolves** when the window ends.
+   - **Ascending** resolution → set `socket.fill = 'ore'` and write the quality (the *set* pass; the ore already looks rewarding).
+   - **Descending** resolution → set `socket.fill = 'gem'` and write `socket.quality` (set-pass colour intensity).
+4. **Octave-turn polish repeat** (`game-necklace-in-tune-step.md` §2.5): at the octave-turn note (note 8 for 1 octave; 8/15 and 8/15/22 for 2/3 oct) the **same note replays** after the ~1 s pause (label shown immediately, no delayed reveal) and the second pass writes **`gem.polish`** (the separate finish scale). Keep it readable as a second pass on the *same* gem, not a new socket.
+5. **10 visible levels.** Map the window's quality → one of 10 visibly-distinct outcomes via `socket.quality` (set pass: colour intensity ~50→100% saturation, already wired in `drawShapedGem`/`drawShapedCabochon`) and `gem.polish` (polish pass: muddy→brilliant, already wired). No numeric score shown; no below-level-1 failure — every note maps to one of the 10. Expose the score→reward mapping as an editable constant.
+6. **Poor-result pause** (~1 s): the active socket stays centred, the label stays visible, and the tuning bar is replaced by one **neutral, non-shaming** message including the target note name, e.g. `En kuullut kunnolla nuottia C.` (clear sans-serif, one generic pattern for all poor results). Good/excellent results show no text — only the gem speaks.
+7. **Active-socket focus ring** (`§1`): a soft breathing halo around the active socket while waiting (small extension over the existing `drawGlow`, or a CSS/canvas overlay), fading out (~150–200 ms) when the note resolves — no burst from the ring itself.
+
+### End-of-round: auto-replay switch + admire (the user's explicit ask)
+
+- When a full **up-and-down run completes** (necklace full), show the **finished necklace**.
+- A **configurable switch** (persisted or in-memory toggle, default on): **auto-start another round after 20 s**.
+- While the 20 s auto-advance counts down, show a visible button to **stay and admire** the finished necklace instead of continuing; tapping it cancels the auto-advance and the player resumes manually. (When the switch is off, no countdown — always wait for a manual start.)
+- Keep the **20 s** and the countdown as named constants.
+
+### First-time / idle prompt (the user's explicit ask)
+
+- Before the first round (idle/empty state), show a short instruction either in place of the necklace or **overlaid on a randomised full necklace** (use `NecklaceTest`'s "fully crafted" pattern — `createNecklace` with every socket set to `gem` + `rollQuality` — for an attractive backdrop):
+  > **Soita asteikko ylös ja sitten alas. Paremmin vireessä soittaen saat upeampia jalokiviä.**
+- An **Aloita** button starts listening (mirror Skaalaviritin's `toggleListening` / `pitch.start()`), which begins the round-start countdown.
+
+### Pitch / pause / info
+
+- Use **`useMicPitch(calmnessToSettings(calmness))`** with the persisted `useTunerStore` so the screen inherits the player's tuner sensitivity (no visible slider required for MVP; the tuning bar is the readout).
+- **Info button** in the header/nav (`§4`): opens a lightweight dialog with **very short** MVP help (wait for the active socket → watch for the note letter → play and keep it steady during the timed window → better tuning = a prettier gem). **Opening it pauses the round completely** — countdowns, between-note pauses, reveal delays, and evaluation timers all suspend until it closes, then resume from the same phase (do not restart the current note).
+
+### Tunables (clearly editable constants near the top)
+
+```ts
+// MVP ships Level 1 only (game-necklace-in-tune-step.md §2). Tune freely.
+const LEVELS = [
+  { revealAfterMs: 3000, windowMs: 3000 }, // Level 1
+  // Level 2: { revealAfterMs: 8000, windowMs: 2000 }  — later
+  // Level 3: identifier never appears — later
+] as const
+const BETWEEN_NOTE_MS = 1000        // §2.5 cadence + poor-result pause
+const COUNTDOWN_STEP_MS = 1000      // 4 3 2 1
+const GOOD_ZONE_CENTS = 12          // §3 shaded band half-width (playtest)
+const FOCUS_RING_FADE_MS = 180      // §1
+const AUTO_REPLAY_MS = 20000        // end-of-round auto-advance
+// + the score(0..1) → 10-level quality/polish mapping
+```
+
+### Out of scope (Task 34)
+
+- Levels 2–3 and their timers (this is the Level-1 MVP).
+- Distinguishing wrong/unstable/missing pitch in the poor-result message (one generic pattern).
+- Themes/jewellery selection, persistence of earned necklaces, sound effects, and any detection-algorithm/smoothing changes (Tasks 27–28) — only *consume* the tuner.
+- The hidden `#/test/necklace` page stays untouched.
+
+### Files (likely)
+
+- `app/src/screens/Jalokivipeli.tsx` (new) — the game screen (route `jalokivipeli`)
+- `app/src/components/ui/TuningBar.tsx` (new) — the horizontal cents/needle/good-zone/timer strip (§3)
+- `app/src/screens/Harjoittelu.tsx` — diamond/gem icon button in `PracticeListItem` (next to the star + person), same params
+- `app/src/App.tsx` — register the lazy `jalokivipeli` route
+- `app/src/lib/necklace.ts` — small additions only if needed (e.g. a breathing focus ring distinct from `drawGlow`); intonation drives `quality`/`gem.polish` from the screen, no engine rewrite
+- reuse as-is: `NecklaceCanvas.tsx`, `useMicPitch.ts`, `tunerStore.ts`, `StarFlight.tsx`/`FlyingStar.tsx`, `MusicCanvas`-style conventions, `musicScale.ts`, `noteOctave.ts`, `audio/tuning.ts`
+- `docs/jalokivipeli.md` (new) + a `CLAUDE.md` reference row; touch `docs/ux-spec.md` for the screen layout
+
+---
+
 ## Task 32: Skaalaviritin — leveling scale-practice tuner launched from the Harjoittelu list
 
 **Status:** done

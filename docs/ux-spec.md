@@ -137,7 +137,7 @@ Mobile (<=768px)                Desktop (>768px)
 ### Practice routine (the screen body)
 - Skill level selector at top (when no session is active)
 - Scrollable checklist of randomized scales
-- Each item >=44px height, tap to mark done, info button on trailing edge
+- Each item >=44px height, tap to mark done, three launch buttons on the trailing edge: a **diamond** (Jalokiviasteikko gem game), a **star** (Skaalaviritin), and a **person** (Soittohetki) — all pass the same scale params (`root`, `mode`, `octaves`, `level`)
 - Progress indicator: "7 / 24 harjoiteltu"
 - Done items: visually muted (strikethrough or checkmark)
 - Completion: congratulations message + two buttons (repeat same order / roll new)
@@ -192,6 +192,33 @@ Mobile (<=768px)                  Desktop (>768px)
 - **Play / Pause / Reset:** icon-only round buttons in the same row as the chips. Play swaps to Pause while running. Reset appears once the timer has moved off its initial state.
 - **Pelican animation:** procedural CSS pelican (timer variants) / celebration (time-up variants). Sits between the canvas note row and the timer-controls row.
 - **Sound row (Task 25):** olive background `#5a6b3d` to distinguish it from the red-brown timer row above. Holds the volume slider, sample picker, and tonic-drone + diatonic chord suggestions. Details + full selection-to-playback wiring in `docs/soittohetki.md`.
+
+---
+
+## Screen: Jalokiviasteikko (gem-necklace scale game, Task 34)
+
+**Purpose:** Play the scale up-and-down in tune; the gem necklace records how well each note was played (better intonation = a more vivid, better-polished gem). Opened from a diamond button in the Harjoittelu practice list. Full spec: `docs/jalokiviasteikko.md` + `docs/game-necklace-in-tune-step.md`.
+
+```
+Mobile (<=768px) / Desktop — dark (#05060f), no scroll
++----------------------------------+
+| < C-duuri · 8 nuottia       [i]  |  slim fixed header
+|----------------------------------|
+|              4                   |  count-in number (focal centre)
+|            C                     |  note identifier (above active gem)
+|        (  ( o )  )                |  necklace ring — the hero; active gem
+|        gem  gem  gem              |  spun to front + breathing focus ring
+|----------------------------------|
+| -12 |░░░▓▓▓▓▓░░░|        2.1s     |  tuning bar (active in the window)
++----------------------------------+
+```
+
+- **Dark theme**, mobile-first, fills the viewport with no scroll (mirrors the `NecklaceCanvas` hero from `#/test/necklace`).
+- **Slim header:** scale name + note count (static) and an info `[i]` button. The info dialog **pauses the whole round** and resumes from the same phase on close.
+- **Necklace** (`NecklaceCanvas` + game `overlay`): the active socket spins to the front with a **breathing focus ring**; a soft, low-contrast **note letter** mists in above it once the evaluation window opens; the round starts with a `4 3 2 1` count-in in the ring centre.
+- **Tuning bar** (`TuningBar`): full-width bottom strip — live cents readout (left), sliding needle over a shaded good zone, phase timer (right). Disabled between notes; on a poor result it yields its space to a neutral message (`En kuullut kunnolla nuottia C.`) for ~1 s.
+- **Idle prompt:** instruction text over a decorative full necklace with an **Aloita** button. **End of round:** the finished necklace plus a 20 s auto-replay countdown, a **Jää ihailemaan** button to cancel it, and an auto-replay toggle.
+- URL params match Soittohetki/Skaalaviritin: `?root=C&mode=ionian&octaves=1&level=1`. Sensitivity is inherited from the persisted `tunerStore` (no on-screen slider in MVP).
 
 ## Shared Components
 

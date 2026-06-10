@@ -5,12 +5,15 @@ import {
   advanceDrawState,
   drawNecklace,
   type NecklaceModel,
+  type NecklaceOverlay,
   type DrawState,
 } from '../../lib/necklace'
 
 interface NecklaceCanvasProps {
   /** The necklace to render. Mutate this freely from React — the loop reads it live. */
   model: NecklaceModel
+  /** Optional game-feedback overlay (focus ring + note label + count-in). Read live too. */
+  overlay?: NecklaceOverlay
   className?: string
   style?: React.CSSProperties
 }
@@ -28,12 +31,14 @@ interface NecklaceCanvasProps {
  *   • The live `model` is read through a ref so the long-lived loop never has to
  *     be torn down and rebuilt when React re-renders with a new model.
  */
-export function NecklaceCanvas({ model, className, style }: NecklaceCanvasProps) {
+export function NecklaceCanvas({ model, overlay, className, style }: NecklaceCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  // Always-current model for the animation loop (updated on every render).
+  // Always-current model + overlay for the animation loop (updated on every render).
   const modelRef = useRef(model)
   modelRef.current = model
+  const overlayRef = useRef(overlay)
+  overlayRef.current = overlay
 
   useEffect(() => {
     const wrapper = wrapperRef.current
@@ -75,9 +80,10 @@ export function NecklaceCanvas({ model, className, style }: NecklaceCanvasProps)
       const dpr = window.devicePixelRatio || 1
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0) // draw in CSS pixels each frame
       const m = modelRef.current
+      const ov = overlayRef.current
       const layout = computeNecklaceLayout({ width: cssW, height: cssH, socketCount: m.sockets.length })
-      advanceDrawState(draw, m, layout, dt)
-      drawNecklace(ctx, layout, m, draw)
+      advanceDrawState(draw, m, layout, dt, ov)
+      drawNecklace(ctx, layout, m, draw, ov)
       raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)

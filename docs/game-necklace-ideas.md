@@ -428,19 +428,64 @@ ctx.globalAlpha = 1;  ctx.globalCompositeOperation = 'source-over';
 | near center          | 0.7–0.9 | bright core, crisp specular, full star sparkle             |
 | dead center          | ~1.0    | + **fire** (rainbow edge/sweep) + scintillation blinks     |
 
-> **Shipped (faceted gem) — the `polish` finish dial.** `drawShapedGem` in
-> `necklace.ts` drives the whole "muddy → brilliant" read off one number,
-> `gem.polish` (in the game = how in-tune the note was; rolled at random in the
-> look-dev page, testable via the **Kiilto** control). It controls, with plain HSL
-> math: **colour** (low polish desaturates toward grey + dims — `sat = 16 + 70·polish`);
-> **bevel facets** (each a linear gradient from a dark inner edge to a light-facing
-> rim that brightens with `polish`); **sanding edges** (the facet ridges are *additive
-> white glints* gated by polish + light, **not** the old flat black seam lines — off
-> on a dull stone, crisp on a polished one); a **grey cloud** haze over poorly-finished
-> stones (denser at the rim, fades out as polish climbs); and a **glossy white table
-> highlight** that only shines once polished. `quality` still adds brilliance/sparkle/
-> fire on top. So one or two intonation-derived numbers (`polish`, `quality`) move the
-> gem from cloudy-grey pebble to bright, well-sanded jewel.
+### How real artists draw a faceted gem (research → procedural rules)
+
+Web research (digital-painting gem tutorials + gemology) boils down to a handful
+of rules that translate cleanly to procedural 2D-canvas drawing. Sources at the
+bottom of this section.
+
+- **Facet structure is blocky.** A cut gem reads as flat polygonal facets — crown
+  (top), girdle (rim), pavilion. Both *light and shadow* are polygonal, not smooth.
+  → keep per-facet flat-ish fills with hard edges; don't over-blur.
+- **One light direction, lit vs. opposite.** The facet facing the light gets your
+  *lightest* colour; the facet opposite gets your *darkest* (often near-black). The
+  whole look is built from that single light vector. → `lit = cos(facetAngle − light)`.
+- **Contrast == perceived quality.** "The less contrast it has, the duller the gem
+  looks." A dull/rough stone = low contrast + low saturation; a polished one = wide
+  light-to-dark spread. → drive the lit→dark *spread* (and saturation) by the polish
+  level. This is the single most important lever.
+- **Reserve pure white for shine only.** Don't use white as a base/body colour — use
+  it exclusively for the sharp highlight. → bright edges/table gloss are white;
+  facet bodies stay in the hue.
+- **White edge lines do double duty.** A thin white line on a facet edge both makes
+  the gem look more faceted/blocky *and* adds sparkle. → additive white strokes on
+  the ridges, brightest on the lit side, are the "polished" payoff.
+- **Layer order (painters):** base colour → broad soft shadow → 1st shade (multiply)
+  → darker 2nd shade → sparse black accents → highlights/white lines last. →
+  procedurally: facet gradients first, dark stains/cracks next (multiply-ish), bright
+  edge glints + table gloss + star sparkle last.
+- **Rough/uncut look = imperfections.** Irregular internal shapes, dark stains,
+  inclusions and a few cracks read as "raw/unpolished." → seeded dark blotches +
+  jagged crack strokes, only at low polish, fading out as it climbs.
+
+Sources: [Clip Studio — How to Draw and Paint Gemstones](https://tips.clip-studio.com/en-us/articles/5250),
+[Art Rocket — How to draw Gems, Crystals, and Gold](https://www.clipstudio.net/how-to-draw/archives/163257),
+[Paintable — Painting Crystals and Gems](https://paintable.cc/painting-crystals-and-gems/),
+[DiamondBuzz — Fire, Brilliance & Scintillation](https://diamondbuzz.blog/diamond-fire-brilliance-and-scintillation/),
+[MDN — Canvas styles & gradients](https://developer.mozilla.org/en-US/docs/Web/API/Canvas_API/Tutorial/Applying_styles_and_colors).
+
+### Shipped (faceted gem) — two phases: selection (colour) + sanding (1→10 polish)
+
+`drawShapedGem` in `necklace.ts` makes the **sanding phase as expressive as the
+selection phase**, off two intonation-derived numbers:
+
+- **Selection phase → `quality`** sets how *bright and vivid the colour* is
+  (`sat`, base lightness). This is the gem you "chose" by playing the ascending note.
+- **Sanding phase → `polish` (0..1, read as a 1→10 scale)** sets the *finish*, split
+  into three expressive bands via smooth ramps (`rough`, `edge`, `shine`):
+  - **Level ~1–4 (`rough`)** — the *first* sanding looks **worse**: low contrast,
+    dimmed, seeded **dark stains** + a few **jagged cracks** + a rim haze. A raw,
+    smudged, cracked stone.
+  - **Level ~5 (`edge`)** — clean, crisp facet **edges become visible**, only a faint
+    gradient, the mud gone. A plain but tidy cut.
+  - **Level ~6–10 (`shine`)** — facet contrast widens, bevels get strong **gradients**,
+    the lit facets desaturate toward **near-white specular**, and **sharp white edge
+    lines** + a glossy white table highlight blaze. Mostly bright gradients, a few
+    dark facets for contrast — the brilliant payoff.
+
+`quality` still adds the star **sparkle** (G3) and **fire** (G4) on top. So the two
+numbers together carry the gem from "chosen but rough" to "fully polished jewel,"
+and the sanding step is a real visible reward, not just an on/off seam.
 
 ---
 

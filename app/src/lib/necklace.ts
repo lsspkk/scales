@@ -733,26 +733,55 @@ function drawBezel(
 }
 
 /**
- * EMPTY SOCKET — a dim engraved well in the gem's own shape: "a goal to fill".
- * Kept deliberately quiet so filled gems are obviously the bright, rewarding thing.
+ * ORE CRADLE — a plain *round* metal cup with a concave dark hollow that the lumpy
+ * ore fills almost exactly. Used for both the empty socket (dim) and the ascending
+ * ore stage (bright rim). Deliberately round, NOT the gem's faceted form: the final
+ * sanded shape is only revealed on the descending "refine" pass, so going up the
+ * scale you just see raw lumps dropping into their cups. One rim only → no double-ring.
  */
-function drawEmptySocket(
+function drawOreCradle(
   ctx: CanvasRenderingContext2D,
   cx: number,
   cy: number,
   r: number,
-  gem: GemSpec,
+  m: Metal,
+  dim: boolean,
 ): void {
-  const outline = scaleOutline(buildGemOutline(gem.form, gem.cut), cx, cy, r * 0.82)
+  const wr = r * 0.92
+  // Concave hollow so the ore reads as set *into* the cup, not floating on it.
   ctx.save()
-  ctx.lineJoin = 'round'
-  ctx.fillStyle = 'rgba(0,0,0,0.28)'
-  tracePolygon(ctx, outline)
-  ctx.fill()
-  ctx.lineWidth = Math.max(1.5, r * 0.12)
-  ctx.strokeStyle = 'rgba(180,185,200,0.35)'
-  tracePolygon(ctx, outline)
-  ctx.stroke()
+  ctx.beginPath()
+  ctx.arc(cx, cy, wr, 0, TAU)
+  ctx.clip()
+  const g = ctx.createRadialGradient(cx, cy - wr * 0.2, wr * 0.12, cx, cy, wr)
+  g.addColorStop(0, 'rgba(0,0,0,0.5)')
+  g.addColorStop(1, 'rgba(18,20,26,0.12)')
+  ctx.fillStyle = g
+  ctx.fillRect(cx - wr, cy - wr, wr * 2, wr * 2)
+  ctx.restore()
+  // The cup rim — one ring. Dim grey when empty; lit metal (bright top, dark bottom) when holding ore.
+  ctx.save()
+  ctx.lineCap = 'round'
+  ctx.lineWidth = Math.max(2, r * 0.13)
+  if (dim) {
+    ctx.strokeStyle = 'rgba(150,152,162,0.45)'
+    ctx.beginPath()
+    ctx.arc(cx, cy, wr, 0, TAU)
+    ctx.stroke()
+  } else {
+    ctx.strokeStyle = m.mid
+    ctx.beginPath()
+    ctx.arc(cx, cy, wr, 0, TAU)
+    ctx.stroke()
+    ctx.strokeStyle = m.hi // bright catch, top-left
+    ctx.beginPath()
+    ctx.arc(cx, cy, wr, Math.PI, TAU)
+    ctx.stroke()
+    ctx.strokeStyle = m.lo // shadow, bottom-right
+    ctx.beginPath()
+    ctx.arc(cx, cy, wr, 0, Math.PI)
+    ctx.stroke()
+  }
   ctx.restore()
 }
 
@@ -965,24 +994,22 @@ function drawShapedCabochon(
 }
 
 /**
- * GEM (faceted) — the headline shaped cut, driven by a single finish dial: the
- * gem's `polish` (in the game = how in-tune the note was played). It governs the
- * whole "muddy ↔ brilliant" read:
- *   • COLOUR — low polish desaturates toward a muddy grey and dims; high polish
- *     stays vivid (`sat`/`dim` below).
- *   • BEVEL facets — one gradient-filled quad per outline edge, running from a
- *     darker inner edge out to a rim that brightens with both how much the facet
- *     faces the light (which rides `spin`, so facets flash as the gem turns) and
- *     the polish — a clean stone throws a crisp light band, a dull one barely lifts.
- *   • SANDING EDGES — instead of comic black seam lines, the facet ridges are
- *     additive WHITE glints, gated by polish and by how much each ridge faces the
- *     light. Off entirely on a dull stone, crisp and bright on a polished one.
- *   • CLOUD — a poorly-finished stone gets a grey haze (denser toward the rim, like
- *     a frosted, unpolished pebble); it fades out as polish climbs.
- *   • TABLE plateau — sized by `table` (sanding: 0.95 = big flat top + thin edges,
- *     0.5 = bevel reaches halfway in), with a glossy white highlight that shines
- *     only as the stone is polished.
- * `cut` shapes the outline (chamfered corners); `quality` adds extra brilliance.
+ * GEM (faceted) — the headline shaped cut, drawn from TWO intonation-derived
+ * numbers so the sanding phase is as expressive as the gem-selection phase:
+ *
+ *   • `quality` — the SELECTION phase: how bright + vivid the gem's *colour* is
+ *     (the stone you "chose" by playing the ascending note). Sets `sat`/base lightness.
+ *   • `polish`  — the SANDING phase, a 1→10 finish read through three smooth bands:
+ *       - `rough`  (≈level 1–4) the first sanding looks WORSE: low contrast, dimmed,
+ *         seeded dark STAINS + a few jagged CRACKS + a rim haze (a raw, smudged stone).
+ *       - `edge`   (≈level 5) clean crisp facet EDGES appear, only a faint gradient,
+ *         the mud gone — a plain but tidy cut.
+ *       - `shine`  (≈level 6–10) facet contrast widens, bevels get strong GRADIENTS,
+ *         lit facets desaturate toward near-white SPECULAR, and sharp white edge lines
+ *         + a glossy table highlight blaze. Mostly bright gradients, a few dark facets.
+ *
+ * The per-facet light (which rides `spin`) decides lit vs. dark; `cut` shapes the
+ * outline; star sparkle + fire are layered on top elsewhere from `quality`.
  */
 function drawShapedGem(
   ctx: CanvasRenderingContext2D,
@@ -993,6 +1020,7 @@ function drawShapedGem(
   quality: number,
   gem: GemSpec,
   spin: number,
+  seed: number,
 ): void {
   const unit = buildGemOutline(gem.form, gem.cut, ROUND_FACETS)
   const outline = scaleOutline(unit, cx, cy, r)
@@ -1000,13 +1028,17 @@ function drawShapedGem(
   const n = outline.length
   const light = -Math.PI * 0.75 + spin // light sweeps as the gem turns
 
-  // The finish dial. `polish` ∈ 0..1 → colour: vivid + bright when well played,
-  // grey + dim ("muddy") when out of tune. `quality` nudges brilliance on top.
+  // SELECTION: colour vividness + base brightness from quality.
+  const sat = 42 + 42 * quality // 42%..84%
+  // SANDING: split polish into three expressive bands.
   const polish = clamp(gem.polish, 0, 1)
-  const sat = 16 + 70 * polish // 16%..86% — desaturated/grey when unpolished
-  const dim = -16 * (1 - polish) // darken muddy stones a touch
+  const rough = clamp((0.4 - polish) / 0.4, 0, 1) // 1→0 over 0..0.4 (stains/cracks/dim)
+  const edge = clamp((polish - 0.32) / 0.28, 0, 1) // 0→1 over 0.32..0.6 (clean edges appear)
+  const shine = clamp((polish - 0.55) / 0.45, 0, 1) // 0→1 over 0.55..1 (gradients + white sparkle)
 
-  // Bevel facets: a gradient-filled quad per edge, inner (table) → outer (rim).
+  // Bevel facets: a gradient-filled quad per edge, inner (table) → outer (rim). The
+  // lit→dark spread (contrast) widens with polish — low contrast reads dull, wide
+  // contrast reads polished. lit² specular makes the lit half blaze near-white.
   for (let i = 0; i < n; i++) {
     const o0 = outline[i]
     const o1 = outline[(i + 1) % n]
@@ -1016,17 +1048,17 @@ function drawShapedGem(
     const omy = (o0.y + o1.y) / 2
     const imx = (t0.x + t1.x) / 2
     const imy = (t0.y + t1.y) / 2
-    const lit = Math.cos(Math.atan2(omy - cy, omx - cx) - light) * 0.5 + 0.5 // 0..1 facing light
-    // Specular: facets squarely facing the light act as near-white mirrors on a
-    // polished stone — so roughly the lit half of the gem blazes bright while the
-    // away-facing half keeps the gem colour. lit² picks the best-aligned facets.
-    const spec = lit * lit * polish
-    const baseL = 20 + 22 * lit * (0.5 + 0.5 * quality) + dim
-    const rimL = clamp(baseL + (10 + 40 * polish) * lit + 32 * spec, 0, 100) // bright lit rim
-    const rimSat = sat * (1 - 0.85 * spec) // desaturate toward white as it catches the light
+    const litRaw = Math.cos(Math.atan2(omy - cy, omx - cx) - light) * 0.5 + 0.5
+    const lit = clamp(litRaw + 0.12 * shine, 0, 1) // polished stones skew bright ("mostly bright")
+    const spec = lit * lit * shine // near-white mirror, only in the polished band
+    const mid = 40 + 14 * quality - 12 * rough // selection brightness, rough dims
+    const L = mid + (lit - 0.5) * (22 + 54 * polish) // contrast grows with polish
+    const innerL = clamp(L - (4 + 10 * polish), 0, 100)
+    const outerL = clamp(L + (4 + 30 * shine) * lit + 34 * spec, 0, 100)
+    const outerSat = sat * (1 - 0.85 * spec)
     const g = ctx.createLinearGradient(imx, imy, omx, omy)
-    g.addColorStop(0, hsl(hue, sat, clamp(baseL - 6, 0, 100)))
-    g.addColorStop(1, hsl(hue, rimSat, rimL))
+    g.addColorStop(0, hsl(hue, sat, innerL))
+    g.addColorStop(1, hsl(hue, outerSat, outerL))
     ctx.fillStyle = g
     ctx.beginPath()
     ctx.moveTo(o0.x, o0.y)
@@ -1037,60 +1069,106 @@ function drawShapedGem(
     ctx.fill()
   }
 
-  // Flat table plateau: vivid (grey when muddy), with a glossy white gloss that
-  // only really shines once the stone is polished.
-  ctx.fillStyle = hsl(hue, sat, clamp(44 + 24 * quality + dim, 0, 100))
+  // Flat table plateau: colour from selection (dimmed when rough), glossy white
+  // highlight that grows with shine.
+  ctx.fillStyle = hsl(hue, sat, clamp(46 + 22 * quality - 14 * rough, 0, 100))
   tracePolygon(ctx, table)
   ctx.fill()
-  const gloss = 0.12 + 0.6 * polish * (0.4 + 0.6 * quality)
-  const hg = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.05, cx, cy, r * gem.table)
-  hg.addColorStop(0, `rgba(255,255,255,${gloss.toFixed(3)})`)
-  hg.addColorStop(1, 'rgba(255,255,255,0)')
-  ctx.fillStyle = hg
-  tracePolygon(ctx, table)
-  ctx.fill()
+  const gloss = 0.1 + 0.65 * shine * (0.4 + 0.6 * quality)
+  if (gloss > 0.02) {
+    const hg = ctx.createRadialGradient(cx - r * 0.3, cy - r * 0.3, r * 0.05, cx, cy, r * gem.table)
+    hg.addColorStop(0, `rgba(255,255,255,${gloss.toFixed(3)})`)
+    hg.addColorStop(1, 'rgba(255,255,255,0)')
+    ctx.fillStyle = hg
+    tracePolygon(ctx, table)
+    ctx.fill()
+  }
 
-  // SANDING EDGES — additive white glints on the facet ridges + the table rim. No
-  // line at all on a dull stone; crisp, light-catching highlights on a polished one.
-  if (polish > 0.04) {
+  // ROUGH — the first sanding looks worse: dark stains, cracks, and a rim haze, all
+  // clipped to the gem and fading out as the stone is polished past ~level 4.
+  if (rough > 0.02) {
     ctx.save()
-    ctx.globalCompositeOperation = 'lighter'
+    tracePolygon(ctx, outline)
+    ctx.clip()
+    // Rim haze: dull, dirty film, denser toward the edge.
+    const hz = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r)
+    hz.addColorStop(0, `rgba(120,118,128,${(0.06 * rough).toFixed(3)})`)
+    hz.addColorStop(1, `rgba(54,52,62,${(0.5 * rough).toFixed(3)})`)
+    ctx.fillStyle = hz
+    ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
+    // Stains: a few seeded dark blotches.
+    const rand = mulberry32(seed ^ 0x57a1)
+    const blotches = 2 + Math.floor(rough * 3)
+    for (let k = 0; k < blotches; k++) {
+      const px = cx + (rand() - 0.5) * r * 1.3
+      const py = cy + (rand() - 0.5) * r * 1.3
+      const rad = r * (0.18 + rand() * 0.36)
+      const bg = ctx.createRadialGradient(px, py, 0, px, py, rad)
+      bg.addColorStop(0, `rgba(34,30,40,${(0.5 * rough).toFixed(3)})`)
+      bg.addColorStop(1, 'rgba(34,30,40,0)')
+      ctx.fillStyle = bg
+      ctx.beginPath()
+      ctx.arc(px, py, rad, 0, TAU)
+      ctx.fill()
+    }
+    // Cracks: a few jagged dark strokes across the stone. The width scales hard with
+    // how badly the note was played so a poor result is unmistakable: ~3× at reward
+    // level 0, ~2× at level 1, back to the baseline at level 2 (rough ≈ 0.55/0.32/0.10).
+    const cracks = 1 + Math.floor(rough * 2)
+    const crackWidthMul = clamp(1 + (rough - 0.1) / 0.225, 1, 3)
+    ctx.strokeStyle = `rgba(18,16,22,${(0.3 + 0.3 * rough).toFixed(3)})`
+    ctx.lineWidth = (0.5 + 0.7 * rough) * crackWidthMul
     ctx.lineCap = 'round'
-    ctx.lineWidth = 0.5 + 1.1 * polish
+    for (let k = 0; k < cracks; k++) {
+      let px = cx + (rand() - 0.5) * r * 1.4
+      let py = cy + (rand() - 0.5) * r * 1.4
+      ctx.beginPath()
+      ctx.moveTo(px, py)
+      const segs = 2 + Math.floor(rand() * 3)
+      for (let s = 0; s < segs; s++) {
+        px += (rand() - 0.5) * r * 0.9
+        py += (rand() - 0.5) * r * 0.9
+        ctx.lineTo(px, py)
+      }
+      ctx.stroke()
+    }
+    ctx.restore()
+  }
+
+  // SANDING EDGES — crisp facet ridges. A subtle definition line appears once the
+  // stone is sanded clean (`edge`); additive white glints blaze on the lit ridges
+  // once it's polished (`shine`). No black comic seams at any level.
+  if (edge > 0.02) {
+    ctx.save()
+    ctx.lineCap = 'round'
+    // Definition lines: thin, pale, source-over → "the facets are visible".
+    ctx.strokeStyle = `rgba(255,255,255,${(0.1 + 0.22 * edge).toFixed(3)})`
+    ctx.lineWidth = 0.5 + 0.5 * edge
     for (let i = 0; i < n; i++) {
-      const ridgeLit = Math.cos(Math.atan2(outline[i].y - cy, outline[i].x - cx) - light) * 0.5 + 0.5
-      const a = polish * (0.18 + 0.62 * ridgeLit) // ridge glint strength
-      // Gradient along the ridge: brightest at the outer rim, fading toward the table.
-      const sg = ctx.createLinearGradient(table[i].x, table[i].y, outline[i].x, outline[i].y)
-      sg.addColorStop(0, `rgba(255,255,255,${(a * 0.35).toFixed(3)})`)
-      sg.addColorStop(1, `rgba(255,255,255,${a.toFixed(3)})`)
-      ctx.strokeStyle = sg
       ctx.beginPath()
       ctx.moveTo(table[i].x, table[i].y)
       ctx.lineTo(outline[i].x, outline[i].y)
       ctx.stroke()
     }
-    // The table plateau rim — a faint bright edge that defines the sanded top.
-    ctx.strokeStyle = `rgba(255,255,255,${(0.15 + 0.4 * polish).toFixed(3)})`
-    ctx.lineWidth = 0.5 + 0.8 * polish
     tracePolygon(ctx, table)
     ctx.stroke()
-    ctx.restore()
-  }
-
-  // CLOUD — a muddy grey haze over a poorly-finished (out-of-tune) stone, denser at
-  // the rim. Only genuinely under-polished stones cloud over; a decently-played gem
-  // (polish ≳ 0.6) stays clear so its bright facets read.
-  const mud = clamp(1 - polish * 1.6, 0, 1)
-  if (mud > 0.02) {
-    ctx.save()
-    tracePolygon(ctx, outline)
-    ctx.clip()
-    const cg = ctx.createRadialGradient(cx, cy, r * 0.1, cx, cy, r)
-    cg.addColorStop(0, `rgba(150,150,160,${(0.08 * mud).toFixed(3)})`)
-    cg.addColorStop(1, `rgba(64,64,74,${(0.5 * mud).toFixed(3)})`)
-    ctx.fillStyle = cg
-    ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
+    // Bright sparkle glints: additive white on the lit ridges, only when polished.
+    if (shine > 0.02) {
+      ctx.globalCompositeOperation = 'lighter'
+      ctx.lineWidth = 0.5 + 1.4 * shine
+      for (let i = 0; i < n; i++) {
+        const ridgeLit = Math.cos(Math.atan2(outline[i].y - cy, outline[i].x - cx) - light) * 0.5 + 0.5
+        const a = shine * (0.12 + 0.7 * ridgeLit * ridgeLit) // sharp on the best-lit ridges
+        const sg = ctx.createLinearGradient(table[i].x, table[i].y, outline[i].x, outline[i].y)
+        sg.addColorStop(0, `rgba(255,255,255,${(a * 0.25).toFixed(3)})`)
+        sg.addColorStop(1, `rgba(255,255,255,${a.toFixed(3)})`)
+        ctx.strokeStyle = sg
+        ctx.beginPath()
+        ctx.moveTo(table[i].x, table[i].y)
+        ctx.lineTo(outline[i].x, outline[i].y)
+        ctx.stroke()
+      }
+    }
     ctx.restore()
   }
 }
@@ -1226,6 +1304,36 @@ interface Burst {
   particles: Particle[]
 }
 
+/**
+ * Game feedback drawn *on top* of the necklace, anchored to the active socket.
+ * This is purely declarative *intent* the game screen passes each render; the
+ * engine animates the soft fades (mist label, breathing-ring strength) itself in
+ * `advanceDrawState`, exactly like it eases the spin/morph. Leave it undefined for
+ * the look-dev test page, which wants no overlay.
+ */
+export interface NecklaceOverlay {
+  /** Big centre number for the round-start count-in (4,3,2,1), or null when idle. */
+  countdown?: number | null
+  /** Note identifier (e.g. "C", "F#") shown above the active socket, or null to hide. */
+  noteLabel?: string | null
+  /** Whether the breathing focus ring should be present around the active socket. */
+  focusRing?: boolean
+}
+
+// Fade ramps (seconds) for the overlay elements, eased frame-by-frame in the engine.
+const LABEL_RISE_S = 1.0 // note label fades in like mist (§2)
+const LABEL_FALL_S = 0.12 // …but disappears promptly when the note resolves
+const FOCUS_RISE_S = 0.3 // breathing ring appears gently once the socket settles
+const FOCUS_FALL_S = 0.18 // …and fades out on resolve (§1: 150–200 ms)
+
+/** Linear ramp of `cur` toward `target`, slower up (riseS) than down (fallS). */
+function approach(cur: number, target: number, riseS: number, fallS: number, dt: number): number {
+  const s = target > cur ? riseS : fallS
+  if (s <= 0) return target
+  const step = dt / s
+  return cur < target ? Math.min(target, cur + step) : Math.max(target, cur - step)
+}
+
 /** All the moving state the renderer keeps between frames. */
 export interface DrawState {
   spin: number
@@ -1242,6 +1350,10 @@ export interface DrawState {
   prevSeed: number
   /** Honour the OS "reduce motion" setting → calmer idle. */
   reduceMotion: boolean
+  /** 0..1 eased opacity of the note label (mist fade-in / quick fade-out). */
+  labelFade: number
+  /** 0..1 eased strength of the breathing focus ring. */
+  focusFade: number
 }
 
 /** Build the initial animation state for a model (no triggers fired). */
@@ -1261,6 +1373,8 @@ export function createDrawState(model: NecklaceModel, reduceMotion = false): Dra
     prevFill: model.sockets.map((s) => s.fill),
     prevSeed: model.seed,
     reduceMotion,
+    labelFade: 0,
+    focusFade: 0,
   }
 }
 
@@ -1294,8 +1408,14 @@ export function advanceDrawState(
   model: NecklaceModel,
   layout: NecklaceLayout,
   dt: number,
+  overlay?: NecklaceOverlay,
 ): void {
   draw.time += dt
+
+  // Ease the overlay fades toward the screen's current intent (engine-side, so the
+  // game just toggles booleans/strings and the mist + breathing-ring fades are smooth).
+  draw.labelFade = approach(draw.labelFade, overlay?.noteLabel ? 1 : 0, LABEL_RISE_S, LABEL_FALL_S, dt)
+  draw.focusFade = approach(draw.focusFade, overlay?.focusRing ? 1 : 0, FOCUS_RISE_S, FOCUS_FALL_S, dt)
 
   // A new necklace (seed changed): reset animation to match, don't animate in.
   if (draw.prevSeed !== model.seed || draw.anim.length !== model.sockets.length) {
@@ -1372,6 +1492,7 @@ export function drawNecklace(
   layout: NecklaceLayout,
   model: NecklaceModel,
   draw: DrawState,
+  overlay?: NecklaceOverlay,
 ): void {
   const theme = THEMES[model.themeId]
   const metal = METALS[theme.metal]
@@ -1381,9 +1502,54 @@ export function drawNecklace(
   drawBackdrop(ctx, layout, theme, draw.time)
 
   if (model.layoutMode === 'ring') {
-    drawRing(ctx, layout, model, draw, theme, metal, n)
+    drawRing(ctx, layout, model, draw, theme, metal, n, overlay)
   } else {
-    drawArc(ctx, layout, model, draw, theme, metal, n)
+    drawArc(ctx, layout, model, draw, theme, metal, n, overlay)
+  }
+}
+
+/**
+ * Game-feedback overlay (focus ring + note label + count-in number), drawn last so
+ * it sits above the jewellery. Anchored to the active socket's projected point so
+ * the label hangs in the empty interior of the ring, just above the active gem.
+ */
+function paintOverlay(
+  ctx: CanvasRenderingContext2D,
+  L: NecklaceLayout,
+  draw: DrawState,
+  _theme: Theme,
+  active: Projected,
+  overlay: NecklaceOverlay,
+): void {
+  const r = L.gemR * active.scale
+
+  // The active socket already carries the breathing halo (drawGlow); the stroked
+  // focus ring on top only obscured the gem, so it is intentionally omitted here.
+
+  // Note identifier: a soft, low-contrast whisper above the active socket.
+  if (draw.labelFade > 0.01 && overlay.noteLabel) {
+    const fs = clamp(r * 0.95, 13, 32)
+    ctx.save()
+    ctx.globalAlpha = 0.55 * draw.labelFade
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `600 ${fs.toFixed(0)}px ui-sans-serif, system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(overlay.noteLabel, active.x, active.y - r - r * 0.5)
+    ctx.restore()
+  }
+
+  // Round-start count-in: a big, calm number in the ring's focal centre.
+  if (overlay.countdown != null) {
+    const fs = Math.min(L.width, L.height) * 0.22
+    ctx.save()
+    ctx.globalAlpha = 0.82
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `700 ${fs.toFixed(0)}px ui-sans-serif, system-ui, sans-serif`
+    ctx.textAlign = 'center'
+    ctx.textBaseline = 'middle'
+    ctx.fillText(String(overlay.countdown), L.cx, L.cy)
+    ctx.restore()
   }
 }
 
@@ -1396,6 +1562,7 @@ function drawRing(
   theme: Theme,
   metal: Metal,
   n: number,
+  overlay?: NecklaceOverlay,
 ): void {
   // Idle "breathing": a tiny extra spin wobble so the necklace feels alive at rest
   // without the active socket ever leaving the front. Damped when reduce-motion is on.
@@ -1432,6 +1599,9 @@ function drawRing(
 
   // Bursts last (additive light on top of everything).
   paintBursts(ctx, draw, gemP)
+
+  // Game overlay anchored to the active socket (front-centre after the spin settles).
+  if (overlay) paintOverlay(ctx, L, draw, theme, gemP[model.activeIndex], overlay)
 }
 
 // --- Arc layout: calm hanging necklace with a spotlight pan ---
@@ -1443,6 +1613,7 @@ function drawArc(
   theme: Theme,
   metal: Metal,
   n: number,
+  overlay?: NecklaceOverlay,
 ): void {
   ctx.save()
   // Pan so the active socket sits at screen centre (the "spotlight" glides to it).
@@ -1468,6 +1639,9 @@ function drawArc(
   for (const i of order) paintSocket(ctx, L, model, draw, theme, metal, i, gemP[i], draw.spin)
 
   paintBursts(ctx, draw, gemP)
+
+  // Game overlay anchored to the active socket (inside the translated arc space).
+  if (overlay) paintOverlay(ctx, L, draw, theme, gemP[model.activeIndex], overlay)
   ctx.restore()
 }
 
@@ -1498,10 +1672,9 @@ function paintSocket(
 
   if (isActive) drawGlow(ctx, P.x, P.y, r, theme.accent, draw.time)
 
-  // Empty socket: just the dim ring (plus the inviting glow above if active).
+  // Empty socket: a plain round cradle waiting to be filled (plus the glow if active).
   if (socket.fill === 'empty') {
-    drawBezel(ctx, P.x, P.y, r, metal, true, socket.gem)
-    drawEmptySocket(ctx, P.x, P.y, r, socket.gem)
+    drawOreCradle(ctx, P.x, P.y, r, metal, true)
     ctx.restore()
     return
   }
@@ -1521,7 +1694,9 @@ function paintSocket(
   if (morph < 1) {
     ctx.save()
     ctx.globalAlpha = P.alpha * (1 - morph)
-    drawOre(ctx, P.x, oreY, r * 0.92, hue, socket.seed)
+    // Round cradle + a lumpy ore that fills it almost exactly (the raw "mined" stage).
+    drawOreCradle(ctx, P.x, P.y, r, metal, false)
+    drawOre(ctx, P.x, oreY, r * 0.97, hue, socket.seed)
     ctx.restore()
   }
 
@@ -1533,7 +1708,7 @@ function paintSocket(
     if (model.gemStyle === 'cabochon') {
       drawShapedCabochon(ctx, P.x, P.y, gr, hue, socket.quality, socket.gem)
     } else {
-      drawShapedGem(ctx, P.x, P.y, gr, hue, socket.quality, socket.gem, spin)
+      drawShapedGem(ctx, P.x, P.y, gr, hue, socket.quality, socket.gem, spin, socket.seed)
     }
     ctx.shadowBlur = 0
     drawFire(ctx, P.x, P.y, gr, socket.quality, spin)
@@ -1542,9 +1717,10 @@ function paintSocket(
     ctx.restore()
   }
 
-  // The metal setting that holds the stone (bright once there's something in it).
+  // The faceted metal setting that holds the finished stone — only once it refines
+  // into a gem, so the ascending ore stage keeps its plain round cradle.
   ctx.shadowBlur = 0
-  drawBezel(ctx, P.x, P.y, r, metal, false, socket.gem)
+  if (morph > 0) drawBezel(ctx, P.x, P.y, r, metal, false, socket.gem)
 
   ctx.restore()
 }

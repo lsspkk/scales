@@ -335,7 +335,7 @@ export function NecklaceTest() {
             { value: '0.5', label: 'Pieni' },
           ]}
         />
-        {/* Polish: crispness of the sanding edges + sparkle gain. */}
+        {/* Polish (sanding 1→10): rough/stained → clean edges → bright sparkle. */}
         <Segmented<string>
           label='Kiilto'
           value={polishPreset}
@@ -344,9 +344,10 @@ export function NecklaceTest() {
             setGemField('polish', Number(v))
           }}
           options={[
-            { value: '0.1', label: 'Matta' },
-            { value: '0.55', label: 'Keski' },
-            { value: '1', label: 'Kirkas' },
+            { value: '0.12', label: 'Karkea' },
+            { value: '0.5', label: 'Hiottu' },
+            { value: '0.78', label: 'Kiiltävä' },
+            { value: '1', label: 'Loistava' },
           ]}
         />
         <Segmented<ChainStyle>

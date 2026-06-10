@@ -46,6 +46,7 @@ function PracticeListItem({
   onToggleDone,
   onPlay,
   onPlayTuner,
+  onPlayGame,
 }: {
   item: { scale: ScaleEntry; done: boolean }
   index: number
@@ -53,6 +54,7 @@ function PracticeListItem({
   onToggleDone: (index: number) => void
   onPlay: () => void
   onPlayTuner: () => void
+  onPlayGame: () => void
 }) {
   const baseClasses = isMobile
     ? 'w-full min-h-[44px] flex items-center gap-1 py-2 border-b border-[#c9a96e] transition-colors'
@@ -87,6 +89,20 @@ function PracticeListItem({
         </div>
         {item.scale.shiftPattern && <div className='text-xs mt-0.5 text-[#8B4513]'>{item.scale.shiftPattern}</div>}
       </div>
+
+      <button
+        onClick={(e) => {
+          e.stopPropagation()
+          onPlayGame()
+        }}
+        className={`flex-shrink-0 ${isMobile ? 'w-8 h-8' : 'w-10 h-10'} flex items-center justify-center rounded-full text-[#8B4513] hover:bg-[#f0dbb8] transition-colors`}
+        aria-label='Aloita jalokivipeli'
+      >
+        <svg width='20' height='20' viewBox='0 0 20 20' fill='none' stroke='currentColor' strokeWidth='1.4' strokeLinejoin='round' xmlns='http://www.w3.org/2000/svg'>
+          <path d='M5 3h10l3 4-8 10L2 7l3-4z' />
+          <path d='M2 7h16M7 3l-2 4 5 10 5-10-2-4M7 7h6' />
+        </svg>
+      </button>
 
       <button
         onClick={(e) => {
@@ -241,6 +257,15 @@ function PracticeBody() {
                   level: String(item.scale.level),
                 })
                 navigateToSoittohetki(`/skaalaviritin?${params.toString()}`)
+              }}
+              onPlayGame={() => {
+                const params = new URLSearchParams({
+                  root: item.scale.key,
+                  mode: item.scale.mode,
+                  octaves: String(item.scale.octaves),
+                  level: String(item.scale.level),
+                })
+                navigateToSoittohetki(`/jalokiviasteikko?${params.toString()}`)
               }}
             />
           )
