@@ -2,24 +2,34 @@
 
 ## Overview
 
-Builds are done **locally** before committing. CI only deploys — it never runs `npm install` or `npm run build`.
+CI builds the app from source before deploying. The `dist/` folder is **not committed to git** — CI generates it fresh on every deploy.
 
 ## Local build step
 
 From the `app/` directory, run:
 
 ```sh
-npm run deploy:build
+npm run build
 ```
 
-This runs `tsc && vite build` and outputs the production bundle to `dist/` at the **repo root** (configured via `build.outDir: '../dist'` in `vite.config.ts`). Commit the resulting `dist/` folder to git.
+This runs `tsc && vite build` and outputs the production bundle to `dist/` at the **repo root** (configured via `build.outDir: '../dist'` in `vite.config.ts`). Do **not** commit `dist/` — it is gitignored.
 
 ## `dist/` folder convention
 
 - Location: repo root `dist/`
-- Created by: `npm run deploy:build` inside `app/`
-- Committed to git: yes — CI reads it directly, no build step in CI
+- Created by: `npm run build` inside `app/` (or by CI)
+- Committed to git: **no** — gitignored; CI builds it fresh every deploy
 - Contents: `index.html`, `assets/*.js`, `assets/*.css`, any other static assets
+
+## Pre-push hook (one-time setup)
+
+A pre-push hook runs `npm run build` locally before every `git push` so broken builds never reach CI. Set it up once after cloning:
+
+```sh
+bash scripts/install-hooks.sh
+```
+
+The hook script lives at `scripts/pre-push.sh` (committed to the repo). `install-hooks.sh` symlinks it into `.git/hooks/pre-push` and marks it executable.
 
 ## CI/CD workflow
 
@@ -27,8 +37,10 @@ File: `.github/workflows/deploy-to-azure.yml`
 
 Triggers on push to `main` or manual dispatch. Steps:
 
-1. Checkout repo (includes committed `dist/`)
-2. Upload `dist/` to Azure Storage `$web` container using `az storage blob upload-batch`, with separate passes per extension to set correct MIME types:
+1. Checkout repo
+2. Set up Node.js 20, cache npm dependencies from `app/package-lock.json`
+3. Run `npm ci && npm run build` inside `app/` to produce `dist/`
+4. Upload `dist/` to Azure Storage `$web` container using `az storage blob upload-batch`, with separate passes per extension to set correct MIME types:
    - `*.html` → `text/html`
    - `*.css` → `text/css`
    - `*.js` → `application/javascript`
@@ -38,6 +50,25 @@ Triggers on push to `main` or manual dispatch. Steps:
 - `assets/*` → default (covers fonts, images, etc.)
 
 Static files that Vite copies from `app/public/` land in `dist/` at deploy time. If a new file type is added there (for example `samples/*.mp3`), the workflow must upload that extension too or Azure will never receive the files.
+
+## Cleaning up old asset blobs
+
+Each deploy adds new hashed `assets/*.js` / `*.css` bundles to Azure but never removes the old ones. Over time these accumulate. Run the cleanup script periodically to keep only the two most recent deployment batches:
+
+```sh
+# Dry run — shows what would be deleted
+node scripts/cleanup-azure.mjs
+
+# Actually delete
+node scripts/cleanup-azure.mjs --apply
+
+# Keep 3 batches instead of the default 2
+node scripts/cleanup-azure.mjs --keep=3 --apply
+```
+
+The script reads credentials from `deploy/resource-names.env` (`STORAGE_ACCOUNT_NAME` + `RESOURCE_GROUP`). It fetches the storage key via `az storage account keys list` (requires `az login`). Alternatively, set `AZURE_STORAGE_ACCOUNT_KEY` in that file to skip the key-fetch step.
+
+Only `assets/` blobs are considered — `index.html`, `samples/*.mp3`, and other static files are never touched.
 
 ## Secrets
 

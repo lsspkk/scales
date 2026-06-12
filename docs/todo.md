@@ -316,7 +316,7 @@ A **hidden test page** (route `#/test/necklace`, like the other `#/test/...` pag
 
 ## Task 30: CI builds the app; pre-push hook prevents broken builds
 
-**Status:** pending
+**Status:** done
 **Blocked by:** —
 
 ### Goal
