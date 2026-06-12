@@ -244,7 +244,57 @@ D major:  Level 2 (1st→3rd):  D4 F#4 A4 D5 F#5 A5 D6    (shift to 3rd pos for 
 
 ---
 
-## 8. Structured Data for Implementation
+## 8. Galamian practice overlays (maximising educational value)
+
+The level tables set *what* to play; these overlays set *how* to practise it for the most
+technical return, following Ivan Galamian's approach. Raw source text:
+`scale-web-research.md` (Galamian pass). Worked fingerings (ascending vs descending, shift
+options, finger-number strings): `scale-practice-notes.md` §8.
+
+### 8.1 The turn (continuous motion)
+Bracket each scale with a **turn** = tonic → 3rd → 2nd → tonic, then ascend; mirror it at the
+top. Example, G major: **G–B–A–G** … up two octaves … and the same shape turning around at
+the top. The turn sets the hand with the fingers already hovering over the string (you just
+*drop* them), keeps the bow in continuous motion, and makes the note count divide evenly for
+the acceleration rhythms below.
+
+### 8.2 Acceleration (one scale, more notes per bow each pass)
+Play the scale repeatedly against a steady metronome, slurring more notes into each bow each
+pass. Trains speed, shifting, intonation under slurs, and bow distribution:
+
+| Pass | Notes slurred / bow | Per metronome click | Rhythm |
+|------|---------------------|---------------------|--------|
+| 1 | 1  | ½ (2 clicks per note) | half notes |
+| 2 | 2  | 1 | quarters |
+| 3 | 4  | 2 | eighths |
+| 4 | 6  | 3 | triplets |
+| 5 | 8  | 4 | sixteenths |
+| 6 | 12 | 6 | sextuplets |
+| 7 | 24 | 8 | 32nds |
+
+Galamian applies this to 3-octave scales; for the 2-octave scales here use the first 3–5
+passes — same principle, fewer notes.
+
+### 8.3 Fingering principles (which finger, and up vs down)
+- **Ascending: favour open strings** — they ring and let the hand relax before a crossing.
+- **Descending: use the 4th finger** on each lower string instead of the open string — the
+  finger is already down, so the hand is *prepared* on the new string before you cross, the
+  pitch stays under control, and the frame stays consistent. So a scale's ascending and
+  descending fingerings legitimately differ (worked example: `scale-practice-notes.md` §8.1).
+- **Change strings on the semitone**, and **shift on the half-step** where the key allows — a
+  half-step across the shift hides the slide. E.g. **C minor** shifts on G5→A♭5 (a half-step);
+  **D major** can shift on the A string with C♯5→D5 (a half-step) instead of the later
+  whole-step E-string shift. These "shift options" let you pick the move whose objective
+  (ear-check, guide-finger, one-string continuity, half-step smoothness) matches the day's
+  goal — see `scale-practice-notes.md` §8.2.
+- **Notation convention** (from the `scale-practice-notes-review.md` audit): a note carries a
+  `(high)`/`(low)` tag only when it deviates from the default spacing in the position tables;
+  the sharp 2nd/3rd finger is the default in sharp keys and is left untagged. Following the
+  tags literally on a default note would push the finger sharp.
+
+---
+
+## 9. Structured Data for Implementation
 
 Schema for `practiceMethod.ts` (corrected from v1; new fields `reachUpTo`, `shiftRequired`).
 
@@ -311,7 +361,7 @@ Schema for `practiceMethod.ts` (corrected from v1; new fields `reachUpTo`, `shif
 
 ---
 
-## 9. Sources
+## 10. Sources
 
 1. **Flesch, Carl.** *Scale System.* Carl Fischer, 1926 (rev. 1987). Primary key-progression
    source — circle-of-fifths ordering with progressive technical demand.

@@ -46,6 +46,9 @@ possible in 3rd position.**
 Open strings: **G3  D4  A4  E5**.
 `(low)` = finger pulled back a half-step (flats / lowered notes).
 `(high)` = finger reached forward a half-step (sharps / raised notes).
+Tags mark a **deviation from the default** note shown un-parenthesised in the tables below; a
+note that already matches the table default is left untagged — e.g. a sharp 2nd/3rd finger
+(F♯, C♯, G♯) is the default in sharp keys and carries no tag.
 
 ### 1st position (natural notes)
 
@@ -98,14 +101,14 @@ B3   G   2
 C4   G   3
 D4   D   0 (open)
 E4   D   1
-F♯4  D   2 (high)
+F♯4  D   2
 G4   D   3
 A4   A   0 (open)
 B4   A   1
 C5   A   2 (low)
 D5   A   3
 E5   E   0 (open)
-F♯5  E   1 (high)
+F♯5  E   1
 G5   E   2 (low)
 ```
 Shift practice (optional): replay the top from D5 in 3rd position on the A string —
@@ -115,19 +118,19 @@ D5=A1, E5=A2, F♯5=A3(high), G5=A4 (3rd pos).
 ```
 D4   D   0 (open)
 E4   D   1
-F♯4  D   2 (high)
+F♯4  D   2
 G4   D   3
 A4   A   0 (open)
 B4   A   1
-C♯5  A   2 (high)
+C♯5  A   2
 D5   A   3
 E5   E   0 (open)
-F♯5  E   1 (high)
+F♯5  E   1
 G5   E   2 (low)
 ── shift to 3rd position (E string, 1st finger guides up to A5) ──
 A5   E   1   (3rd pos)
 B5   E   2   (3rd pos)
-C♯6  E   3 (high, 3rd pos)
+C♯6  E   3 (3rd pos)
 D6   E   4   (3rd pos)
 ```
 Top C♯6–D6 are the reason for the shift. Alternative: shift to 3rd position earlier, on
@@ -140,34 +143,34 @@ B3   G   2
 C♯4  G   3 (high)
 D4   D   0 (open)
 E4   D   1
-F♯4  D   2 (high)
+F♯4  D   2
 G♯4  D   3 (high)
 A4   A   0 (open)
 B4   A   1
-C♯5  A   2 (high)
+C♯5  A   2
 D5   A   3
 E5   E   0 (open)
-F♯5  E   1 (high)
-G♯5  E   2 (high)
+F♯5  E   1
+G♯5  E   2
 A5   E   3
 ```
 
 ### E major — E F♯ G♯ A B C♯ D♯ — **1 octave + reach to C♯6** (E4–C♯6); full 2 oct needs 4th+ position
 ```
 E4   D   1
-F♯4  D   2 (high)
+F♯4  D   2
 G♯4  D   3 (high)
 A4   A   0 (open)
 B4   A   1
-C♯5  A   2 (high)
+C♯5  A   2
 D♯5  A   3 (high)
 E5   E   0 (open)       ← octave
-F♯5  E   1 (high)
-G♯5  E   2 (high)
+F♯5  E   1
+G♯5  E   2
 ── shift to 3rd position (E string) ──
 A5   E   1   (3rd pos)
 B5   E   2   (3rd pos)
-C♯6  E   3 (high, 3rd pos)   ← top reachable; turn around here
+C♯6  E   3 (3rd pos)   ← top reachable; turn around here
 ```
 The next scale notes (D♯6, E6) are above the 3rd-position ceiling D6, so stop on C♯6 and
 descend. This is your example: up to C♯ on the E string.
@@ -234,14 +237,14 @@ The next note E♭6 is above the ceiling, so stop on D6 and descend.
 ### E minor — E F♯ G A B C D — **1 octave + reach to D6** (E4–D6); full 2 oct needs 4th+ position
 ```
 E4   D   1
-F♯4  D   2 (high)
+F♯4  D   2
 G4   D   3
 A4   A   0 (open)
 B4   A   1
 C5   A   2 (low)
 D5   A   3
 E5   E   0 (open)       ← octave
-F♯5  E   1 (high)
+F♯5  E   1
 G5   E   2 (low)
 ── shift to 3rd position (E string) ──
 A5   E   1   (3rd pos)
@@ -258,14 +261,14 @@ B3   G   2
 C♯4  G   3 (high)
 D4   D   0 (open)
 E4   D   1
-F♯4  D   2 (high)
+F♯4  D   2
 G4   D   3
 A4   A   0 (open)
 B4   A   1
-C♯5  A   2 (high)
+C♯5  A   2
 D5   A   3
 E5   E   0 (open)
-F♯5  E   1 (high)
+F♯5  E   1
 G5   E   2 (low)
 A5   E   3
 B5   E   4
@@ -370,15 +373,15 @@ B3   G   2
 C♯4  G   3 (high)
 D♯4  G   4 (high)
 E4   D   1
-F♯4  D   2 (high)
+F♯4  D   2
 G♯4  D   3 (high)
 A♯4  D   4 (high)
 B4   A   1
-C♯5  A   2 (high)
+C♯5  A   2
 D♯5  A   3 (high)
 E5   E   0 (open)
-F♯5  E   1 (high)
-G♯5  E   2 (high)
+F♯5  E   1
+G♯5  E   2
 A♯5  E   3 (high)
 B5   E   4
 ```
@@ -406,19 +409,19 @@ A♭5  E   3 (low)
 
 #### F♯ minor — F♯ G♯ A B C♯ D E — **1 octave + reach to D6** (F♯4–D6); full 2 oct needs 4th+ position
 ```
-F♯4  D   2 (high)
+F♯4  D   2
 G♯4  D   3 (high)
 A4   A   0 (open)
 B4   A   1
-C♯5  A   2 (high)
+C♯5  A   2
 D5   A   3
 E5   E   0 (open)
-F♯5  E   1 (high)       ← octave
-G♯5  E   2 (high)
+F♯5  E   1       ← octave
+G♯5  E   2
 ── shift to 3rd position (E string) ──
 A5   E   1   (3rd pos)
 B5   E   2   (3rd pos)
-C♯6  E   3 (high, 3rd pos)
+C♯6  E   3 (3rd pos)
 D6   E   4   (3rd pos)   ← top reachable; turn around here
 ```
 The next notes E6, F♯6 are above the ceiling, so stop on D6 and descend.
@@ -498,3 +501,84 @@ as much of the 2nd octave as 3rd position reaches). `shift` = required shift, "n
 | F♯  | aeolian | 1+  | up to D6 in 3rd pos (full 2 oct needs 4th+)  |
 | C   | aeolian | 2   | 3rd position on E string at A♭5         |
 | D   | aeolian | 2   | 3rd position on E string at A5          |
+
+---
+
+## 8. Galamian practice — fingering direction & shift options
+
+These turn the single fingerings above into Galamian-style practice. Source text:
+`scale-web-research.md` (Galamian pass). The **turn** and **acceleration** (notes-per-bow)
+rhythm/bowing overlays live in `scale-practice-method-v2.md` §8.
+
+### 8.1 Ascend on open strings, descend on the 4th finger
+
+Common Galamian practice: going **up**, use **open strings** (they ring, and the hand relaxes
+before a crossing); coming **down**, replace each open string with the **4th finger** of the
+lower string (it is already down, so the hand is *prepared* on the new string before you
+cross, and the pitch stays under your control instead of an open-string "glare"). The two
+directions differ only at the string changes. This is the answer to "which finger when going
+up vs down."
+
+G major, both directions:
+```
+ASCENDING (open strings)            DESCENDING (4th finger)
+G3   G   0 (open)                   G5   E   2 (low)
+A3   G   1                          F♯5  E   1
+B3   G   2                          E5   A   4      ← 4th finger, not open E
+C4   G   3                          D5   A   3
+D4   D   0 (open)                   C5   A   2 (low)
+E4   D   1                          B4   A   1
+F♯4  D   2                          A4   D   4      ← 4th finger, not open A
+G4   D   3                          G4   D   3
+A4   A   0 (open)                   F♯4  D   2
+B4   A   1                          E4   D   1
+C5   A   2 (low)                    D4   G   4      ← 4th finger, not open D
+D5   A   3                          C4   G   3
+E5   E   0 (open)                   B3   G   2
+F♯5  E   1                          A3   G   1
+G5   E   2 (low)                    G3   G   0 (open)
+```
+The same open→4th-finger swap applies to every scale that uses open strings at a crossing.
+(The bottom G3 stays open — there is no lower string to take it with a 4th finger.)
+
+### 8.2 Shift options (pick by goal; half-step shifts hide the slide)
+
+Each shift scale has more than one good shift. Default = the E-string shift used in §4;
+useful alternatives below. Galamian favours **shifting on a half-step**, because a half-step
+interval across the shift masks the slide.
+
+**D major (2 oct)**
+```
+Option A — late, on the E string (default; one shift, top stays on E string):
+   … G5(E-2)  │shift→3rd│  A5(E-1)  B5(E-2)  C♯6(E-3)  D6(E-4)
+   shift interval G5→A5 = whole step.
+
+Option B — early, on the A string (whole top octave in 3rd position):
+   … B4(A-1)  C♯5(A-2)  │shift→3rd, 1st finger lands on D5│
+   D5(A-1)  E5(A-2)  F♯5(A-3)  G5(A-4)   A5(E-1)  B5(E-2)  C♯6(E-3)  D6(E-4)
+   shift interval C♯5→D5 = half step (smoother — Galamian's preferred half-step shift).
+```
+
+**C minor (2 oct)** — its required shift is **already a half-step**: the natural G5→A♭5 step.
+`… G5(E-2) │shift→3rd on G5→A♭5│ A♭5(E-1 low) B♭5(E-2 low) C6(E-3)`. The easiest of the shift
+scales for exactly this reason.
+
+**D minor (2 oct)** — default E-string shift (G5→A5, a whole step). D minor has no half-step
+at the shift point, so it stays a whole-step shift — an instructive contrast with D major's
+Option B.
+
+### 8.3 Compact finger-number strings (handout style)
+
+Once the notes are known, a one-line row per direction is quicker at the stand. Format
+`String:finger-finger-…`:
+```
+G major   ascending:   G:0-1-2-3   D:0-1-2-3   A:0-1-2-3   E:0-1-2
+          descending:  E:2-1   A:4-3-2-1   D:4-3-2-1   G:4-3-2-1-0
+```
+
+### 8.4 The turn
+
+For continuous-motion practice, bracket the scale with a **turn** = tonic–3rd–2nd–tonic, then
+ascend, mirroring it at the top (G major: **G–B–A–G** … up … turn … down). The turn sets the
+fingers hovering over the string and makes the note count divide evenly for the acceleration
+rhythms. Full turn + acceleration table: `scale-practice-method-v2.md` §8.1–8.2.
