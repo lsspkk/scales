@@ -12,7 +12,7 @@ const HarjoitteluTietoa = lazy(() =>
 )
 const Soittohetki = lazy(() => import('./screens/Soittohetki').then((m) => ({ default: m.Soittohetki })))
 const Virittaminen = lazy(() => import('./screens/Virittaminen').then((m) => ({ default: m.Virittaminen })))
-const Skaalaviritin = lazy(() => import('./screens/Skaalaviritin').then((m) => ({ default: m.Skaalaviritin })))
+const Tahtiasteikko = lazy(() => import('./screens/Tahtiasteikko').then((m) => ({ default: m.Tahtiasteikko })))
 const Jalokiviasteikko = lazy(() => import('./screens/Jalokiviasteikko').then((m) => ({ default: m.Jalokiviasteikko })))
 // DEBUG / TEST ROUTE — central entry for internal visual test pages.
 // Keep a stable /test landing page so individual leaf test routes can change
@@ -58,7 +58,7 @@ export function App() {
         <Route path='/harjoittelu/tietoa' element={<HarjoitteluTietoa />} />
         <Route path='/soittohetki' element={<Soittohetki />} />
         <Route path='/virittaminen' element={<Virittaminen />} />
-        <Route path='/skaalaviritin' element={<Skaalaviritin />} />
+        <Route path='/tahtiasteikko' element={<Tahtiasteikko />} />
         <Route path='/jalokiviasteikko' element={<Jalokiviasteikko />} />
         {/* DEBUG / TEST ROUTES — grouped under /test so one stable route reveals the available previews. */}
         <Route path='/test' element={<TestMenu />} />

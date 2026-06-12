@@ -110,7 +110,7 @@ function PracticeListItem({
           onPlayTuner()
         }}
         className={`flex-shrink-0 ${isMobile ? 'w-8 h-8' : 'w-10 h-10'} flex items-center justify-center rounded-full text-[#8B4513] hover:bg-[#f0dbb8] transition-colors`}
-        aria-label='Aloita skaalaviritin'
+        aria-label='Aloita tähtiasteikko'
       >
         <svg width='20' height='20' viewBox='0 0 20 20' fill='currentColor' xmlns='http://www.w3.org/2000/svg'>
           <path d='M10 1.5l2.47 5.27 5.78.62-4.32 3.88 1.2 5.68L10 14.1l-5.13 2.85 1.2-5.68L1.75 7.39l5.78-.62L10 1.5z' />
@@ -256,7 +256,7 @@ function PracticeBody() {
                   octaves: String(item.scale.octaves),
                   level: String(item.scale.level),
                 })
-                navigateToSoittohetki(`/skaalaviritin?${params.toString()}`)
+                navigateToSoittohetki(`/tahtiasteikko?${params.toString()}`)
               }}
               onPlayGame={() => {
                 const params = new URLSearchParams({

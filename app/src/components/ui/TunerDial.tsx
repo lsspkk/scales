@@ -164,9 +164,9 @@ export function TunerDial({ noteName, cents, accuracyCents = 20, inTune = false 
         <circle cx={CX} cy={CY} r={8} fill='url(#hubGrad)' />
       </svg>
 
-      <div className='mt-1 flex gap-2 items-center w-30 justify-center'>
+      <div className='mt-1 flex gap-2 items-center justify-center'>
         <span
-          className={`text-4xl w-8 font-bold leading-none tabular-nums ${inTune ? 'text-[#6c5fc7]' : 'text-[#5a2d0c]'}`}
+          className={`text-4xl min-w-16 text-end font-bold leading-none tabular-nums ${inTune ? 'text-[#6c5fc7]' : 'text-[#5a2d0c]'}`}
         >
           {noteName ?? '–'}
         </span>

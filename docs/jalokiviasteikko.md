@@ -25,11 +25,11 @@ Almost everything hard already existed before this task:
   is two existing 0–1 fields: `socket.quality` (set-pass colour intensity) and
   `socket.gem.polish` (polish-pass muddy→brilliant finish). The game **writes those
   fields from intonation** instead of `rollQuality`/`rollGemSpec` — no engine rewrite.
-- **The tuner wiring mirrors `Skaalaviritin.tsx`**: `useMicPitch(calmnessToSettings(calmness))`,
+- **The tuner wiring mirrors `Tahtiasteikko.tsx`**: `useMicPitch(calmnessToSettings(calmness))`,
   `pitchClassOf`/target pitch-class matching, the `getScale` + `assignAscendingOctaves`
   scale build, and the ascending↔descending walk.
 - **Genuinely new code:** the **phase-timer state machine** (this game swaps
-  Skaalaviritin's *hold-to-advance* for the doc's timed evaluation window), the
+  Tähtiasteikko's *hold-to-advance* for the doc's timed evaluation window), the
   horizontal **`TuningBar`**, and a small **breathing focus ring** + **note label** +
   **count-in** overlay drawn by the engine.
 
@@ -59,7 +59,7 @@ passes no overlay and is unchanged.
 ## The state machine (`Jalokiviasteikko.tsx`)
 
 The necklace has **one socket per scale note** (single ascending octave = 8 sockets,
-the octave turn at the top, mirroring Skaalaviritin). A run is a list of `Step`s
+the octave turn at the top, mirroring Tähtiasteikko). A run is a list of `Step`s
 built by `buildSteps(top)`:
 
 1. **Ascending mine** — notes `0…top`: each resolves to `fill='ore'` + `quality`

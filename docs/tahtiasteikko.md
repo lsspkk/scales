@@ -1,4 +1,6 @@
-# Skaalaviritin — leveling scale-practice tuner (Task 32)
+# Tähtiasteikko — leveling scale-practice tuner (Task 32)
+
+> Originally shipped as **Skaalaviritin**; renamed to **Tähtiasteikko** (route `/tahtiasteikko`).
 
 A user-facing **scale-practice mode**: the player picks a scale in Harjoittelu,
 plays its notes in tune up to the top and back down, and each completed run
@@ -6,8 +8,8 @@ plays its notes in tune up to the top and back down, and each completed run
 celebrations at the top and bottom. This is the **first cut** — kept simple, with
 the tunables grouped at the top of the screen file so they are trivial to tweak.
 
-- **Route:** `/skaalaviritin?root=…&mode=…&octaves=…&level=…`
-- **Screen:** `app/src/screens/Skaalaviritin.tsx`
+- **Route:** `/tahtiasteikko?root=…&mode=…&octaves=…&level=…`
+- **Screen:** `app/src/screens/Tahtiasteikko.tsx`
 - **Reuses:** `MusicCanvas`, `TunerDial`, `SimpleTunerControls` + `useTunerStore`,
   `useMicPitch`, `StarFlight` / `FlyingStar`.
 
@@ -18,8 +20,8 @@ root/mode rolling, congrats overlay, persistent `★★★…` strip, debug `Tun
 ## Entry point
 
 `PracticeListItem` in `Harjoittelu.tsx` shows a **star icon button** next to the
-existing "Aloita soittohetki" play button (`aria-label="Aloita skaalaviritin"`).
-It navigates to `/skaalaviritin?…` with the **same scale params** the play button
+existing "Aloita soittohetki" play button (`aria-label="Aloita tähtiasteikko"`).
+It navigates to `/tahtiasteikko?…` with the **same scale params** the play button
 passes to Soittohetki (`root`, `mode`, `octaves`, `level`).
 
 ## Screen behaviour
@@ -59,7 +61,7 @@ passes to Soittohetki (`root`, `mode`, `octaves`, `level`).
 
 ## Tunables (clearly editable)
 
-Near the top of `Skaalaviritin.tsx`:
+Near the top of `Tahtiasteikko.tsx`:
 
 ```ts
 const PRACTICE_LEVELS = [

@@ -14,7 +14,7 @@ import { assignAscendingOctaves, SCALE_START_OCTAVE, formatNoteSPN, formatNoteFi
 import { noteNameToMidi } from '../lib/audio/tuning.ts'
 
 /*
- * Skaalaviritin — leveling scale-practice tuner (Task 32, first cut).
+ * Tähtiasteikko — leveling scale-practice tuner (Task 32, first cut).
  *
  * The player picks a scale in Harjoittelu and launches this screen with the
  * same URL params. They play the scale's notes in tune up to the top and back
@@ -54,10 +54,10 @@ interface Celebration {
   isFinal: boolean
 }
 
-/** Pitch class (0–11) of a note string like "Bb4", tolerant of bad input. */
-function pitchClassOf(spn: string): number | null {
+/** Absolute MIDI number of a note string like "Bb4", tolerant of bad input. */
+function midiOf(spn: string): number | null {
   try {
-    return ((noteNameToMidi(spn) % 12) + 12) % 12
+    return noteNameToMidi(spn)
   } catch {
     return null
   }
@@ -71,7 +71,7 @@ function scaleLabel(root: string, mode: string): string {
   return `${root}-${mode === 'aeolian' ? 'molli' : 'duuri'}`
 }
 
-export function Skaalaviritin() {
+export function Tahtiasteikko() {
   const navigate = useNavigate()
   const { isDesktop } = useViewport()
   const [searchParams] = useSearchParams()
@@ -106,11 +106,14 @@ export function Skaalaviritin() {
   const top = scaleNotes.length - 1
 
   const target = scaleNotes[Math.min(targetIndex, top)]
-  const targetKey = `${target.letter}${target.accidental ?? ''}`
-  const targetPc = useMemo(() => pitchClassOf(formatNoteSPN(target)), [target])
+  // Octave-aware key so only the actual target note highlights — the root and
+  // its octave repeat share a letter, so a pitch-class key would light up both.
+  const targetKey = `${target.letter}${target.accidental ?? ''}${target.octave}`
+  // Octave-aware target: the player must play the note in the exact octave drawn
+  // on the stave (e.g. A4, not any A), so compare absolute MIDI numbers.
+  const targetMidi = useMemo(() => midiOf(formatNoteSPN(target)), [target])
 
-  const detectedPc = pitch.midi == null ? null : ((pitch.midi % 12) + 12) % 12
-  const matchesTarget = detectedPc !== null && detectedPc === targetPc
+  const matchesTarget = pitch.midi !== null && pitch.midi === targetMidi
   const inTune = matchesTarget && pitch.cents != null && Math.abs(pitch.cents) <= levelCents
 
   // Start a celebration: pause listening progress, fly the stars for
@@ -205,45 +208,57 @@ export function Skaalaviritin() {
     <div className='flex h-full flex-col bg-[#fffbe9]'>
       {!isDesktop && (
         <ScreenHeader
-          title='Skaalaviritin'
+          title='Tähtiasteikko'
           subtitle={scaleLabel(root, mode)}
           color='red'
           onBack={() => navigate('/harjoittelu')}
         />
       )}
 
-      <MusicCanvas
-        scaleKey={root}
-        mode={mode}
-        staves={1}
-        scaleDirection={phase}
-        highlightNotes={[targetKey]}
-        highlightColor={HIGHLIGHT_COLOR}
-        basicNoteColor={BASIC_NOTE_COLOR}
-        className='aspect-[5/2] w-full bg-white'
-      />
+      {/* Cap the stave width on desktop (like Soittohetki) so it isn't full-screen. */}
+      <div className='mx-auto w-full md:max-w-130'>
+        <MusicCanvas
+          scaleKey={root}
+          mode={mode}
+          staves={1}
+          scaleDirection={phase}
+          highlightNotes={[targetKey]}
+          highlightColor={HIGHLIGHT_COLOR}
+          basicNoteColor={BASIC_NOTE_COLOR}
+          className='aspect-[5/2] w-full bg-white md:rounded-lg'
+        />
+      </div>
 
       {/* justify-between + a stretch spacer let the gaps grow on tall phones
           while everything still fits a short, old screen. */}
       <div className='mx-auto flex w-full max-w-[420px] flex-1 flex-col items-center gap-2 px-2 py-2'>
-
         <p className='text-center text-xs text-[#5a2d0c]'>
           Soita <span aria-hidden>{phase === 'ascending' ? '↑' : '↓'}</span>{' '}
           <span className='text-lg font-bold text-[#a0563f]'>
             {target.letter}
             {target.accidental ?? ''}
+            {target.octave}
           </span>{' '}
           <span className='text-[10px] text-[#8B4513]'>({formatNoteFi(target)})</span>
         </p>
 
         <TunerDial noteName={pitch.noteName} cents={pitch.cents} accuracyCents={levelCents} inTune={inTune} />
 
-        {/* hold progress */}
-        <div className='h-2 w-full overflow-hidden rounded-full bg-[#f0dbb8]'>
+        {/* hold progress — capped to the tuner-gauge width */}
+        <div className='mx-auto h-2 w-full max-w-[260px] overflow-hidden rounded-full bg-[#f0dbb8]'>
           <div
             className='h-full rounded-full bg-[#7c6fd6] transition-[width] duration-100'
             style={{ width: `${Math.round(holdProgress * 100)}%` }}
           />
+        </div>
+
+        {/* Level title on the left, its precision/time description on the right —
+            pulled up tight (≈2px) under the progress bar, same width as the gauge. */}
+        <div className='-mt-1.5 mx-auto flex w-full max-w-[260px] items-baseline justify-between'>
+          <span className='text-base font-bold text-[#a0563f]'>Taso {level}</span>
+          <span className='text-xs text-[#8B4513]'>
+            Tarkkuus ±{levelCents} ¢ · Aika {holdSeconds} s
+          </span>
         </div>
 
         {pitch.error && <p className='text-center text-xs text-red-700'>{pitch.error}</p>}
@@ -251,22 +266,21 @@ export function Skaalaviritin() {
         {/* Stretch spacer — soaks up extra vertical space on taller screens. */}
         <div className='min-h-0 flex-1' />
 
-        {/* Slider on the left, listen toggle on the right — one compact row. */}
-        <div className='flex w-full max-w-[320px] items-end gap-3'>
-          <CompactTunerControls calmness={calmness} onChange={setCalmness} />
+        {/* Slider on the left, listen toggle on the right — one compact row.
+            On desktop the slider is capped at ~4/12 so it isn't over-wide. */}
+        <div className={`flex w-full max-w-[320px] items-end ${isDesktop ? 'justify-between gap-3 mt-8' : 'gap-6'}`}>
+          <div className={`flex min-w-0 ${isDesktop ? 'grow-0 basis-1/3' : 'flex-1'}`}>
+            <CompactTunerControls calmness={calmness} onChange={setCalmness} />
+          </div>
           <button
             onClick={toggleListening}
-            className={`min-h-[40px] rounded-xl px-4 text-base font-bold text-white ${
-              isDesktop ? 'shrink-0' : 'flex-1'
+            className={`min-h-[36px] rounded-xl px-3 text-sm font-bold text-white ${
+              isDesktop ? 'grow-0 basis-1/3' : 'flex-1'
             } ${pitch.listening ? 'bg-[#a0563f]' : 'bg-[#5a2d0c]'}`}
           >
             {pitch.listening ? 'Lopeta' : 'Aloita'}
           </button>
         </div>
-
-        <p className='text-center text-xs font-bold text-[#5a2d0c]'>
-          Taso {level}. Tarkkuus ±{levelCents} Aika {holdSeconds}s
-        </p>
       </div>
 
       {/* Flying-star celebration layer — one StarFlight per star (count = level). */}

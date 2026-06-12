@@ -10,7 +10,7 @@ interface CompactTunerControlsProps {
 /**
  * Space-saving variant of `SimpleTunerControls`: just the 3-step "Mittausnopeus"
  * slider with no reset button and no wrapper padding, sized to sit beside the
- * listen button in a single row (see Skaalaviritin). Same step → settings
+ * listen button in a single row (see Tähtiasteikko). Same step → settings
  * mapping as the full control; only the chrome differs.
  */
 export function CompactTunerControls({ calmness, onChange }: CompactTunerControlsProps) {

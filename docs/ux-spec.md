@@ -137,7 +137,7 @@ Mobile (<=768px)                Desktop (>768px)
 ### Practice routine (the screen body)
 - Skill level selector at top (when no session is active)
 - Scrollable checklist of randomized scales
-- Each item >=44px height, tap to mark done, three launch buttons on the trailing edge: a **diamond** (Jalokiviasteikko gem game), a **star** (Skaalaviritin), and a **person** (Soittohetki) — all pass the same scale params (`root`, `mode`, `octaves`, `level`)
+- Each item >=44px height, tap to mark done, three launch buttons on the trailing edge: a **diamond** (Jalokiviasteikko gem game), a **star** (Tähtiasteikko), and a **person** (Soittohetki) — all pass the same scale params (`root`, `mode`, `octaves`, `level`)
 - Progress indicator: "7 / 24 harjoiteltu"
 - Done items: visually muted (strikethrough or checkmark)
 - Completion: congratulations message + two buttons (repeat same order / roll new)
@@ -218,7 +218,7 @@ Mobile (<=768px) / Desktop — dark (#05060f), no scroll
 - **Necklace** (`NecklaceCanvas` + game `overlay`): the active socket spins to the front with a **breathing focus ring**; a soft, low-contrast **note letter** mists in above it once the evaluation window opens; the round starts with a `4 3 2 1` count-in in the ring centre.
 - **Tuning bar** (`TuningBar`): full-width bottom strip — live cents readout (left), sliding needle over a shaded good zone, phase timer (right). Disabled between notes; on a poor result it yields its space to a neutral message (`En kuullut kunnolla nuottia C.`) for ~1 s.
 - **Idle prompt:** instruction text over a decorative full necklace with an **Aloita** button. **End of round:** the finished necklace plus a 20 s auto-replay countdown, a **Jää ihailemaan** button to cancel it, and an auto-replay toggle.
-- URL params match Soittohetki/Skaalaviritin: `?root=C&mode=ionian&octaves=1&level=1`. Sensitivity is inherited from the persisted `tunerStore` (no on-screen slider in MVP).
+- URL params match Soittohetki/Tähtiasteikko: `?root=C&mode=ionian&octaves=1&level=1`. Sensitivity is inherited from the persisted `tunerStore` (no on-screen slider in MVP).
 
 ## Shared Components
 

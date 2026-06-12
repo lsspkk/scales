@@ -29,7 +29,7 @@ import {
  * pass → finish). Better intonation = a more vivid, better-polished gem. One full
  * up-and-down run = one finished necklace.
  *
- * The tuner wiring mirrors Skaalaviritin; the genuinely new part is the phase-timer
+ * The tuner wiring mirrors Tähtiasteikko; the genuinely new part is the phase-timer
  * state machine below (count-in → between-note pause → delayed reveal → timed
  * evaluation window → resolve) plus the horizontal TuningBar. The settled gameplay
  * spec is docs/game-necklace-in-tune-step.md.
@@ -89,7 +89,7 @@ function scaleLabel(root: string, mode: string): string {
   return `${root}-${mode === 'aeolian' ? 'molli' : 'duuri'}`
 }
 
-/** Letter + accidental for the note identifier, as Skaalaviritin renders it (e.g. "C", "F#"). */
+/** Letter + accidental for the note identifier, as Tähtiasteikko renders it (e.g. "C", "F#"). */
 const noteLetter = (note: NoteWithOctave) => `${note.letter}${note.accidental ?? ''}`
 
 /** One note phase in the up-and-down run. */
@@ -184,7 +184,7 @@ export function Jalokiviasteikko() {
   const pitch = useMicPitch(calmnessToSettings(calmness))
 
   // Single ascending octave (8 entries; last is the octave repeat of the root),
-  // mirroring Skaalaviritin so socket count = note count and the octave turn is the top.
+  // mirroring Tähtiasteikko so socket count = note count and the octave turn is the top.
   const scaleNotes = useMemo(() => {
     const scale = getScale(root, mode)
     const rootLetter = root.replace(/[#b].*$/, '')

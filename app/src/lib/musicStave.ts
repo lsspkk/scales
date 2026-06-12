@@ -328,7 +328,10 @@ function colorFor(
   highlightColor: string,
   basicNoteColor?: string,
 ): string {
-  if (highlightNotes && highlightNotes.has(noteKey(note))) return highlightColor
+  // Octave-aware first (e.g. "C5" matches only that octave so the root and its
+  // octave repeat don't both light up), then fall back to pitch-class ("C").
+  if (highlightNotes && (highlightNotes.has(`${noteKey(note)}${note.octave}`) || highlightNotes.has(noteKey(note))))
+    return highlightColor
   return basicNoteColor ?? '#000'
 }
 
