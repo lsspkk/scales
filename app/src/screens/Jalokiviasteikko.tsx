@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import { useViewport } from '../lib/useViewport'
 import { NecklaceCanvas } from '../components/ui/NecklaceCanvas'
+import { GemCloseupCanvas } from '../components/ui/GemCloseupCanvas'
 import { TuningBar } from '../components/ui/TuningBar'
 import { Button } from '../components/ui/Button'
 import { useMicPitch } from '../hooks/useMicPitch.ts'
@@ -15,6 +16,8 @@ import {
   rollPalette,
   mulberry32,
   COLOR_PATTERNS,
+  FORM_SETS,
+  type FormSet,
   type NecklaceModel,
   type NecklaceOverlay,
   type SocketFill,
@@ -51,18 +54,11 @@ const POOR_SCORE = 0.3 // window score below this → neutral "didn't hear it" p
 const AUTO_REPLAY_MS = 20000 // end-of-round auto-advance
 
 // score(0..1) → one of 11 visible reward levels (0..10), so the level matches the
-// "pisteet y/10" the player sees. The *set* pass writes `quality` (gem colour
-// intensity), the *polish* pass writes `gem.polish` (muddy → brilliant finish).
-// Index 0 = weakest acceptable result, 10 = the brightest. Editable for playtesting.
-const REWARD_QUALITY = [0.45, 1.0] as const // colour intensity range across the 11 levels
-const REWARD_POLISH = [0.18, 1.0] as const // finish range across the 11 levels
-const REWARDS = Array.from({ length: 11 }, (_, i) => {
-  const t = i / 10
-  return {
-    quality: REWARD_QUALITY[0] + (REWARD_QUALITY[1] - REWARD_QUALITY[0]) * t,
-    polish: REWARD_POLISH[0] + (REWARD_POLISH[1] - REWARD_POLISH[0]) * t,
-  }
-})
+// "pisteet y/10" the player sees. We store the level as `level/10` on the socket:
+// the *set* pass writes `quality` (→ gem colour) and the *polish* pass writes
+// `gem.polish` (→ cracks / sparkles). The renderer maps that 0..1 carrier back to a
+// 0..10 level through the editable LEVEL_* tables in necklace.ts — tune the *look*
+// of each score there, not here.
 const scoreToLevel = (score: number) => Math.max(0, Math.min(10, Math.round(score * 10)))
 
 const HELP_LINES = [
@@ -163,13 +159,24 @@ interface GameState {
 
 /** A fully-crafted necklace (every socket a finished gem) for the idle backdrop. */
 function decorativeNecklace(seed: number, count: number): NecklaceModel {
-  const m = createNecklace(seed, count, { themeId: 'starforge', gemStyle: 'faceted', layoutMode: 'ring' })
-  return { ...m, sockets: m.sockets.map((s) => ({ ...s, fill: 'gem' as SocketFill, quality: rollQuality(s.seed) })) }
+  const formSet = FORM_SETS[Math.floor(Math.random() * FORM_SETS.length)]
+  const m = createNecklace(seed, count, { themeId: 'starforge', gemStyle: 'faceted', layoutMode: 'ring', formSet })
+  return {
+    ...m,
+    sockets: m.sockets.map((s) => ({
+      ...s,
+      fill: 'gem' as SocketFill,
+      quality: rollQuality(s.seed), // 0.45..1.0 → colour levels 5–10, all richly coloured
+      // Keep the backdrop flawless: high polish → no cracks, plenty of sparkle.
+      gem: { ...s.gem, polish: 0.75 + mulberry32(s.seed ^ 0x90115)() * 0.25 },
+    })),
+  }
 }
 
-/** A fresh, all-empty necklace to fill during a round (palette = the rolled gem colours). */
-function emptyNecklace(seed: number, count: number, palette: number[]): NecklaceModel {
-  return createNecklace(seed, count, { themeId: 'starforge', gemStyle: 'faceted', layoutMode: 'ring', palette })
+/** A fresh, all-empty necklace to fill during a round (palette = the rolled gem colours,
+ *  formSet = the rolled gem shapes). */
+function emptyNecklace(seed: number, count: number, palette: number[], formSet: FormSet): NecklaceModel {
+  return createNecklace(seed, count, { themeId: 'starforge', gemStyle: 'faceted', layoutMode: 'ring', palette, formSet })
 }
 
 export function Jalokiviasteikko() {
@@ -200,14 +207,27 @@ export function Jalokiviasteikko() {
   const [infoOpen, setInfoOpen] = useState(false)
   const [autoReplayOn, setAutoReplayOn] = useState(true)
   const [admire, setAdmire] = useState(false)
-  const [noteScores, setNoteScores] = useState<Array<{ mine: number | null; polish: number | null }>>(
-    () => Array.from({ length: socketCount }, () => ({ mine: null, polish: null }))
+  // Within admire mode: the whole necklace vs. the close-up single-gem viewer.
+  const [admireView, setAdmireView] = useState<'whole' | 'gems'>('whole')
+  // Which gem the close-up viewer is centred on.
+  const [gemIndex, setGemIndex] = useState(0)
+  const stepGem = (d: number) => setGemIndex((i) => Math.max(0, Math.min(model.sockets.length - 1, i + d)))
+  const [noteScores, setNoteScores] = useState<Array<{ mine: number | null; polish: number | null }>>(() =>
+    Array.from({ length: socketCount }, () => ({ mine: null, polish: null })),
   )
   // Rolled gem colour-set ("teema") name shown during the count-in — fresh every round.
   const [themeName, setThemeName] = useState('')
 
   // Refs the rAF loop reads live (it is created once, with empty deps).
-  const game = useRef<GameState>({ steps: [], stepIndex: 0, phase: 'idle', tMs: 0, scoreSum: 0, scoreCount: 0, resultMessage: null })
+  const game = useRef<GameState>({
+    steps: [],
+    stepIndex: 0,
+    phase: 'idle',
+    tMs: 0,
+    scoreSum: 0,
+    scoreCount: 0,
+    resultMessage: null,
+  })
   const pitchRef = useRef(pitch)
   pitchRef.current = pitch
   const pausedRef = useRef(false)
@@ -235,12 +255,13 @@ export function Jalokiviasteikko() {
     }
     setAdmire(false)
     admireRef.current = false
-    // Roll a fresh colour-set each round so the kid is motivated to see them all.
+    // Roll a fresh colour-set + shape-set each round so the kid is motivated to see them all.
     const pattern = COLOR_PATTERNS[Math.floor(Math.random() * COLOR_PATTERNS.length)]
+    const formSet = FORM_SETS[Math.floor(Math.random() * FORM_SETS.length)]
     const seed = Math.floor(Math.random() * 1e9)
     const count = scaleRef.current.scaleNotes.length
     setThemeName(pattern.label)
-    setModel(emptyNecklace(seed, count, rollPalette(pattern, count, mulberry32(seed))))
+    setModel(emptyNecklace(seed, count, rollPalette(pattern, count, mulberry32(seed)), formSet))
     setNoteScores(Array.from({ length: count }, () => ({ mine: null, polish: null })))
     if (!pitchRef.current.listening) void pitch.start()
   }
@@ -252,15 +273,15 @@ export function Jalokiviasteikko() {
     const letterOf = (i: number) => noteLetter(scaleRef.current.scaleNotes[i])
 
     const applyReward = (step: Step, score: number) => {
-      const reward = REWARDS[scoreToLevel(score)]
+      const unit = scoreToLevel(score) / 10 // 0..1 carrier the renderer maps back to a 0..10 level
       setModel((m) => ({
         ...m,
         activeIndex: step.index,
         sockets: m.sockets.map((s, k) => {
           if (k !== step.index) return s
           return step.kind === 'mine'
-            ? { ...s, fill: 'ore' as SocketFill, quality: reward.quality } // set pass → colour intensity
-            : { ...s, fill: 'gem' as SocketFill, gem: { ...s.gem, polish: reward.polish } } // polish pass → finish
+            ? { ...s, fill: 'ore' as SocketFill, quality: unit } // set pass → colour intensity
+            : { ...s, fill: 'gem' as SocketFill, gem: { ...s.gem, polish: unit } } // polish pass → finish
         }),
       }))
     }
@@ -376,9 +397,27 @@ export function Jalokiviasteikko() {
             autoReplayLeft: null,
           }
         case 'pause':
-          return { phase: 'pause', countdown: null, noteLabel: null, focusRing: true, barActive: false, timer: null, message: g.resultMessage, autoReplayLeft: null }
+          return {
+            phase: 'pause',
+            countdown: null,
+            noteLabel: null,
+            focusRing: true,
+            barActive: false,
+            timer: null,
+            message: g.resultMessage,
+            autoReplayLeft: null,
+          }
         case 'reveal':
-          return { phase: 'reveal', countdown: null, noteLabel: null, focusRing: true, barActive: false, timer: null, message: null, autoReplayLeft: null }
+          return {
+            phase: 'reveal',
+            countdown: null,
+            noteLabel: null,
+            focusRing: true,
+            barActive: false,
+            timer: null,
+            message: null,
+            autoReplayLeft: null,
+          }
         case 'window':
           return {
             phase: 'window',
@@ -391,7 +430,16 @@ export function Jalokiviasteikko() {
             autoReplayLeft: null,
           }
         case 'poor':
-          return { phase: 'poor', countdown: null, noteLabel: step ? letterOf(step.index) : null, focusRing: false, barActive: false, timer: null, message: g.resultMessage, autoReplayLeft: null }
+          return {
+            phase: 'poor',
+            countdown: null,
+            noteLabel: step ? letterOf(step.index) : null,
+            focusRing: false,
+            barActive: false,
+            timer: null,
+            message: g.resultMessage,
+            autoReplayLeft: null,
+          }
         case 'done': {
           const counting = autoReplayRef.current && !admireRef.current
           return {
@@ -432,15 +480,31 @@ export function Jalokiviasteikko() {
   // Live cents for the bar: only a valid in-tune reading on the *target* note shows.
   const detectedPc = pitch.midi == null ? null : ((pitch.midi % 12) + 12) % 12
   const curTargetPc = targetPcs[game.current.steps[game.current.stepIndex]?.index ?? 0]
-  const barCents = view.barActive && pitch.cents != null && detectedPc != null && detectedPc === curTargetPc ? pitch.cents : null
+  const barCents =
+    view.barActive && pitch.cents != null && detectedPc != null && detectedPc === curTargetPc ? pitch.cents : null
 
   const playing = view.phase !== 'idle' && view.phase !== 'done'
 
   if (admire) {
     return (
-      <div className='fixed inset-0 z-50 bg-[#05060f]' onClick={() => setAdmire(false)}>
-        <NecklaceCanvas model={model} className='absolute inset-0' />
+      <div className='fixed inset-0 z-50 bg-[#05060f]'>
+        {admireView === 'whole' ? (
+          <NecklaceCanvas model={model} className='absolute inset-0' />
+        ) : (
+          <GemCloseupCanvas model={model} index={gemIndex} onIndexChange={setGemIndex} className='absolute inset-0' />
+        )}
+
+        {/* Top bar: close + scale name + per-note scores. */}
         <div className='pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent px-4 pb-6 pt-safe-top pt-3'>
+          <button
+            onClick={() => setAdmire(false)}
+            aria-label='Sulje'
+            className='pointer-events-auto absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white/90'
+          >
+            <svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+              <polyline points='15 18 9 12 15 6' />
+            </svg>
+          </button>
           <p className='text-center font-medieval text-lg text-white'>{scaleLabel(root, mode)}</p>
           <div className='mt-2 flex justify-around'>
             {scaleNotes.map((note, i) => (
@@ -453,6 +517,57 @@ export function Jalokiviasteikko() {
             ))}
           </div>
         </div>
+
+        {/* View toggle: whole necklace vs. inspect individual gems. In gems mode the
+            prev/next arrows flank the Jalokivet button. */}
+        <div className='absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 px-4 pb-safe-bottom pb-4'>
+          <button
+            onClick={() => setAdmireView('whole')}
+            className={`min-h-[44px] rounded-xl px-5 text-sm font-bold ${
+              admireView === 'whole' ? 'bg-[#9fd0ff] text-[#05060f]' : 'bg-white/15 text-white'
+            }`}
+          >
+            Kaulakoru
+          </button>
+
+          {admireView === 'gems' && (
+            <button
+              onClick={() => stepGem(-1)}
+              disabled={gemIndex <= 0}
+              aria-label='Edellinen jalokivi'
+              className='flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white disabled:opacity-25'
+            >
+              <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <polyline points='15 18 9 12 15 6' />
+              </svg>
+            </button>
+          )}
+
+          <button
+            onClick={() => {
+              setAdmireView('gems')
+              setGemIndex(0)
+            }}
+            className={`min-h-[44px] rounded-xl px-5 text-sm font-bold ${
+              admireView === 'gems' ? 'bg-[#9fd0ff] text-[#05060f]' : 'bg-white/15 text-white'
+            }`}
+          >
+            Jalokivet
+          </button>
+
+          {admireView === 'gems' && (
+            <button
+              onClick={() => stepGem(1)}
+              disabled={gemIndex >= model.sockets.length - 1}
+              aria-label='Seuraava jalokivi'
+              className='flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white disabled:opacity-25'
+            >
+              <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+                <polyline points='9 18 15 12 9 6' />
+              </svg>
+            </button>
+          )}
+        </div>
       </div>
     )
   }
@@ -462,8 +577,21 @@ export function Jalokiviasteikko() {
       {/* Slim fixed header: back (mobile) + scale name + note count + info. */}
       <div className='flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#0a0d1c] px-2 py-1.5 text-white'>
         {!isDesktop && (
-          <button onClick={() => navigate('/harjoittelu')} aria-label='Takaisin' className='flex h-8 w-8 items-center justify-center'>
-            <svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
+          <button
+            onClick={() => navigate('/harjoittelu')}
+            aria-label='Takaisin'
+            className='flex h-8 w-8 items-center justify-center'
+          >
+            <svg
+              width='22'
+              height='22'
+              viewBox='0 0 24 24'
+              fill='none'
+              stroke='currentColor'
+              strokeWidth='2'
+              strokeLinecap='round'
+              strokeLinejoin='round'
+            >
               <polyline points='15 18 9 12 15 6' />
             </svg>
           </button>
@@ -479,7 +607,15 @@ export function Jalokiviasteikko() {
         >
           <svg width='22' height='22' viewBox='0 0 24 24' fill='none' xmlns='http://www.w3.org/2000/svg'>
             <circle cx='12' cy='12' r='10' stroke='currentColor' strokeWidth='1.8' />
-            <text x='12' y='17' textAnchor='middle' fill='currentColor' fontSize='14' fontWeight='600' fontFamily='serif'>
+            <text
+              x='12'
+              y='17'
+              textAnchor='middle'
+              fill='currentColor'
+              fontSize='14'
+              fontWeight='600'
+              fontFamily='serif'
+            >
               i
             </text>
           </svg>
@@ -493,7 +629,9 @@ export function Jalokiviasteikko() {
         {/* Rolled colour-set name, shown during the count-in. */}
         {view.phase === 'countdown' && themeName && (
           <div className='pointer-events-none absolute inset-x-0 top-4 flex justify-center'>
-            <span className='rounded-full bg-black/45 px-4 py-1 text-sm font-semibold text-white'>Teema: {themeName}</span>
+            <span className='rounded-full bg-black/45 px-4 py-1 text-sm font-semibold text-white'>
+              Teema: {themeName}
+            </span>
           </div>
         )}
 
@@ -501,7 +639,7 @@ export function Jalokiviasteikko() {
         {view.phase === 'idle' && (
           <div className='absolute inset-0 flex flex-col items-center justify-end gap-4 px-6 pb-10 text-center'>
             <p className='max-w-[320px] rounded-2xl bg-black/55 px-5 py-4 text-base font-semibold leading-snug text-white'>
-              Soita asteikko ylös ja sitten alas. Paremmin vireessä soittaen saat upeampia jalokiviä.
+              Soita {scaleLabel(root, mode)} ylös ja sitten alas. Paremmin vireessä soittaen saat upeampia jalokiviä.
             </p>
             <button
               onClick={() => startRound.current()}
@@ -521,7 +659,11 @@ export function Jalokiviasteikko() {
               {view.autoReplayLeft != null ? (
                 <>
                   <button
-                    onClick={() => setAdmire(true)}
+                    onClick={() => {
+                      setAdmireView('whole')
+                      setGemIndex(0)
+                      setAdmire(true)
+                    }}
                     className='min-h-[44px] rounded-xl bg-white/15 px-5 text-sm font-bold text-white'
                   >
                     Jää ihailemaan
@@ -558,8 +700,14 @@ export function Jalokiviasteikko() {
 
       {/* Info dialog — opening it pauses the whole round; closing resumes from the same phase. */}
       {infoOpen && (
-        <div className='absolute inset-0 z-20 flex items-center justify-center bg-black/60 px-6' onClick={() => setInfoOpen(false)}>
-          <div className='max-w-[340px] rounded-2xl bg-[#fffbe9] p-5 text-[#3a1a00]' onClick={(e) => e.stopPropagation()}>
+        <div
+          className='absolute inset-0 z-20 flex items-center justify-center bg-black/60 px-6'
+          onClick={() => setInfoOpen(false)}
+        >
+          <div
+            className='max-w-[340px] rounded-2xl bg-[#fffbe9] p-5 text-[#3a1a00]'
+            onClick={(e) => e.stopPropagation()}
+          >
             <h2 className='mb-2 font-medieval text-lg text-[#5a2d0c]'>Jalokiviasteikko</h2>
             <ul className='list-disc space-y-1.5 pl-5 text-sm leading-snug'>
               {HELP_LINES.map((line) => (

@@ -84,10 +84,22 @@ rarely). Per-step phases:
 
 **Scoring:** during the window each frame samples centeredness
 `1 − |cents|/MAX_OFF_CENTS` (0 when silent or the wrong pitch-class — silence counts
-against). The window's mean `score` (0–1) → `scoreToLevel` → one of 10 `REWARDS`
-(`quality` + `polish` bands). The note **always resolves and advances**; a `score`
-below `POOR_SCORE` still grades the gem but triggers the neutral
+against). The window's mean `score` (0–1) → `scoreToLevel` → a 0–10 level. That level,
+stored as `level/10`, is written to the socket: the **set** pass (ascending) writes
+`quality` (→ gem colour) and the **polish** pass (descending) writes `gem.polish`
+(→ cracks / sparkles). The renderer maps that carrier back to the level through the
+editable `LEVEL_*` tables in `necklace.ts` (see below). The note **always resolves and
+advances**; a `score` below `POOR_SCORE` still grades the gem but triggers the neutral
 `En kuullut kunnolla nuottia <note>.` pause (one generic pattern, never shaming).
+
+**Per-level gem appearance (`necklace.ts`, the dials for how dramatic a note reads):**
+
+```ts
+LEVEL_COLOR    // colour intensity 0..1 (0 ≈ black, level 4 ≈ half, level 8 = full)
+LEVEL_WHITE    // extra white sheen, only on the top notes (levels 9–10)
+LEVEL_CRACKS   // black crack count: 8,6,4,2,1 on levels 0–4, then 0
+LEVEL_SPARKLES // {count,brightness} per level: none < 6, up to 4 sharp glints at 10
+```
 
 **Pause from the info dialog:** opening it flips `pausedRef`, so the loop stops
 accumulating time entirely; closing it resumes from the exact same phase (the
@@ -107,9 +119,32 @@ const GOOD_ZONE_CENTS = 12       // §3 shaded band half-width
 const MAX_OFF_CENTS = 50         // a frame this far off scores 0 centeredness
 const POOR_SCORE = 0.3           // below → neutral "didn't hear it" pause
 const AUTO_REPLAY_MS = 20000     // end-of-round auto-advance
-const REWARD_QUALITY = [0.45, 1.0]  // colour-intensity band across the 10 levels
-const REWARD_POLISH  = [0.18, 1.0]  // finish band across the 10 levels
+// score → level/10 stored on the socket; the *look* of each level lives in the
+// LEVEL_COLOR / LEVEL_WHITE / LEVEL_CRACKS / LEVEL_SPARKLES tables in necklace.ts.
 ```
+
+## Admire mode: close-up gem viewer
+
+At end of round the player can tap **Jää ihailemaan** to enter the full-screen admire
+overlay. A centred bottom bar toggles two views:
+
+- **Kaulakoru** — the whole necklace (`NecklaceCanvas`, the default).
+- **Jalokivet** — a close-up viewer (`GemCloseupCanvas`) where one gem fills the screen
+  with the chain running off both edges, and the player moves left/right between gems.
+  In this mode prev/next **arrow buttons flank the Jalokivet button**; the viewer also
+  takes **swipe** (touch) and **← / →** arrow keys.
+
+`GemCloseupCanvas` is **controlled** — the screen owns the `gemIndex` state and renders
+the arrow buttons; the canvas reports navigation back via `onIndexChange` and eases its
+internal `focus` toward the index for a smooth slide.
+
+The close-up is pure reuse of the necklace engine: `computeCloseupLayout` lays the gems
+on a *wide, near-flat* virtual arc (gems ~3.4 radii apart, gentle catenary centred
+vertically), and `drawCloseup` (in `necklace.ts`) zooms that arc with one `ctx.scale`
+and pans so the eased fractional `focus` index sits at screen centre — so every facet,
+sparkle and crack stays crisp at any size. `drawArc`'s body was extracted into the
+shared `paintArcBody` so both the hanging necklace and the close-up draw identical
+jewellery. No new gem renderer.
 
 ## Out of scope (Task 34)
 

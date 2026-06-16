@@ -242,7 +242,14 @@ export function Tahtiasteikko() {
           <span className='text-[10px] text-[#8B4513]'>({formatNoteFi(target)})</span>
         </p>
 
-        <TunerDial noteName={pitch.noteName} cents={pitch.cents} accuracyCents={levelCents} inTune={inTune} />
+        <div className='relative'>
+          <TunerDial noteName={pitch.noteName} cents={pitch.cents} accuracyCents={levelCents} inTune={inTune} />
+          <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
+            <span className='font-medieval text-6xl font-bold tracking-wide text-[#6b1fa8]/60 [text-shadow:_-2px_-2px_0_rgba(255,195,0,0.55),_2px_-2px_0_rgba(255,195,0,0.55),_-2px_2px_0_rgba(255,195,0,0.55),_2px_2px_0_rgba(255,195,0,0.55),_0_0_12px_rgba(255,195,0,0.35)]'>
+              Taso {level}
+            </span>
+          </div>
+        </div>
 
         {/* hold progress — capped to the tuner-gauge width */}
         <div className='mx-auto h-2 w-full max-w-[260px] overflow-hidden rounded-full bg-[#f0dbb8]'>
@@ -252,10 +259,8 @@ export function Tahtiasteikko() {
           />
         </div>
 
-        {/* Level title on the left, its precision/time description on the right —
-            pulled up tight (≈2px) under the progress bar, same width as the gauge. */}
-        <div className='-mt-1.5 mx-auto flex w-full max-w-[260px] items-baseline justify-between'>
-          <span className='text-base font-bold text-[#a0563f]'>Taso {level}</span>
+        {/* Precision/time description — pulled up tight (≈2px) under the progress bar. */}
+        <div className='-mt-1.5 mx-auto flex w-full max-w-[260px] items-baseline justify-end'>
           <span className='text-xs text-[#8B4513]'>
             Tarkkuus ±{levelCents} ¢ · Aika {holdSeconds} s
           </span>

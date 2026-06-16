@@ -303,11 +303,11 @@ export const ALL_FORMS: GemForm[] = [
 
 /** Shape selections the test page offers. `forms` is the pool a necklace rolls from. */
 export const FORM_SETS: FormSet[] = [
-  { id: 'classic', label: 'Klassinen', forms: ['circle', 'ovalTall', 'square'] },
+  { id: 'classic', label: 'Klassinen', forms: ['circle', 'square', 'octagon'] },
   { id: 'round', label: 'Pyöreät', forms: ['circle', 'ovalTall', 'ovalWide'] },
-  { id: 'angular', label: 'Särmikkäät', forms: ['triangle', 'square', 'pentagon'] },
-  { id: 'crystal', label: 'Kristallit', forms: ['hexagon', 'heptagon', 'octagon', 'dodecagon'] },
-  { id: 'mixed', label: 'Sekoitus', forms: ['circle', 'ovalTall', 'square', 'pentagon', 'hexagon', 'octagon'] },
+  { id: 'angular', label: 'Särmikkäät', forms: ['triangle', 'heptagon', 'pentagon'] },
+  { id: 'crystal', label: 'Kristallit', forms: ['hexagon', 'octagon', 'dodecagon'] },
+  { id: 'mixed', label: 'Sekoitus', forms: [ 'square', 'triangle', 'hexagon'] },
   { id: 'random', label: 'Satunnainen', forms: 'random' },
 ]
 
@@ -386,6 +386,63 @@ export function rollQuality(socketSeed: number): number {
   // but leave room for the occasional dead-centre stone that earns "fire".
   return 0.45 + mulberry32(socketSeed ^ 0x9e37)() * 0.55
 }
+
+// ---------------------------------------------------------------------------
+// Score-level gem styling — the editable knobs that tie a played note's score
+// (the 0..10 "pisteet" the player earns) to how dramatically the stone looks.
+//
+// A socket carries two 0..1 numbers, each the score/10 of one pass:
+//   • `quality`     — the SET pass (ascending). Drives the gem COLOUR below.
+//   • `gem.polish`  — the POLISH pass (descending). Drives CRACKS + SPARKLES.
+// `scoreLevel()` turns either back into a 0..10 index into these tables.
+//
+// Tune these freely — they are the dials for how black a poor stone goes and how
+// brilliantly a perfect one gleams. Each array has 11 entries (level 0..10).
+// ---------------------------------------------------------------------------
+
+/** A finished gem's sparkle at one score level. */
+export interface SparkleLevel {
+  /** Number of four-point star glints (0 = no sparkle). */
+  count: number
+  /** 0..1 brightness + sharpness of each glint. */
+  brightness: number
+}
+
+/**
+ * COLOUR intensity per score level (SET pass): 0 ≈ black, 1 = full colour.
+ * Level 4 is deliberately half colour and level 8 reaches full colour.
+ */
+export const LEVEL_COLOR = [0.0, 0.12, 0.25, 0.38, 0.5, 0.62, 0.74, 0.87, 1.0, 1.0, 1.0] as const
+/**
+ * Extra WHITE sheen mixed over the colour per score level. Zero up to full colour
+ * (level 8); only the top two notes gleam a brighter, whiter shade.
+ */
+export const LEVEL_WHITE = [0, 0, 0, 0, 0, 0, 0, 0, 0, 0.12, 0.28] as const
+/**
+ * Black CRACK count per score level (POLISH pass). A badly played note crazes the
+ * stone with many fissures; they thin out and are gone from level 5 up.
+ */
+export const LEVEL_CRACKS = [8, 6, 4, 2, 1, 0, 0, 0, 0, 0, 0] as const
+/**
+ * SPARKLE per score level (POLISH pass). Nothing until level 6, then more glints,
+ * brighter and sharper, up to a flawless level 10.
+ */
+export const LEVEL_SPARKLES: readonly SparkleLevel[] = [
+  { count: 0, brightness: 0 }, // 0
+  { count: 0, brightness: 0 }, // 1
+  { count: 0, brightness: 0 }, // 2
+  { count: 0, brightness: 0 }, // 3
+  { count: 0, brightness: 0 }, // 4
+  { count: 0, brightness: 0 }, // 5
+  { count: 1, brightness: 0.3 }, // 6 — 1 sparkle, quite dim
+  { count: 2, brightness: 0.5 }, // 7 — 2, brighter
+  { count: 2, brightness: 0.7 }, // 8 — 2, brighter still
+  { count: 3, brightness: 0.85 }, // 9 — 3, even brighter
+  { count: 4, brightness: 1.0 }, // 10 — 4 sparkles, very bright and sharp
+]
+
+/** Turn a 0..1 score carrier (as stored on a socket) into a 0..10 score level. */
+const scoreLevel = (unit: number) => clamp(Math.round(unit * 10), 0, 10)
 
 /** Effective gem hue: the socket's colour from the palette (cycled), plus a little jitter. */
 function socketHue(model: NecklaceModel, i: number): number {
@@ -467,6 +524,30 @@ export function computeNecklaceLayout(opts: {
       amp: height * 0.3,
       k: 1.25,
     },
+  }
+}
+
+/**
+ * Layout for the close-up gem viewer (`drawCloseup`). It reuses the standard layout
+ * for the gem/link radii and theme, but spreads the gems far apart on a *wide* virtual
+ * arc and flattens the curve, so that — once zoomed — only the focused gem (plus a hint
+ * of its neighbours and the chain running off the edges) is on screen. The big
+ * `width` here is a virtual span, not the canvas width; `drawCloseup` does the
+ * screen-centring and zoom itself.
+ */
+export function computeCloseupLayout(opts: { width: number; height: number; socketCount: number }): NecklaceLayout {
+  const base = computeNecklaceLayout(opts)
+  const n = Math.max(1, opts.socketCount)
+  // Gem centres ~3.4 radii apart: at the viewer's zoom that leaves a comfortable gap
+  // (chain + a peek of the next stone) rather than overlapping neighbours.
+  const spacing = base.gemR * 3.4
+  const padX = base.gemR * 2.2
+  return {
+    ...base,
+    width: padX * 2 + spacing * (n - 1),
+    // Gentle, near-flat catenary centred vertically so the focused gem stays centred
+    // as you pan while the chain still curves like a hanging necklace.
+    arc: { padX, topY: opts.height * 0.5, amp: opts.height * 0.08, k: 1.1 },
   }
 }
 
@@ -797,8 +878,16 @@ function drawOre(
   y: number,
   r: number,
   hue: number,
+  quality: number,
   seed: number,
 ): void {
+  // The ascending colour-level already shows in the raw ore: a poorly-played note
+  // mines a dark, near-black lump; a clean one a richer, brighter ore. Kept a touch
+  // more muted than the finished gem so the descent's polish still feels like a lift.
+  const col = LEVEL_COLOR[scoreLevel(quality)]
+  const white = LEVEL_WHITE[scoreLevel(quality)]
+  const sat = (12 + 34 * col) * (1 - 0.6 * white)
+  const baseL = lerp(8, 48, col) + 30 * white
   const rand = mulberry32(seed ^ 0x07e)
   const n = 11
   // Lumpy but mostly round outline (radius jitters a little per vertex).
@@ -808,26 +897,26 @@ function drawOre(
     const rr = r * (0.82 + rand() * 0.16)
     verts.push([x + Math.cos(a) * rr, y + Math.sin(a) * rr])
   }
-  // Body: offset radial gradient = a glossy dome, but desaturated → "raw".
+  // Body: offset radial gradient = a glossy dome, raw + colour-graded.
   const g = ctx.createRadialGradient(x - r * 0.35, y - r * 0.35, r * 0.1, x, y, r)
-  g.addColorStop(0, hsl(hue, 30, 62))
-  g.addColorStop(0.55, hsl(hue, 26, 42))
-  g.addColorStop(1, hsl(hue, 24, 24))
+  g.addColorStop(0, hsl(hue, sat + 6, clamp(baseL + 14, 0, 100)))
+  g.addColorStop(0.55, hsl(hue, sat, clamp(baseL, 0, 100)))
+  g.addColorStop(1, hsl(hue, sat, clamp(baseL - 16, 0, 100)))
   ctx.fillStyle = g
   ctx.beginPath()
   verts.forEach(([px, py], i) => (i ? ctx.lineTo(px, py) : ctx.moveTo(px, py)))
   ctx.closePath()
   ctx.fill()
-  // A small shiny hotspot so it reads as a polished pebble, not a shadow.
+  // A shiny hotspot so it reads as a polished pebble — dimmer on a dark, poor ore.
   const s = ctx.createRadialGradient(x - r * 0.4, y - r * 0.4, 0, x - r * 0.4, y - r * 0.4, r * 0.5)
-  s.addColorStop(0, 'rgba(255,255,255,0.7)')
+  s.addColorStop(0, `rgba(255,255,255,${(0.2 + 0.5 * col).toFixed(3)})`)
   s.addColorStop(1, 'rgba(255,255,255,0)')
   ctx.fillStyle = s
   ctx.beginPath()
   ctx.arc(x, y, r, 0, TAU)
   ctx.fill()
   // A couple of dull flecks for "raw material" texture.
-  ctx.fillStyle = hsl(hue, 20, 30, 0.8)
+  ctx.fillStyle = hsl(hue, clamp(sat - 6, 0, 100), clamp(baseL - 10, 0, 100), 0.8)
   ctx.beginPath()
   ctx.arc(x + r * 0.25, y + r * 0.2, r * 0.12, 0, TAU)
   ctx.fill()
@@ -966,23 +1055,28 @@ function drawShapedCabochon(
   ctx.save()
   tracePolygon(ctx, outline)
   ctx.clip()
+  // Colour intensity + white sheen from the set-pass score level (see LEVEL_COLOR).
+  const col = LEVEL_COLOR[scoreLevel(quality)]
+  const white = LEVEL_WHITE[scoreLevel(quality)]
+  const sat = (24 + 58 * col) * (1 - 0.6 * white)
+  const baseL = lerp(6, 48, col) + 40 * white // near-black → full colour, white lifts it
   const g = ctx.createRadialGradient(cx - r * 0.35, cy - r * 0.35, r * 0.1, cx, cy, r)
-  g.addColorStop(0, hsl(hue, 90, 70 + 18 * quality))
-  g.addColorStop(0.5, hsl(hue, 78, 46 + 10 * quality))
-  g.addColorStop(1, hsl(hue, 72, 20 + 6 * quality))
+  g.addColorStop(0, hsl(hue, sat, clamp(baseL + 22, 0, 100)))
+  g.addColorStop(0.5, hsl(hue, sat, clamp(baseL, 0, 100)))
+  g.addColorStop(1, hsl(hue, sat, clamp(baseL - 24, 0, 100)))
   ctx.fillStyle = g
   ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
   // Sanded plateau: a soft brighter lift over the inner `table` area; its inner edge
   // sharpens with polish (frosted → crisp). Deliberately subtle on a cabochon.
   const tg = ctx.createRadialGradient(cx, cy, r * gem.table * (1 - 0.4 * gem.polish), cx, cy, r * gem.table)
-  tg.addColorStop(0, hsl(hue, 80, 64 + 16 * quality, 0.35))
-  tg.addColorStop(1, hsl(hue, 80, 64, 0))
+  tg.addColorStop(0, hsl(hue, sat, clamp(baseL + 18, 0, 100), 0.35))
+  tg.addColorStop(1, hsl(hue, sat, clamp(baseL + 18, 0, 100), 0))
   ctx.fillStyle = tg
   ctx.fillRect(cx - r, cy - r, r * 2, r * 2)
   ctx.restore()
-  if (quality > 0.3) {
+  if (col > 0.3) {
     ctx.save()
-    ctx.globalAlpha = clamp((quality - 0.3) * 1.4, 0, 1)
+    ctx.globalAlpha = clamp((col - 0.3) * 1.4, 0, 1)
     const s = ctx.createRadialGradient(cx - r * 0.4, cy - r * 0.4, 0, cx - r * 0.4, cy - r * 0.4, r * 0.45)
     s.addColorStop(0, 'rgba(255,255,255,0.95)')
     s.addColorStop(1, 'rgba(255,255,255,0)')
@@ -1028,8 +1122,13 @@ function drawShapedGem(
   const n = outline.length
   const light = -Math.PI * 0.75 + spin // light sweeps as the gem turns
 
-  // SELECTION: colour vividness + base brightness from quality.
-  const sat = 42 + 42 * quality // 42%..84%
+  // SELECTION: colour intensity + white sheen from the set-pass score level
+  // (LEVEL_COLOR / LEVEL_WHITE). col 0 → near-black, 1 → full colour; white lifts
+  // the very best notes toward a brighter, whiter shade.
+  const col = LEVEL_COLOR[scoreLevel(quality)]
+  const white = LEVEL_WHITE[scoreLevel(quality)]
+  const sat = (22 + 60 * col) * (1 - 0.7 * white) // dark + whitened stones desaturate
+  const baseL = lerp(5, 46, col) + 42 * white // near-black → full colour, white pushes it bright
   // SANDING: split polish into three expressive bands.
   const polish = clamp(gem.polish, 0, 1)
   const rough = clamp((0.4 - polish) / 0.4, 0, 1) // 1→0 over 0..0.4 (stains/cracks/dim)
@@ -1051,7 +1150,7 @@ function drawShapedGem(
     const litRaw = Math.cos(Math.atan2(omy - cy, omx - cx) - light) * 0.5 + 0.5
     const lit = clamp(litRaw + 0.12 * shine, 0, 1) // polished stones skew bright ("mostly bright")
     const spec = lit * lit * shine // near-white mirror, only in the polished band
-    const mid = 40 + 14 * quality - 12 * rough // selection brightness, rough dims
+    const mid = baseL - 10 * rough // colour-level brightness, rough dims further
     const L = mid + (lit - 0.5) * (22 + 54 * polish) // contrast grows with polish
     const innerL = clamp(L - (4 + 10 * polish), 0, 100)
     const outerL = clamp(L + (4 + 30 * shine) * lit + 34 * spec, 0, 100)
@@ -1071,7 +1170,7 @@ function drawShapedGem(
 
   // Flat table plateau: colour from selection (dimmed when rough), glossy white
   // highlight that grows with shine.
-  ctx.fillStyle = hsl(hue, sat, clamp(46 + 22 * quality - 14 * rough, 0, 100))
+  ctx.fillStyle = hsl(hue, sat, clamp(baseL + 6 - 14 * rough, 0, 100))
   tracePolygon(ctx, table)
   ctx.fill()
   const gloss = 0.1 + 0.65 * shine * (0.4 + 0.6 * quality)
@@ -1111,15 +1210,26 @@ function drawShapedGem(
       ctx.arc(px, py, rad, 0, TAU)
       ctx.fill()
     }
-    // Cracks: a few jagged dark strokes across the stone. The width scales hard with
-    // how badly the note was played so a poor result is unmistakable: ~3× at reward
-    // level 0, ~2× at level 1, back to the baseline at level 2 (rough ≈ 0.55/0.32/0.10).
-    const cracks = 1 + Math.floor(rough * 2)
-    const crackWidthMul = clamp(1 + (rough - 0.1) / 0.225, 1, 3)
-    ctx.strokeStyle = `rgba(18,16,22,${(0.3 + 0.3 * rough).toFixed(3)})`
-    ctx.lineWidth = (0.5 + 0.7 * rough) * crackWidthMul
-    ctx.lineCap = 'round'
-    for (let k = 0; k < cracks; k++) {
+    ctx.restore()
+  }
+
+  // CRACKS — jagged near-black fissures, their count set straight from the score
+  // level via LEVEL_CRACKS (8 on the worst note, thinning to 1 at level 4, gone from
+  // level 5). Drawn solid with flat (butt) caps + sharp miter joins so they read as
+  // crisp black cracks at any zoom — not a soft grey haze. Driven by the table rather
+  // than the `rough` band so a single level-4 crack still shows on an otherwise clean
+  // stone.
+  const crackCount = LEVEL_CRACKS[scoreLevel(polish)]
+  if (crackCount > 0) {
+    ctx.save()
+    tracePolygon(ctx, outline)
+    ctx.clip()
+    const rand = mulberry32(seed ^ 0x57a1)
+    ctx.strokeStyle = 'rgba(6,5,9,0.92)'
+    ctx.lineWidth = Math.max(0.8, r * 0.05)
+    ctx.lineCap = 'butt'
+    ctx.lineJoin = 'miter'
+    for (let k = 0; k < crackCount; k++) {
       let px = cx + (rand() - 0.5) * r * 1.4
       let py = cy + (rand() - 0.5) * r * 1.4
       ctx.beginPath()
@@ -1175,38 +1285,50 @@ function drawShapedGem(
 
 /**
  * SPARKLE (G3) — the "brilliant" payoff layered over a finished gem. Four-point
- * star glints drawn additively so they read as light. Count/length scale with
- * quality and gate hard (dull gems don't sparkle). Positions are re-seeded each
- * frame from the socket seed so only the twinkle animates, not the placement.
+ * star glints drawn additively so they read as light. The glint count and their
+ * brightness/sharpness come straight from the POLISH-pass score level via
+ * LEVEL_SPARKLES (nothing below level 6, up to 4 sharp glints at level 10), so the
+ * sparkle is one of the clearest "you nailed it" cues. `fade` (0..1) eases them in
+ * with the ore→gem reveal; positions re-seed each frame from the socket seed so only
+ * the twinkle animates, not the placement.
  */
 function drawSparkle(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
   r: number,
-  quality: number,
+  level: number,
+  fade: number,
   time: number,
   seed: number,
 ): void {
-  if (quality < 0.45) return
+  const spec = LEVEL_SPARKLES[level]
+  if (!spec || spec.count <= 0 || fade <= 0.01) return
   const rand = mulberry32(seed ^ 0x5447)
-  const count = Math.round(quality * 3)
   ctx.save()
   ctx.globalCompositeOperation = 'lighter'
-  for (let k = 0; k < count; k++) {
+  for (let k = 0; k < spec.count; k++) {
     const tw = 0.5 + 0.5 * Math.sin(time * 3 + k * 2.1)
-    const len = (r * (0.45 + 0.55 * quality) * tw) / 3
+    // Brighter levels: longer rays, higher alpha, a thicker crisp white core.
+    const len = r * (0.3 + 0.45 * spec.brightness) * (0.65 + 0.35 * tw)
     const px = x + (rand() - 0.5) * r
     const py = y + (rand() - 0.5) * r
-    const alpha = (0.1 + rand() * 0.2) * tw // faint: 10–30%, pulsing
-    ctx.strokeStyle = `rgba(255,255,255,${alpha})`
-    ctx.lineWidth = 2.8
+    const alpha = clamp((0.2 + 0.7 * spec.brightness) * tw * fade, 0, 1)
+    ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`
+    ctx.lineWidth = lerp(1.4, 3.2, spec.brightness)
     ctx.beginPath()
     ctx.moveTo(px - len, py)
     ctx.lineTo(px + len, py)
     ctx.moveTo(px, py - len)
     ctx.lineTo(px, py + len)
     ctx.stroke()
+    // A sharp bright pinpoint at the centre of the brightest glints.
+    if (spec.brightness > 0.4) {
+      ctx.fillStyle = `rgba(255,255,255,${(alpha).toFixed(3)})`
+      ctx.beginPath()
+      ctx.arc(px, py, lerp(0.6, 1.6, spec.brightness), 0, TAU)
+      ctx.fill()
+    }
   }
   ctx.restore()
 }
@@ -1618,7 +1740,25 @@ function drawArc(
   ctx.save()
   // Pan so the active socket sits at screen centre (the "spotlight" glides to it).
   ctx.translate(L.width / 2 - draw.camX, 0)
+  paintArcBody(ctx, L, model, draw, theme, metal, n, overlay)
+  ctx.restore()
+}
 
+/**
+ * Paint the hanging-necklace contents (cord stubs, chain, gems, set-bursts) in the
+ * caller's current transform. Split out of `drawArc` so the close-up gem viewer can
+ * reuse the exact same jewellery under a zoom transform — no second gem renderer.
+ */
+function paintArcBody(
+  ctx: CanvasRenderingContext2D,
+  L: NecklaceLayout,
+  model: NecklaceModel,
+  draw: DrawState,
+  theme: Theme,
+  metal: Metal,
+  n: number,
+  overlay?: NecklaceOverlay,
+): void {
   const gemP: Projected[] = model.sockets.map((_, i) => {
     const t = n === 1 ? 0.5 : i / (n - 1)
     const p = arcPoint(t, L)
@@ -1642,6 +1782,48 @@ function drawArc(
 
   // Game overlay anchored to the active socket (inside the translated arc space).
   if (overlay) paintOverlay(ctx, L, draw, theme, gemP[model.activeIndex], overlay)
+}
+
+/**
+ * Render a *single* gem big and centred, the necklace's chain running off both
+ * edges, so the player can inspect each stone up close and slide left/right along
+ * the necklace. Pure reuse: it lays the gems out on a wide, gently-curved virtual
+ * arc (see `computeCloseupLayout`), then zooms the whole arc with one `ctx.scale`
+ * and pans so the focused gem sits at screen centre.
+ *
+ * `focus` is a *fractional* gem index (e.g. 2.4 while sliding from gem 2 to 3); the
+ * caller eases it for a smooth glide. `screenW/H` are the real canvas size — the
+ * virtual layout width is much wider so neighbours sit off-screen until you pan.
+ */
+export function drawCloseup(
+  ctx: CanvasRenderingContext2D,
+  layout: NecklaceLayout,
+  model: NecklaceModel,
+  draw: DrawState,
+  focus: number,
+  screenW: number,
+  screenH: number,
+): void {
+  const theme = THEMES[model.themeId]
+  const metal = METALS[theme.metal]
+  const n = model.sockets.length
+
+  ctx.clearRect(0, 0, screenW, screenH)
+  // Backdrop fills the real screen (the arc layout's width is the wide virtual span).
+  drawBackdrop(ctx, { ...layout, width: screenW, height: screenH, cx: screenW / 2, cy: screenH / 2 }, theme, draw.time)
+
+  const t = n <= 1 ? 0.5 : clamp(focus, 0, n - 1) / (n - 1)
+  const fp = arcPoint(t, layout)
+  // Zoom so a gem fills ~60% of the smaller screen dimension; clamp for tiny/huge canvases.
+  const zoom = clamp((Math.min(screenW, screenH) * 0.3) / layout.gemR, 1.5, 9)
+
+  ctx.save()
+  ctx.translate(screenW / 2, screenH / 2)
+  ctx.scale(zoom, zoom)
+  ctx.translate(-fp.x, -fp.y)
+  // No "active" gem in the viewer → no game glow / size-boost; show the stones as-is.
+  const quiet: NecklaceModel = model.activeIndex === -1 ? model : { ...model, activeIndex: -1 }
+  paintArcBody(ctx, layout, quiet, draw, theme, metal, n)
   ctx.restore()
 }
 
@@ -1696,7 +1878,7 @@ function paintSocket(
     ctx.globalAlpha = P.alpha * (1 - morph)
     // Round cradle + a lumpy ore that fills it almost exactly (the raw "mined" stage).
     drawOreCradle(ctx, P.x, P.y, r, metal, false)
-    drawOre(ctx, P.x, oreY, r * 0.97, hue, socket.seed)
+    drawOre(ctx, P.x, oreY, r * 0.97, hue, socket.quality, socket.seed)
     ctx.restore()
   }
 
@@ -1712,8 +1894,9 @@ function paintSocket(
     }
     ctx.shadowBlur = 0
     drawFire(ctx, P.x, P.y, gr, socket.quality, spin)
-    // Sparkle scales with polish too — a high-polish stone twinkles more.
-    drawSparkle(ctx, P.x, P.y, gr, socket.quality * morph * (0.5 + 0.5 * socket.gem.polish), draw.time, socket.seed)
+    // Sparkle is the polish-pass payoff: its count + brightness come from that score
+    // level (LEVEL_SPARKLES), eased in with the ore→gem reveal (`morph`).
+    drawSparkle(ctx, P.x, P.y, gr, scoreLevel(socket.gem.polish), morph, draw.time, socket.seed)
     ctx.restore()
   }
 
