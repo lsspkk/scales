@@ -57,6 +57,12 @@ const TEST_MENU_ITEMS: TestMenuItem[] = [
     description: 'Pyörivä jalokivikaulakoru: malmi, hionta ja kimallus — muoto-, kivi-, ketju- ja teemavaihtoehdot.',
     tone: 'red',
   },
+  {
+    to: '/test/jalokiviasteikko',
+    title: 'Jalokiviasteikko (testitila)',
+    description: 'Aseta jokaisen kiven laatu liukurilla tai näppäimistöllä, arvo satunnainen kaulakoru ja siirry ihailemaan.',
+    tone: 'red',
+  },
 ]
 
 function getTestMenuLinkToneClasses(tone: TestMenuTone): string {

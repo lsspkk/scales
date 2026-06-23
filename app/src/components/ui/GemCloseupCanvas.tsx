@@ -6,6 +6,7 @@ import {
   drawCloseup,
   type NecklaceModel,
   type DrawState,
+  type CloseupLabel,
 } from '../../lib/necklace'
 
 interface GemCloseupCanvasProps {
@@ -15,6 +16,8 @@ interface GemCloseupCanvasProps {
   index: number
   /** Called when swipe / arrow-key navigation wants a different gem. */
   onIndexChange: (index: number) => void
+  /** Per-socket captions (note name + scores) painted above each visible gem. */
+  labels?: CloseupLabel[]
   className?: string
   style?: React.CSSProperties
 }
@@ -31,7 +34,7 @@ interface GemCloseupCanvasProps {
  * `cssSize × devicePixelRatio`, and a continuous rAF loop re-applies the DPR transform,
  * eases the camera toward the target gem, and paints.
  */
-export function GemCloseupCanvas({ model, index, onIndexChange, className, style }: GemCloseupCanvasProps) {
+export function GemCloseupCanvas({ model, index, onIndexChange, labels, className, style }: GemCloseupCanvasProps) {
   const wrapperRef = useRef<HTMLDivElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
   // Everything the long-lived rAF loop / listeners need, read live so the effect
@@ -42,6 +45,8 @@ export function GemCloseupCanvas({ model, index, onIndexChange, className, style
   indexRef.current = index
   const onChangeRef = useRef(onIndexChange)
   onChangeRef.current = onIndexChange
+  const labelsRef = useRef(labels)
+  labelsRef.current = labels
 
   useEffect(() => {
     const wrapper = wrapperRef.current
@@ -85,7 +90,7 @@ export function GemCloseupCanvas({ model, index, onIndexChange, className, style
       const layout = computeNecklaceLayout({ width: cssW, height: cssH, socketCount: m.sockets.length })
       advanceDrawState(draw, m, layout, dt)
       focus += (indexRef.current - focus) * (1 - Math.exp(-7 * dt))
-      drawCloseup(ctx, layout, m, draw, focus, cssW, cssH)
+      drawCloseup(ctx, layout, m, draw, focus, cssW, cssH, labelsRef.current)
       raf = requestAnimationFrame(frame)
     }
     raf = requestAnimationFrame(frame)
@@ -135,7 +140,7 @@ export function GemCloseupCanvas({ model, index, onIndexChange, className, style
   }, [])
 
   return (
-    <div ref={wrapperRef} className={className} style={{ position: 'relative', ...style }}>
+    <div ref={wrapperRef} className={className} style={style}>
       <canvas ref={canvasRef} style={{ display: 'block', touchAction: 'pan-y' }} />
     </div>
   )

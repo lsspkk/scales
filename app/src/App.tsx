@@ -37,6 +37,11 @@ const ScaleTunerTest = lazy(() => import('./screens/ScaleTunerTest').then((m) =>
 const StarFlightTest = lazy(() => import('./screens/StarFlightTest').then((m) => ({ default: m.StarFlightTest })))
 // DEBUG / TEST ROUTE — procedural necklace/gem graphics spike. Reach from #/test or directly via #/test/necklace.
 const NecklaceTest = lazy(() => import('./screens/NecklaceTest').then((m) => ({ default: m.NecklaceTest })))
+// DEBUG / TEST ROUTE — hand-drive the gem-necklace game (set qualities, roll, admire).
+// Reach from #/test or directly via #/test/jalokiviasteikko.
+const JalokiviasteikkoTest = lazy(() =>
+  import('./screens/JalokiviasteikkoTest').then((m) => ({ default: m.JalokiviasteikkoTest })),
+)
 
 function LoadingSpinner() {
   return (
@@ -59,7 +64,9 @@ export function App() {
         <Route path='/soittohetki' element={<Soittohetki />} />
         <Route path='/virittaminen' element={<Virittaminen />} />
         <Route path='/tahtiasteikko' element={<Tahtiasteikko />} />
-        <Route path='/jalokiviasteikko' element={<Jalokiviasteikko />} />
+        {/* Splat so the game stays mounted across its /kaulakoru admire sub-URL
+            (back / swipe-back then just pops the overlay, keeping the round). */}
+        <Route path='/jalokiviasteikko/*' element={<Jalokiviasteikko />} />
         {/* DEBUG / TEST ROUTES — grouped under /test so one stable route reveals the available previews. */}
         <Route path='/test' element={<TestMenu />} />
         <Route path='/test/animation/timer' element={<AnimationTest />} />
@@ -69,6 +76,7 @@ export function App() {
         <Route path='/test/scaletuner' element={<ScaleTunerTest />} />
         <Route path='/test/starflight' element={<StarFlightTest />} />
         <Route path='/test/necklace' element={<NecklaceTest />} />
+        <Route path='/test/jalokiviasteikko/*' element={<JalokiviasteikkoTest />} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
     </Suspense>

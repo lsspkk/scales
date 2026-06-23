@@ -1,27 +1,27 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
-import { useNavigate, useSearchParams } from 'react-router-dom'
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom'
 import { useViewport } from '../lib/useViewport'
 import { NecklaceCanvas } from '../components/ui/NecklaceCanvas'
-import { GemCloseupCanvas } from '../components/ui/GemCloseupCanvas'
+import { AdmireView } from '../components/ui/AdmireView'
 import { TuningBar } from '../components/ui/TuningBar'
 import { Button } from '../components/ui/Button'
 import { useMicPitch } from '../hooks/useMicPitch.ts'
 import { useTunerStore, calmnessToSettings } from '../stores/tunerStore.ts'
-import { getScale } from '../lib/musicScale.ts'
-import { assignAscendingOctaves, SCALE_START_OCTAVE, formatNoteSPN, type NoteWithOctave } from '../lib/noteOctave.ts'
+import { formatNoteSPN } from '../lib/noteOctave.ts'
 import { noteNameToMidi } from '../lib/audio/tuning.ts'
+import { rollPalette, mulberry32, COLOR_PATTERNS, FORM_SETS, type NecklaceModel, type NecklaceOverlay } from '../lib/necklace'
 import {
-  createNecklace,
-  rollQuality,
-  rollPalette,
-  mulberry32,
-  COLOR_PATTERNS,
-  FORM_SETS,
-  type FormSet,
-  type NecklaceModel,
-  type NecklaceOverlay,
-  type SocketFill,
-} from '../lib/necklace'
+  parseMode,
+  scaleLabel,
+  noteLetter,
+  getScaleNotes,
+  decorativeNecklace,
+  emptyNecklace,
+  buildSteps,
+  applyStepReward,
+  type Step,
+  type NoteScore,
+} from '../lib/necklaceModels'
 
 /*
  * Jalokiviasteikko — the gem-necklace scale game (Task 34, MVP: Level 1).
@@ -77,36 +77,6 @@ function pitchClassOf(spn: string): number | null {
   }
 }
 
-function parseMode(value: string | null): string {
-  return value === 'aeolian' ? 'aeolian' : 'ionian'
-}
-
-function scaleLabel(root: string, mode: string): string {
-  return `${root}-${mode === 'aeolian' ? 'molli' : 'duuri'}`
-}
-
-/** Letter + accidental for the note identifier, as Tähtiasteikko renders it (e.g. "C", "F#"). */
-const noteLetter = (note: NoteWithOctave) => `${note.letter}${note.accidental ?? ''}`
-
-/** One note phase in the up-and-down run. */
-interface Step {
-  /** Socket / scale-note index this step targets. */
-  index: number
-  /** 'mine' = ascending ore (set pass); 'polish' = descending/turn gem (polish pass). */
-  kind: 'mine' | 'polish'
-  /** Octave-turn repeat shows its label immediately (no delayed reveal). */
-  immediateLabel: boolean
-}
-
-/** Build the step list for one up-and-down run over the scale (top = last index). */
-function buildSteps(top: number): Step[] {
-  const steps: Step[] = []
-  for (let i = 0; i <= top; i++) steps.push({ index: i, kind: 'mine', immediateLabel: false }) // ascending mine
-  steps.push({ index: top, kind: 'polish', immediateLabel: true }) // §2.5 octave-turn polish repeat
-  for (let i = top - 1; i >= 0; i--) steps.push({ index: i, kind: 'polish', immediateLabel: false }) // descending polish
-  return steps
-}
-
 type Phase = 'idle' | 'countdown' | 'pause' | 'reveal' | 'window' | 'poor' | 'done'
 
 /** Render-relevant snapshot the rAF game loop mirrors into React state. */
@@ -157,32 +127,18 @@ interface GameState {
   resultMessage: string | null
 }
 
-/** A fully-crafted necklace (every socket a finished gem) for the idle backdrop. */
-function decorativeNecklace(seed: number, count: number): NecklaceModel {
-  const formSet = FORM_SETS[Math.floor(Math.random() * FORM_SETS.length)]
-  const m = createNecklace(seed, count, { themeId: 'starforge', gemStyle: 'faceted', layoutMode: 'ring', formSet })
-  return {
-    ...m,
-    sockets: m.sockets.map((s) => ({
-      ...s,
-      fill: 'gem' as SocketFill,
-      quality: rollQuality(s.seed), // 0.45..1.0 → colour levels 5–10, all richly coloured
-      // Keep the backdrop flawless: high polish → no cracks, plenty of sparkle.
-      gem: { ...s.gem, polish: 0.75 + mulberry32(s.seed ^ 0x90115)() * 0.25 },
-    })),
-  }
-}
-
-/** A fresh, all-empty necklace to fill during a round (palette = the rolled gem colours,
- *  formSet = the rolled gem shapes). */
-function emptyNecklace(seed: number, count: number, palette: number[], formSet: FormSet): NecklaceModel {
-  return createNecklace(seed, count, { themeId: 'starforge', gemStyle: 'faceted', layoutMode: 'ring', palette, formSet })
-}
-
 export function Jalokiviasteikko() {
   const navigate = useNavigate()
+  const location = useLocation()
   const { isDesktop } = useViewport()
   const [searchParams] = useSearchParams()
+
+  // Admire mode is a real URL (…/jalokiviasteikko/kaulakoru) so the device back button
+  // and the edge swipe-back gesture pop the overlay and return to the game instead of
+  // leaving the screen. Entering it is a history push; the X / back / swipe all pop it.
+  const admire = location.pathname.endsWith('/kaulakoru')
+  const openAdmire = () => navigate(`/jalokiviasteikko/kaulakoru${location.search}`)
+  const closeAdmire = () => navigate(-1)
 
   const root = searchParams.get('root') ?? 'C'
   const mode = parseMode(searchParams.get('mode'))
@@ -190,14 +146,7 @@ export function Jalokiviasteikko() {
   const calmness = useTunerStore((s) => s.calmness)
   const pitch = useMicPitch(calmnessToSettings(calmness))
 
-  // Single ascending octave (8 entries; last is the octave repeat of the root),
-  // mirroring Tähtiasteikko so socket count = note count and the octave turn is the top.
-  const scaleNotes = useMemo(() => {
-    const scale = getScale(root, mode)
-    const rootLetter = root.replace(/[#b].*$/, '')
-    const startOctave = SCALE_START_OCTAVE[root] ?? SCALE_START_OCTAVE[rootLetter] ?? 4
-    return assignAscendingOctaves(scale, startOctave)
-  }, [root, mode])
+  const scaleNotes = useMemo(() => getScaleNotes(root, mode), [root, mode])
   const socketCount = scaleNotes.length
   const top = socketCount - 1
   const targetPcs = useMemo(() => scaleNotes.map((n) => pitchClassOf(formatNoteSPN(n))), [scaleNotes])
@@ -206,13 +155,7 @@ export function Jalokiviasteikko() {
   const [view, setView] = useState<View>(IDLE_VIEW)
   const [infoOpen, setInfoOpen] = useState(false)
   const [autoReplayOn, setAutoReplayOn] = useState(true)
-  const [admire, setAdmire] = useState(false)
-  // Within admire mode: the whole necklace vs. the close-up single-gem viewer.
-  const [admireView, setAdmireView] = useState<'whole' | 'gems'>('whole')
-  // Which gem the close-up viewer is centred on.
-  const [gemIndex, setGemIndex] = useState(0)
-  const stepGem = (d: number) => setGemIndex((i) => Math.max(0, Math.min(model.sockets.length - 1, i + d)))
-  const [noteScores, setNoteScores] = useState<Array<{ mine: number | null; polish: number | null }>>(() =>
+  const [noteScores, setNoteScores] = useState<NoteScore[]>(() =>
     Array.from({ length: socketCount }, () => ({ mine: null, polish: null })),
   )
   // Rolled gem colour-set ("teema") name shown during the count-in — fresh every round.
@@ -253,8 +196,6 @@ export function Jalokiviasteikko() {
       scoreCount: 0,
       resultMessage: null,
     }
-    setAdmire(false)
-    admireRef.current = false
     // Roll a fresh colour-set + shape-set each round so the kid is motivated to see them all.
     const pattern = COLOR_PATTERNS[Math.floor(Math.random() * COLOR_PATTERNS.length)]
     const formSet = FORM_SETS[Math.floor(Math.random() * FORM_SETS.length)]
@@ -273,17 +214,7 @@ export function Jalokiviasteikko() {
     const letterOf = (i: number) => noteLetter(scaleRef.current.scaleNotes[i])
 
     const applyReward = (step: Step, score: number) => {
-      const unit = scoreToLevel(score) / 10 // 0..1 carrier the renderer maps back to a 0..10 level
-      setModel((m) => ({
-        ...m,
-        activeIndex: step.index,
-        sockets: m.sockets.map((s, k) => {
-          if (k !== step.index) return s
-          return step.kind === 'mine'
-            ? { ...s, fill: 'ore' as SocketFill, quality: unit } // set pass → colour intensity
-            : { ...s, fill: 'gem' as SocketFill, gem: { ...s.gem, polish: unit } } // polish pass → finish
-        }),
-      }))
+      setModel((m) => applyStepReward(m, step, scoreToLevel(score)))
     }
 
     const startWindow = (g: GameState) => {
@@ -487,88 +418,13 @@ export function Jalokiviasteikko() {
 
   if (admire) {
     return (
-      <div className='fixed inset-0 z-50 bg-[#05060f]'>
-        {admireView === 'whole' ? (
-          <NecklaceCanvas model={model} className='absolute inset-0' />
-        ) : (
-          <GemCloseupCanvas model={model} index={gemIndex} onIndexChange={setGemIndex} className='absolute inset-0' />
-        )}
-
-        {/* Top bar: close + scale name + per-note scores. */}
-        <div className='pointer-events-none absolute inset-x-0 top-0 bg-gradient-to-b from-black/70 to-transparent px-4 pb-6 pt-safe-top pt-3'>
-          <button
-            onClick={() => setAdmire(false)}
-            aria-label='Sulje'
-            className='pointer-events-auto absolute left-3 top-3 flex h-9 w-9 items-center justify-center rounded-full bg-black/40 text-white/90'
-          >
-            <svg width='22' height='22' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-              <polyline points='15 18 9 12 15 6' />
-            </svg>
-          </button>
-          <p className='text-center font-medieval text-lg text-white'>{scaleLabel(root, mode)}</p>
-          <div className='mt-2 flex justify-around'>
-            {scaleNotes.map((note, i) => (
-              <div key={i} className='flex flex-col items-center gap-0.5'>
-                <span className='text-[11px] font-semibold leading-none text-white'>{noteLetter(note)}</span>
-                <span className='text-[9px] leading-none text-white/55'>
-                  {noteScores[i]?.mine ?? '–'}:{noteScores[i]?.polish ?? '–'}
-                </span>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* View toggle: whole necklace vs. inspect individual gems. In gems mode the
-            prev/next arrows flank the Jalokivet button. */}
-        <div className='absolute inset-x-0 bottom-0 flex items-center justify-center gap-2 px-4 pb-safe-bottom pb-4'>
-          <button
-            onClick={() => setAdmireView('whole')}
-            className={`min-h-[44px] rounded-xl px-5 text-sm font-bold ${
-              admireView === 'whole' ? 'bg-[#9fd0ff] text-[#05060f]' : 'bg-white/15 text-white'
-            }`}
-          >
-            Kaulakoru
-          </button>
-
-          {admireView === 'gems' && (
-            <button
-              onClick={() => stepGem(-1)}
-              disabled={gemIndex <= 0}
-              aria-label='Edellinen jalokivi'
-              className='flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white disabled:opacity-25'
-            >
-              <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                <polyline points='15 18 9 12 15 6' />
-              </svg>
-            </button>
-          )}
-
-          <button
-            onClick={() => {
-              setAdmireView('gems')
-              setGemIndex(0)
-            }}
-            className={`min-h-[44px] rounded-xl px-5 text-sm font-bold ${
-              admireView === 'gems' ? 'bg-[#9fd0ff] text-[#05060f]' : 'bg-white/15 text-white'
-            }`}
-          >
-            Jalokivet
-          </button>
-
-          {admireView === 'gems' && (
-            <button
-              onClick={() => stepGem(1)}
-              disabled={gemIndex >= model.sockets.length - 1}
-              aria-label='Seuraava jalokivi'
-              className='flex h-11 w-11 items-center justify-center rounded-full bg-white/15 text-white disabled:opacity-25'
-            >
-              <svg width='24' height='24' viewBox='0 0 24 24' fill='none' stroke='currentColor' strokeWidth='2' strokeLinecap='round' strokeLinejoin='round'>
-                <polyline points='9 18 15 12 9 6' />
-              </svg>
-            </button>
-          )}
-        </div>
-      </div>
+      <AdmireView
+        model={model}
+        scaleNotes={scaleNotes}
+        noteScores={noteScores}
+        title={scaleLabel(root, mode)}
+        onClose={closeAdmire}
+      />
     )
   }
 
@@ -659,11 +515,7 @@ export function Jalokiviasteikko() {
               {view.autoReplayLeft != null ? (
                 <>
                   <button
-                    onClick={() => {
-                      setAdmireView('whole')
-                      setGemIndex(0)
-                      setAdmire(true)
-                    }}
+                    onClick={openAdmire}
                     className='min-h-[44px] rounded-xl bg-white/15 px-5 text-sm font-bold text-white'
                   >
                     Jää ihailemaan

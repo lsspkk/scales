@@ -101,6 +101,12 @@ LEVEL_CRACKS   // black crack count: 8,6,4,2,1 on levels 0–4, then 0
 LEVEL_SPARKLES // {count,brightness} per level: none < 6, up to 4 sharp glints at 10
 ```
 
+All gem stroke detail — sparkle glints, crack hairlines, and the faceted-cut
+definition/ridge lines — is sized as a **fraction of the gem radius**, never a fixed
+pixel count. A fixed width looked right on a big desktop gem but ~2.5× too thick on the
+smaller mobile gem (and bloated further under the close-up zoom); tying every stroke to
+`r` keeps the cuts crisp and identical at any size or zoom.
+
 **Pause from the info dialog:** opening it flips `pausedRef`, so the loop stops
 accumulating time entirely; closing it resumes from the exact same phase (the
 current note never restarts).
@@ -123,20 +129,42 @@ const AUTO_REPLAY_MS = 20000     // end-of-round auto-advance
 // LEVEL_COLOR / LEVEL_WHITE / LEVEL_CRACKS / LEVEL_SPARKLES tables in necklace.ts.
 ```
 
-## Admire mode: close-up gem viewer
+## Admire mode: close-up gem viewer (`AdmireView`)
 
 At end of round the player can tap **Jää ihailemaan** to enter the full-screen admire
-overlay. A centred bottom bar toggles two views:
+overlay, the reusable `components/ui/AdmireView.tsx` (shared by the game and the test
+screen below — it owns its own view/index state; the parent passes `model`, `scaleNotes`,
+`noteScores`, `title`, `onClose`). Two focus modes, driven by a **two-row** control bar
+at the bottom:
 
-- **Kaulakoru** — the whole necklace (`NecklaceCanvas`, the default).
+- **Kaulakoru** — the whole necklace (`NecklaceCanvas`, the default), with a per-note
+  score **strip** across the top bar.
 - **Jalokivet** — a close-up viewer (`GemCloseupCanvas`) where one gem fills the screen
-  with the chain running off both edges, and the player moves left/right between gems.
-  In this mode prev/next **arrow buttons flank the Jalokivet button**; the viewer also
-  takes **swipe** (touch) and **← / →** arrow keys.
+  with the chain running off both edges; the top strip is hidden and instead each
+  visible stone is **captioned on the canvas** (note name + `mine:polish` scores, the
+  focused gem boldest, neighbours fading as they curve away). The viewer also takes
+  **swipe** (touch) and **← / →** arrow keys.
 
-`GemCloseupCanvas` is **controlled** — the screen owns the `gemIndex` state and renders
+Controls: the centre button is the **focus mode-switch** — its label is the mode it
+switches *to* (**Jalokivet** while showing the whole necklace, **Kaulakoru** while in the
+close-up). The flanking prev/next **arrow buttons** are **enabled only in Jalokivet**
+(disabled/greyed in Kaulakoru) and step between gems. There is no restart here — closing
+returns to the end-of-round screen, which owns the *Aloita uusi* / auto-replay controls.
+
+**Admire mode is a real URL** — `…/jalokiviasteikko/kaulakoru` (and
+`…/test/jalokiviasteikko/kaulakoru` for the test screen), so both screens use a **splat
+route** (`/jalokiviasteikko/*`) to stay mounted across it (the round's state survives).
+`onClose` is `navigate(-1)`, so the **X** (top-right close icon), the device **back**
+button, and the edge **swipe-back** gesture all pop the overlay back into the game rather
+than leaving the screen. Entering it (`Jää ihailemaan` / `Ihaile`) is a history push.
+
+`GemCloseupCanvas` is **controlled** — `AdmireView` owns the `gemIndex` state and renders
 the arrow buttons; the canvas reports navigation back via `onIndexChange` and eases its
-internal `focus` toward the index for a smooth slide.
+internal `focus` toward the index for a smooth slide. The captions are passed in as a
+`labels` prop (`CloseupLabel[]`, socket order) and painted by `drawCloseup` in screen
+space (after the zoom transform is popped) so the text stays crisp. (Its wrapper takes
+the parent `className`/`style` straight through — no forced `position`, so `absolute
+inset-0` fills the screen.)
 
 The close-up is pure reuse of the **circular** necklace engine: `drawCloseup` (in
 `necklace.ts`) spins the pseudo-3D ring so the eased fractional `focus` gem swings to
@@ -146,6 +174,24 @@ focused stone stays centred while its neighbours curve up and away to the sides 
 chain runs off both edges — the same circular necklace as **Kaulakoru**, seen close.
 `drawRing`'s body was extracted into the shared `paintRingBody` so the whole necklace
 and the close-up draw identical jewellery. No new gem renderer, no flat-arc layout.
+
+## Shared model helpers + test screen
+
+The pure necklace/scale builders the screens share live in `app/src/lib/necklaceModels.ts`
+(no React): `parseMode`, `scaleLabel`, `noteLetter`, `getScaleNotes`, `decorativeNecklace`,
+`emptyNecklace`, `freshNecklace`, `testNecklace`, the `Step`/`NoteScore` types, plus
+`buildSteps` and `applyStepReward` — the **same** up-then-down two-pass sequence (ascending
+`mine` → ore + colour, octave-turn + descending `polish` → finished gem) the game's rAF
+loop drives. The game screen and the test screen both call these, so the test mirrors real
+gameplay exactly.
+
+**Test screen** `screens/JalokiviasteikkoTest.tsx`, route `#/test/jalokiviasteikko` (in the
+`#/test` menu). No mic, no timers: it walks `buildSteps` one note at a time with a single
+slider (drag, or keyboard **← → / ↑ ↓** then **Enter** to apply + advance), so each step
+sets that note's quality and `applyStepReward` writes colour (ascending) / finish
+(descending). **Arvo kivet** fills a whole random necklace at once; at the end **Ihaile**
+opens the shared `AdmireView`. It reuses `NecklaceCanvas`, `AdmireView`, and the
+`necklaceModels` builders — nothing gameplay-specific is duplicated.
 
 ## Out of scope (Task 34)
 

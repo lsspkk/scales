@@ -1202,7 +1202,10 @@ function drawShapedGem(
     ctx.clip()
     const rand = mulberry32(seed ^ 0x57a1)
     ctx.strokeStyle = 'rgba(6,5,9,0.92)'
-    ctx.lineWidth = Math.max(0.8, r * 0.05)
+    // Hairline crack proportional to the gem (was a 0.8 px floor that, magnified by
+    // the close-up zoom, bloated cracks on small mobile gems). A tiny floor keeps it
+    // visible without going chunky.
+    ctx.lineWidth = Math.max(0.5, r * 0.035)
     ctx.lineCap = 'butt'
     ctx.lineJoin = 'miter'
     for (let k = 0; k < crackCount; k++) {
@@ -1227,9 +1230,10 @@ function drawShapedGem(
   if (edge > 0.02) {
     ctx.save()
     ctx.lineCap = 'round'
-    // Definition lines: thin, pale, source-over → "the facets are visible".
+    // Definition lines: thin, pale, source-over → "the facets are visible". Width
+    // tracks the gem radius (was fixed px) so the seams stay hair-fine on small gems.
     ctx.strokeStyle = `rgba(255,255,255,${(0.1 + 0.22 * edge).toFixed(3)})`
-    ctx.lineWidth = 0.5 + 0.5 * edge
+    ctx.lineWidth = r * (0.008 + 0.012 * edge)
     for (let i = 0; i < n; i++) {
       ctx.beginPath()
       ctx.moveTo(table[i].x, table[i].y)
@@ -1241,7 +1245,7 @@ function drawShapedGem(
     // Bright sparkle glints: additive white on the lit ridges, only when polished.
     if (shine > 0.02) {
       ctx.globalCompositeOperation = 'lighter'
-      ctx.lineWidth = 0.5 + 1.4 * shine
+      ctx.lineWidth = r * (0.008 + 0.02 * shine)
       for (let i = 0; i < n; i++) {
         const ridgeLit = Math.cos(Math.atan2(outline[i].y - cy, outline[i].x - cx) - light) * 0.5 + 0.5
         const a = shine * (0.12 + 0.7 * ridgeLit * ridgeLit) // sharp on the best-lit ridges
@@ -1291,7 +1295,10 @@ function drawSparkle(
     const py = y + (rand() - 0.5) * r
     const alpha = clamp((0.2 + 0.7 * spec.brightness) * tw * fade, 0, 1)
     ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`
-    ctx.lineWidth = lerp(1.4, 3.2, spec.brightness)
+    // Stroke width scales with the gem radius (was a fixed 1.4–3.2 px): a small gem
+    // on mobile got the same absolute width as a big one on desktop, so the glints
+    // read ~2.5× thicker there. Tying it to `r` keeps a sharp glint at any size/zoom.
+    ctx.lineWidth = r * lerp(0.03, 0.06, spec.brightness)
     ctx.beginPath()
     ctx.moveTo(px - len, py)
     ctx.lineTo(px + len, py)
@@ -1302,7 +1309,7 @@ function drawSparkle(
     if (spec.brightness > 0.4) {
       ctx.fillStyle = `rgba(255,255,255,${(alpha).toFixed(3)})`
       ctx.beginPath()
-      ctx.arc(px, py, lerp(0.6, 1.6, spec.brightness), 0, TAU)
+      ctx.arc(px, py, r * lerp(0.025, 0.055, spec.brightness), 0, TAU)
       ctx.fill()
     }
   }
@@ -1796,6 +1803,12 @@ function paintArcBody(
  * caller eases it for a smooth glide. `layout` is the standard ring layout sized to
  * the real canvas; `screenW/H` are that canvas size.
  */
+/** Per-gem caption drawn over the close-up (note name + a small sub-line of scores). */
+export interface CloseupLabel {
+  note: string
+  sub: string
+}
+
 export function drawCloseup(
   ctx: CanvasRenderingContext2D,
   layout: NecklaceLayout,
@@ -1804,6 +1817,7 @@ export function drawCloseup(
   focus: number,
   screenW: number,
   screenH: number,
+  labels?: CloseupLabel[],
 ): void {
   const theme = THEMES[model.themeId]
   const metal = METALS[theme.metal]
@@ -1828,6 +1842,56 @@ export function drawCloseup(
   // No "active" gem in the viewer → no game glow / size-boost; show the stones as-is.
   const quiet: NecklaceModel = model.activeIndex === -1 ? model : { ...model, activeIndex: -1 }
   paintRingBody(ctx, layout, quiet, draw, theme, metal, n, spin)
+  ctx.restore()
+
+  // Captions: drawn in *screen* space (after the zoom transform is popped) so the
+  // text stays crisp at a fixed size. Each front-facing gem gets its note name above
+  // it; the focused gem reads boldest, neighbours fade out as they curve away.
+  if (labels) paintCloseupLabels(ctx, layout, n, spin, anchor, zoom, screenW, screenH, f, labels)
+}
+
+/** Note-name + score captions above the visible gems in the close-up viewer. */
+function paintCloseupLabels(
+  ctx: CanvasRenderingContext2D,
+  L: NecklaceLayout,
+  n: number,
+  spin: number,
+  anchor: Projected,
+  zoom: number,
+  screenW: number,
+  screenH: number,
+  focus: number,
+  labels: CloseupLabel[],
+): void {
+  ctx.save()
+  ctx.textAlign = 'center'
+  for (let i = 0; i < n; i++) {
+    const label = labels[i]
+    if (!label) continue
+    const P = projectRing(socketAngle(i, n), spin, L)
+    if (P.z < -0.1) continue // skip gems on the far side of the hoop
+    const sx = screenW / 2 + (P.x - anchor.x) * zoom
+    const sy = screenH / 2 + (P.y - anchor.y) * zoom
+    const gemR = L.gemR * P.scale * zoom
+    // Fade with distance from the focused gem so neighbours don't clutter.
+    const fade = clamp(1 - Math.abs(i - focus) * 0.55, 0.12, 1)
+    const fs = clamp(gemR * 0.4, 12, 30)
+    const baseY = sy - gemR - fs * 0.5
+    ctx.globalAlpha = fade
+    ctx.shadowColor = 'rgba(0,0,0,0.85)'
+    ctx.shadowBlur = 4
+    ctx.fillStyle = '#ffffff'
+    ctx.font = `700 ${fs.toFixed(0)}px ui-sans-serif, system-ui, sans-serif`
+    ctx.textBaseline = 'alphabetic'
+    ctx.fillText(label.note, sx, baseY)
+    if (label.sub) {
+      ctx.globalAlpha = fade * 0.8
+      ctx.font = `600 ${(fs * 0.52).toFixed(0)}px ui-sans-serif, system-ui, sans-serif`
+      ctx.fillStyle = '#cfe2ff'
+      ctx.textBaseline = 'top'
+      ctx.fillText(label.sub, sx, baseY + 2)
+    }
+  }
   ctx.restore()
 }
 
