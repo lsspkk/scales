@@ -527,30 +527,6 @@ export function computeNecklaceLayout(opts: {
   }
 }
 
-/**
- * Layout for the close-up gem viewer (`drawCloseup`). It reuses the standard layout
- * for the gem/link radii and theme, but spreads the gems far apart on a *wide* virtual
- * arc and flattens the curve, so that — once zoomed — only the focused gem (plus a hint
- * of its neighbours and the chain running off the edges) is on screen. The big
- * `width` here is a virtual span, not the canvas width; `drawCloseup` does the
- * screen-centring and zoom itself.
- */
-export function computeCloseupLayout(opts: { width: number; height: number; socketCount: number }): NecklaceLayout {
-  const base = computeNecklaceLayout(opts)
-  const n = Math.max(1, opts.socketCount)
-  // Gem centres ~3.4 radii apart: at the viewer's zoom that leaves a comfortable gap
-  // (chain + a peek of the next stone) rather than overlapping neighbours.
-  const spacing = base.gemR * 3.4
-  const padX = base.gemR * 2.2
-  return {
-    ...base,
-    width: padX * 2 + spacing * (n - 1),
-    // Gentle, near-flat catenary centred vertically so the focused gem stays centred
-    // as you pan while the chain still curves like a hanging necklace.
-    arc: { padX, topY: opts.height * 0.5, amp: opts.height * 0.08, k: 1.1 },
-  }
-}
-
 // ---------------------------------------------------------------------------
 // 4. Pseudo-3D ring projection — the headline effect.
 //
@@ -1691,6 +1667,32 @@ function drawRing(
   const wobble = (draw.reduceMotion ? 0.008 : 0.036) * Math.sin(draw.time * 0.7)
   const spin = draw.spin + wobble
 
+  const gemP = paintRingBody(ctx, L, model, draw, theme, metal, n, spin)
+
+  // Bursts last (additive light on top of everything).
+  paintBursts(ctx, draw, gemP)
+
+  // Game overlay anchored to the active socket (front-centre after the spin settles).
+  if (overlay) paintOverlay(ctx, L, draw, theme, gemP[model.activeIndex], overlay)
+}
+
+/**
+ * Paint the pseudo-3D ring (chain spans + gems) at a given `spin`, depth-sorted so
+ * the front of the hoop overlaps the back. Split out of `drawRing` so the close-up
+ * gem viewer can reuse the *same* circular necklace under a zoom transform — no
+ * second, flat renderer. Returns the projected gem points so the caller can layer
+ * bursts / overlays on top.
+ */
+function paintRingBody(
+  ctx: CanvasRenderingContext2D,
+  L: NecklaceLayout,
+  model: NecklaceModel,
+  draw: DrawState,
+  theme: Theme,
+  metal: Metal,
+  n: number,
+  spin: number,
+): Projected[] {
   const gemP = model.sockets.map((_, i) => projectRing(socketAngle(i, n), spin, L))
 
   const items: RenderItem[] = []
@@ -1719,11 +1721,7 @@ function drawRing(
   items.sort((p, q) => p.z - q.z)
   for (const it of items) it.paint()
 
-  // Bursts last (additive light on top of everything).
-  paintBursts(ctx, draw, gemP)
-
-  // Game overlay anchored to the active socket (front-centre after the spin settles).
-  if (overlay) paintOverlay(ctx, L, draw, theme, gemP[model.activeIndex], overlay)
+  return gemP
 }
 
 // --- Arc layout: calm hanging necklace with a spotlight pan ---
@@ -1785,15 +1783,18 @@ function paintArcBody(
 }
 
 /**
- * Render a *single* gem big and centred, the necklace's chain running off both
- * edges, so the player can inspect each stone up close and slide left/right along
- * the necklace. Pure reuse: it lays the gems out on a wide, gently-curved virtual
- * arc (see `computeCloseupLayout`), then zooms the whole arc with one `ctx.scale`
- * and pans so the focused gem sits at screen centre.
+ * Render a *single* gem big and centred, the same circular necklace curving off
+ * both edges, so the player can inspect each stone up close and slide left/right
+ * along the hoop. Pure reuse of the pseudo-3D ring: it spins the hoop so the focused
+ * gem swings to the front-centre (exactly like the game), then zooms the whole ring
+ * in with one `ctx.scale` about that fixed front point. Because the front-centre is
+ * always the zoom anchor, sliding just spins the ring and the neighbouring gems
+ * curve up and away to the sides — reading as a real necklace seen close, not a flat
+ * strip.
  *
  * `focus` is a *fractional* gem index (e.g. 2.4 while sliding from gem 2 to 3); the
- * caller eases it for a smooth glide. `screenW/H` are the real canvas size — the
- * virtual layout width is much wider so neighbours sit off-screen until you pan.
+ * caller eases it for a smooth glide. `layout` is the standard ring layout sized to
+ * the real canvas; `screenW/H` are that canvas size.
  */
 export function drawCloseup(
   ctx: CanvasRenderingContext2D,
@@ -1809,21 +1810,24 @@ export function drawCloseup(
   const n = model.sockets.length
 
   ctx.clearRect(0, 0, screenW, screenH)
-  // Backdrop fills the real screen (the arc layout's width is the wide virtual span).
-  drawBackdrop(ctx, { ...layout, width: screenW, height: screenH, cx: screenW / 2, cy: screenH / 2 }, theme, draw.time)
+  drawBackdrop(ctx, layout, theme, draw.time)
 
-  const t = n <= 1 ? 0.5 : clamp(focus, 0, n - 1) / (n - 1)
-  const fp = arcPoint(t, layout)
-  // Zoom so a gem fills ~60% of the smaller screen dimension; clamp for tiny/huge canvases.
+  // Spin the hoop so the (fractional) focused gem sits at the front-centre, where
+  // sin(spin + angle) = 1. Sliding `focus` just rotates the ring through that point.
+  const f = n <= 1 ? 0 : clamp(focus, 0, n - 1)
+  const focusAngle = socketAngle(f, n)
+  const spin = Math.PI / 2 - focusAngle
+  const anchor = projectRing(focusAngle, spin, layout) // the fixed front-centre point
+  // Zoom so a front gem fills ~60% of the smaller screen dimension; clamp for tiny/huge canvases.
   const zoom = clamp((Math.min(screenW, screenH) * 0.3) / layout.gemR, 1.5, 9)
 
   ctx.save()
   ctx.translate(screenW / 2, screenH / 2)
   ctx.scale(zoom, zoom)
-  ctx.translate(-fp.x, -fp.y)
+  ctx.translate(-anchor.x, -anchor.y)
   // No "active" gem in the viewer → no game glow / size-boost; show the stones as-is.
   const quiet: NecklaceModel = model.activeIndex === -1 ? model : { ...model, activeIndex: -1 }
-  paintArcBody(ctx, layout, quiet, draw, theme, metal, n)
+  paintRingBody(ctx, layout, quiet, draw, theme, metal, n, spin)
   ctx.restore()
 }
 

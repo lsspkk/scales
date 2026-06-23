@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import {
-  computeCloseupLayout,
+  computeNecklaceLayout,
   createDrawState,
   advanceDrawState,
   drawCloseup,
@@ -25,9 +25,9 @@ interface GemCloseupCanvasProps {
  * renders the prev/next buttons — but the viewer still handles swipe (touch) and
  * ← / → arrow keys itself, reporting the new index back via `onIndexChange`.
  *
- * It reuses the necklace engine wholesale (`drawCloseup` zooms the shared arc render
- * and pans to the focused gem), so every facet, sparkle and crack stays crisp at any
- * size. Mechanics mirror `NecklaceCanvas`: a `ResizeObserver` sizes the bitmap to
+ * It reuses the necklace engine wholesale (`drawCloseup` zooms into the shared circular
+ * ring and spins the focused gem to the front), so every facet, sparkle and crack stays
+ * crisp at any size. Mechanics mirror `NecklaceCanvas`: a `ResizeObserver` sizes the bitmap to
  * `cssSize × devicePixelRatio`, and a continuous rAF loop re-applies the DPR transform,
  * eases the camera toward the target gem, and paints.
  */
@@ -82,7 +82,7 @@ export function GemCloseupCanvas({ model, index, onIndexChange, className, style
       const dpr = window.devicePixelRatio || 1
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
       const m = modelRef.current
-      const layout = computeCloseupLayout({ width: cssW, height: cssH, socketCount: m.sockets.length })
+      const layout = computeNecklaceLayout({ width: cssW, height: cssH, socketCount: m.sockets.length })
       advanceDrawState(draw, m, layout, dt)
       focus += (indexRef.current - focus) * (1 - Math.exp(-7 * dt))
       drawCloseup(ctx, layout, m, draw, focus, cssW, cssH)

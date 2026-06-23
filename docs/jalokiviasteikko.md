@@ -138,13 +138,14 @@ overlay. A centred bottom bar toggles two views:
 the arrow buttons; the canvas reports navigation back via `onIndexChange` and eases its
 internal `focus` toward the index for a smooth slide.
 
-The close-up is pure reuse of the necklace engine: `computeCloseupLayout` lays the gems
-on a *wide, near-flat* virtual arc (gems ~3.4 radii apart, gentle catenary centred
-vertically), and `drawCloseup` (in `necklace.ts`) zooms that arc with one `ctx.scale`
-and pans so the eased fractional `focus` index sits at screen centre — so every facet,
-sparkle and crack stays crisp at any size. `drawArc`'s body was extracted into the
-shared `paintArcBody` so both the hanging necklace and the close-up draw identical
-jewellery. No new gem renderer.
+The close-up is pure reuse of the **circular** necklace engine: `drawCloseup` (in
+`necklace.ts`) spins the pseudo-3D ring so the eased fractional `focus` gem swings to
+the front-centre (exactly like the game), then zooms the whole ring in with one
+`ctx.scale` about that fixed front point. Sliding just rotates the hoop, so the
+focused stone stays centred while its neighbours curve up and away to the sides and the
+chain runs off both edges — the same circular necklace as **Kaulakoru**, seen close.
+`drawRing`'s body was extracted into the shared `paintRingBody` so the whole necklace
+and the close-up draw identical jewellery. No new gem renderer, no flat-arc layout.
 
 ## Out of scope (Task 34)
 
