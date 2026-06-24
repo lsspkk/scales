@@ -2,7 +2,17 @@
 
 Route `/jalokiviasteikko`, screen `app/src/screens/Jalokiviasteikko.tsx`. Launched
 from the Harjoittelu practice list (the **diamond** button) with the same scale
-params the star/person buttons pass: `?root=C&mode=ionian&octaves=1&level=1`.
+params the star/person buttons pass: `?root=C&mode=ionian&octaves=1&level=1`. The
+`octaves` param is honoured (1 or 2 → 8 or 15 sockets); anything else falls back to 1.
+
+**Reach-aware "1+" scales (Task 35).** Some 2-octave scales can't complete their
+second octave below 4th position (top above the 3rd-position ceiling D6): E, F, Eb
+major and E, F# minor. For these the practice data sets `octaves: 1` plus a
+`reachUpTo` top note (`"D6"`, or `"C#6"` for E major), and Harjoittelu passes it on as
+a `&reachUpTo=D6` param. `getScaleNotes` then builds two octaves and **cuts the
+ascending run at that note**, so the necklace shows the correct socket count and the
+turn lands on the reachable top (e.g. E major = **13 sockets, turning on C#6**, not 15
+on E). See `docs/scale-practice-method-v2.md` §2 for the reach pedagogy.
 
 The player plays the chosen scale **up and then down**; the gem necklace records
 **how well each note was played**. Each note mines an ore (ascending) and polishes
@@ -58,14 +68,16 @@ passes no overlay and is unchanged.
 
 ## The state machine (`Jalokiviasteikko.tsx`)
 
-The necklace has **one socket per scale note** (single ascending octave = 8 sockets,
+The necklace has **one socket per scale note** (1 octave = 8 sockets, 2 octaves = 15;
 the octave turn at the top, mirroring Tähtiasteikko). A run is a list of `Step`s
 built by `buildSteps(top)`:
 
 1. **Ascending mine** — notes `0…top`: each resolves to `fill='ore'` + `quality`
    (the *set* pass → colour intensity).
-2. **Octave-turn polish repeat** (§2.5) — the top note replays immediately (label
-   shown at once, no delayed reveal): `fill='gem'` + `gem.polish`.
+2. **Octave-turn polish repeat** — the top note plays a second time: `fill='gem'` +
+   `gem.polish`. It runs through the **same** pause→reveal→window cadence as every
+   other note (no immediate-label shortcut — replaying the top twice in quick
+   succession was too hard to time).
 3. **Descending polish** — notes `top-1…0`: each `fill='gem'` + `gem.polish` (the
    *polish* pass → finish; colour was already chosen on the way up).
 
@@ -77,10 +89,10 @@ rarely). Per-step phases:
 | Phase | What's on screen | Ends after |
 |-------|------------------|------------|
 | `countdown` | `4 3 2 1` in the centre; first label already visible | `COUNTDOWN_FROM × COUNTDOWN_STEP_MS` → window |
-| `pause` | active gem centred, focus ring, bar disabled, no label | `BETWEEN_NOTE_MS` → reveal (or window if `immediateLabel`) |
+| `pause` | active gem centred, focus ring, bar disabled, no label | player-chosen between-note pause → reveal |
 | `reveal` | focus ring, bar disabled, label not yet shown | `LEVEL.revealAfterMs` → window |
 | `window` | label visible, bar **active**, timer runs, cents sampled | `LEVEL.windowMs` → resolve |
-| `poor` | label stays, bar replaced by neutral message | `BETWEEN_NOTE_MS` → next step |
+| `poor` | label stays, bar replaced by neutral message | player-chosen between-note pause → next step |
 
 **Scoring:** during the window each frame samples centeredness
 `1 − |cents|/MAX_OFF_CENTS` (0 when silent or the wrong pitch-class — silence counts
@@ -111,6 +123,11 @@ smaller mobile gem (and bloated further under the close-up zoom); tying every st
 accumulating time entirely; closing it resumes from the exact same phase (the
 current note never restarts).
 
+**Start screen (idle):** a short prompt — `Soita <scale> (ylös ja alas)`, plus
+`(2 oktaavia)` when `octaves=2` — then a **3-stop pause slider** (0,2 s / 0,5 s / 1 s,
+default 1 s; `delayIdx` state → `betweenNoteMsRef`, read live by the loop), then the lone
+**Aloita** button. The pause choice persists across rounds in the session.
+
 **End of round:** the necklace is full → admire it. With the auto-replay toggle on
 (default), a 20 s (`AUTO_REPLAY_MS`) count starts another round; a **Jää ihailemaan**
 button cancels it and waits for a manual **Aloita uusi**.
@@ -119,7 +136,8 @@ button cancels it and waits for a manual **Aloita uusi**.
 
 ```ts
 const LEVELS = [{ revealAfterMs: 3000, windowMs: 3000 }] // MVP: Level 1 only
-const BETWEEN_NOTE_MS = 1000     // §2.5 cadence + poor-result pause
+const BETWEEN_NOTE_OPTIONS = [200, 500, 1000] // start-screen slider (ms): cadence + poor pause
+const DEFAULT_DELAY_IDX = 2       // default 1 s
 const COUNTDOWN_STEP_MS = 1000   // 4 3 2 1
 const GOOD_ZONE_CENTS = 12       // §3 shaded band half-width
 const MAX_OFF_CENTS = 50         // a frame this far off scores 0 centeredness
@@ -134,22 +152,20 @@ const AUTO_REPLAY_MS = 20000     // end-of-round auto-advance
 At end of round the player can tap **Jää ihailemaan** to enter the full-screen admire
 overlay, the reusable `components/ui/AdmireView.tsx` (shared by the game and the test
 screen below — it owns its own view/index state; the parent passes `model`, `scaleNotes`,
-`noteScores`, `title`, `onClose`). Two focus modes, driven by a **two-row** control bar
-at the bottom:
+`noteScores`, `title`, `onClose`). Two focus modes, picked by a bottom-centre **segmented
+control** (both options always visible, active one filled — no ambiguous toggle):
 
 - **Kaulakoru** — the whole necklace (`NecklaceCanvas`, the default), with a per-note
   score **strip** across the top bar.
 - **Jalokivet** — a close-up viewer (`GemCloseupCanvas`) where one gem fills the screen
-  with the chain running off both edges; the top strip is hidden and instead each
-  visible stone is **captioned on the canvas** (note name + `mine:polish` scores, the
-  focused gem boldest, neighbours fading as they curve away). The viewer also takes
-  **swipe** (touch) and **← / →** arrow keys.
+  with the chain running off both edges; the focused stone's note name + `mine:polish`
+  score show in the top bar. Step between gems with the **edge-of-row step arrows** (just
+  above the switch, with an `n / total` counter between them), **swipe**, or **← / →**.
 
-Controls: the centre button is the **focus mode-switch** — its label is the mode it
-switches *to* (**Jalokivet** while showing the whole necklace, **Kaulakoru** while in the
-close-up). The flanking prev/next **arrow buttons** are **enabled only in Jalokivet**
-(disabled/greyed in Kaulakoru) and step between gems. There is no restart here — closing
-returns to the end-of-round screen, which owns the *Aloita uusi* / auto-replay controls.
+The gem carousel **wraps around eternally**: the index is unclamped and mapped onto the
+ring with modulo, so going past the last gem rotates straight on to the first (and back).
+There is no restart here — closing returns to the end-of-round screen, which owns the
+*Aloita uusi* / auto-replay controls.
 
 **Admire mode is a real URL** — `…/jalokiviasteikko/kaulakoru` (and
 `…/test/jalokiviasteikko/kaulakoru` for the test screen), so both screens use a **splat

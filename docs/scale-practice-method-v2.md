@@ -380,3 +380,32 @@ Schema for `practiceMethod.ts` (corrected from v1; new fields `reachUpTo`, `shif
 > v2 are derived from the physical layout of 1st–3rd position on a standard violin (see
 > `scale-practice-notes.md`), not copied from any single edition. Exact fingerings vary by
 > teacher and edition; these are sensible, playable defaults.
+
+---
+
+## 11. Implementation status (Task 35)
+
+The running `SCALES` data in `app/src/lib/practiceMethod.ts` was reconciled to the §4/§9
+tables above (this doc, not v1, is now the source of truth — `CLAUDE.md` points here).
+Concretely:
+
+- **`ScaleEntry` gained `reachUpTo: string | null` and `shiftRequired: boolean`.** Level-1
+  D/F/C major and D minor became 1 octave (their 2-octave shifting forms stay at Level 2);
+  Bb major became the correct 2 octaves. The five reach-limited keys (E, F, Eb major; E, F#
+  minor) at Levels 2–3 are now `octaves: 1` with `reachUpTo` `"D6"` (`"C#6"` for E major).
+- **The reach cap lives in `getScaleNotes` (`necklaceModels.ts`).** Given `reachUpTo`, it
+  builds two octaves and cuts the ascending run at the first matching note **in the 2nd
+  octave**, so the necklace game (`Jalokiviasteikko`) shows the right socket count and turn
+  note (E major = 13 sockets turning on C#6). Harjoittelu forwards `&reachUpTo=…` in the
+  game URL.
+- **`SCALE_START_OCTAVE` was left at 4 for every key.** The cap is letter-based within the
+  2nd octave, and for all five reach-limited keys the octave-4 convention already coincides
+  with real violin pitch (E4…/F4…/Eb4…), so the cut note's octave label (D6 / C#6) is
+  already correct. The pre-existing octave offset for the open-string keys (G/A/etc., drawn
+  an octave above real pitch) is a separate notation matter and out of scope here.
+- **Scope.** Only the necklace game generates notes from `octaves`; `Tahtiasteikko` is
+  hardwired to one ascending octave and `renderScale` (Soittohetki notation) only ever draws
+  one octave, so neither exhibits the wrong range. Soittohetki's text panel now shows the
+  reconciled octave count via a new `octaveLabel` (`"1+ oktaavia (kurkotus D6 asti)"`).
+- **Arpeggios** follow v2's `arpeggioOctaves` (1 for the reach-limited keys); the arpeggio
+  renderer was already one-octave, so no range code changed there.

@@ -45,7 +45,10 @@ const LEVELS = [
   // Level 3: identifier never appears — later
 ] as const
 const LEVEL = LEVELS[0]
-const BETWEEN_NOTE_MS = 1000 // §2.5 cadence + poor-result pause
+// Between-note pause (cadence + poor-result pause) is player-chosen on the start screen.
+const BETWEEN_NOTE_OPTIONS = [200, 500, 1000] as const
+const BETWEEN_NOTE_LABELS = ['0,2 s', '0,5 s', '1 s']
+const DEFAULT_DELAY_IDX = 2
 const COUNTDOWN_STEP_MS = 1000 // 4 3 2 1
 const COUNTDOWN_FROM = 4
 const GOOD_ZONE_CENTS = 12 // §3 shaded band half-width (playtest)
@@ -142,11 +145,15 @@ export function Jalokiviasteikko() {
 
   const root = searchParams.get('root') ?? 'C'
   const mode = parseMode(searchParams.get('mode'))
+  const octaves = searchParams.get('octaves') === '2' ? 2 : 1
+  // "1+" reach-limited scales pass their reachable top note (e.g. "D6"/"C#6"); the
+  // ascending run is then cut there so the necklace shows the right socket count + turn.
+  const reachUpTo = searchParams.get('reachUpTo')
 
   const calmness = useTunerStore((s) => s.calmness)
   const pitch = useMicPitch(calmnessToSettings(calmness))
 
-  const scaleNotes = useMemo(() => getScaleNotes(root, mode), [root, mode])
+  const scaleNotes = useMemo(() => getScaleNotes(root, mode, octaves, reachUpTo), [root, mode, octaves, reachUpTo])
   const socketCount = scaleNotes.length
   const top = socketCount - 1
   const targetPcs = useMemo(() => scaleNotes.map((n) => pitchClassOf(formatNoteSPN(n))), [scaleNotes])
@@ -155,6 +162,8 @@ export function Jalokiviasteikko() {
   const [view, setView] = useState<View>(IDLE_VIEW)
   const [infoOpen, setInfoOpen] = useState(false)
   const [autoReplayOn, setAutoReplayOn] = useState(true)
+  // Player-chosen pause between notes (start screen slider). Read live by the rAF loop.
+  const [delayIdx, setDelayIdx] = useState(DEFAULT_DELAY_IDX)
   const [noteScores, setNoteScores] = useState<NoteScore[]>(() =>
     Array.from({ length: socketCount }, () => ({ mine: null, polish: null })),
   )
@@ -177,6 +186,8 @@ export function Jalokiviasteikko() {
   pausedRef.current = infoOpen
   const autoReplayRef = useRef(autoReplayOn)
   autoReplayRef.current = autoReplayOn
+  const betweenNoteMsRef = useRef(BETWEEN_NOTE_OPTIONS[delayIdx])
+  betweenNoteMsRef.current = BETWEEN_NOTE_OPTIONS[delayIdx]
   const admireRef = useRef(admire)
   admireRef.current = admire
   const scaleRef = useRef({ targetPcs, scaleNotes, top })
@@ -289,12 +300,9 @@ export function Jalokiviasteikko() {
           if (g.tMs >= COUNTDOWN_FROM * COUNTDOWN_STEP_MS) startWindow(g)
           break
         case 'pause':
-          if (g.tMs >= BETWEEN_NOTE_MS) {
-            if (step.immediateLabel) startWindow(g)
-            else {
-              g.phase = 'reveal'
-              g.tMs = 0
-            }
+          if (g.tMs >= betweenNoteMsRef.current) {
+            g.phase = 'reveal'
+            g.tMs = 0
           }
           break
         case 'reveal':
@@ -305,7 +313,7 @@ export function Jalokiviasteikko() {
           if (g.tMs >= LEVEL.windowMs) resolveStep(g, step)
           break
         case 'poor':
-          if (g.tMs >= BETWEEN_NOTE_MS) gotoNextStep(g)
+          if (g.tMs >= betweenNoteMsRef.current) gotoNextStep(g)
           break
       }
     }
@@ -491,12 +499,37 @@ export function Jalokiviasteikko() {
           </div>
         )}
 
-        {/* First-time idle prompt over the decorative full necklace. */}
+        {/* First-time idle prompt over the decorative full necklace: instruction + the
+            between-note pause slider above, the lone Aloita button below. */}
         {view.phase === 'idle' && (
           <div className='absolute inset-0 flex flex-col items-center justify-end gap-4 px-6 pb-10 text-center'>
-            <p className='max-w-[320px] rounded-2xl bg-black/55 px-5 py-4 text-base font-semibold leading-snug text-white'>
-              Soita {scaleLabel(root, mode)} ylös ja sitten alas. Paremmin vireessä soittaen saat upeampia jalokiviä.
+            <p className='rounded-2xl bg-black/55 px-5 py-3 text-base font-semibold leading-snug text-white'>
+              Soita {scaleLabel(root, mode)} (ylös ja alas){octaves === 2 ? ' (2 oktaavia)' : ''}
             </p>
+
+            {/* Pause between notes — 0,2 s / 0,5 s / 1 s. */}
+            <div className='w-full max-w-[300px] rounded-2xl bg-black/55 px-4 py-3 text-white'>
+              <div className='mb-1 flex items-center justify-between text-xs'>
+                <span className='text-white/75'>Tauko nuottien välissä</span>
+                <span className='font-bold'>{BETWEEN_NOTE_LABELS[delayIdx]}</span>
+              </div>
+              <input
+                type='range'
+                min={0}
+                max={BETWEEN_NOTE_OPTIONS.length - 1}
+                step={1}
+                value={delayIdx}
+                onChange={(e) => setDelayIdx(Number(e.target.value))}
+                aria-label='Tauko nuottien välissä'
+                className='w-full accent-[#9fd0ff]'
+              />
+              <div className='mt-1 flex justify-between text-[10px] text-white/60'>
+                {BETWEEN_NOTE_LABELS.map((l) => (
+                  <span key={l}>{l}</span>
+                ))}
+              </div>
+            </div>
+
             <button
               onClick={() => startRound.current()}
               className='min-h-[44px] rounded-xl bg-[#9fd0ff] px-8 text-base font-bold text-[#05060f] shadow-lg'

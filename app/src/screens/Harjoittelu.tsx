@@ -265,6 +265,8 @@ function PracticeBody() {
                   octaves: String(item.scale.octaves),
                   level: String(item.scale.level),
                 })
+                // "1+" reach-limited scales cap the necklace's ascending run at their top note.
+                if (item.scale.reachUpTo) params.set('reachUpTo', item.scale.reachUpTo)
                 navigateToSoittohetki(`/jalokiviasteikko?${params.toString()}`)
               }}
             />

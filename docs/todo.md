@@ -4,6 +4,62 @@ Active task list. Completed tasks are archived in `completed-tasks.md`; a one-li
 
 ---
 
+## Task 35: Reach-aware scales — cap 2-octave scales at the 3rd-position ceiling (partial top octave)
+
+**Status:** done
+**Blocked by:** —
+**Reference:**
+- `docs/scale-practice-method-v2.md` — **the design that specifies this** (the "1+" notion). Read §1 (what changed from v1), §2 (the reach constraint — the core principle), and §4 (per-level `oct`/`Top` tables). This is the authoritative pedagogy; the running data currently does **not** follow it.
+- `docs/scale-practice-method.md` — the **v1** doc that `CLAUDE.md` still cites as the data source. The current `SCALES` array matches *this*, not v2. Part of the task is deciding which becomes truth (almost certainly v2) and reconciling.
+- `docs/scale-practice-notes.md` — note-by-note fingerings + 1st/2nd/3rd-position finger maps; the source for actual reachable top notes per key.
+- `app/src/lib/practiceMethod.ts` — `ScaleEntry` (`octaves: number`) + the `SCALES` data.
+- `app/src/lib/necklaceModels.ts` — `getScaleNotes(root, mode, octaves)` (builds `octaves×7+1` ascending notes, **no ceiling cap**).
+- `app/src/lib/noteOctave.ts` — `assignAscendingOctaves`, `SCALE_START_OCTAVE` (note: **every key currently starts at octave 4** — verify this matches real violin pitch before reasoning about D6/C#6 ceilings).
+- Consumers that build scale notes: `app/src/screens/Soittohetki.tsx` + `app/src/lib/musicStave.ts` (notation), `app/src/screens/Tahtiasteikko.tsx` (star game), `app/src/screens/Jalokiviasteikko.tsx` (necklace game).
+
+### Background — what prompted this
+
+On a violin in 1st–3rd position the highest reachable note is **D6** (4th finger, E string; 1st-pos ceiling B5, 2nd C6, 3rd D6). So **not every 2-octave scale can be played in a full two octaves.** `scale-practice-method-v2.md` already worked out the verdicts:
+
+- **Full 2 octaves, fit 1st position** (no shift): G, A, Bb, B, Ab major; G, B minor.
+- **Full 2 octaves, need a 1st→3rd shift** (top C6/D6): **C, D major; C, D minor** — D is the highest *complete* 2-octave scale.
+- **Cannot reach a full 2nd octave** (top > D6) → **partial top octave** ("1+"): **Eb, E, F major; E, F# minor.** Play the full first octave, shift to 3rd, climb the 2nd octave **only as far as the hand reaches — to D6, or C#6 for E major** — then **turn around** (so the reachable top is the note played twice at the turn, exactly like the existing octave-turn behaviour). These are the "not full scale" cases.
+
+### What we know is missing (verified in code)
+
+1. **No partial-octave representation.** `ScaleEntry.octaves` is a plain integer (1 or 2). There is no way to express "1+" (full first octave + partial second). Needs a richer model — e.g. an explicit `topNote` per scale, or a `partial: boolean` plus a top-note field.
+2. **`getScaleNotes` never caps.** It emits `octaves×7+1` notes straight up from `SCALE_START_OCTAVE` with no D6/C#6 ceiling. It must learn to stop the ascending run at the scale's reachable top note (the descending half then mirrors from that top — the top-played-twice turn already works in `buildSteps`).
+3. **The data is still v1.** Current `SCALES` Level 1 (as it actually runs) is `G2 D2 A2 F2 Bb1 C2 / Daeo2 Gaeo2 Aaeo2 Eaeo1` — i.e. it asks for full 2-octave D, C, F, etc. with no reach handling. v2 says several of those should be 1 octave (or "1+"). So **none of Harjoittelu / Soittohetki / Tähtiasteikko / Jalokiviasteikko currently honour the reach constraint.**
+4. **Softening detail (don't over-rely on it):** the star + necklace games score by **pitch class only** (`pc = midi % 12`), so an unreachably-high top note isn't literally *enforced* — but the **socket/note count and the turn note are still wrong** (e.g. E major should be 13 notes turning on C#, not 15 turning on E). Notation (Soittohetki) *does* render real octaves, so there the wrong-range scale is visibly wrong.
+
+### Goal
+
+Make 2-octave scales reach-aware so a scale that can't complete its second octave in 1st–3rd position is **cut at its reachable top note** (D6, or C#6 for E major), with that top note as the turn (played twice, then descend). The necklace game in particular should show the correct socket count and turn note; ideally Soittohetki notation and Tähtiasteikko agree.
+
+### Unknowns to research / decide (implementor)
+
+- **Source of truth + data migration.** Confirm v2 is authoritative, then reconcile `SCALES` to its per-key `oct`/`Top` verdicts. Update `CLAUDE.md`'s "data source" pointer accordingly. Cross-check every key against `scale-practice-notes.md`, don't trust the v1 table.
+- **Octave/pitch model.** `SCALE_START_OCTAVE` is 4 for *every* key — verify whether the app's octave numbers are absolute violin pitches or a notation convenience, because the whole "≤ D6" rule depends on it. (E.g. a 2-octave G "from octave 4" computes G4→G6, but a real violin G-major 2-octave is G3→G5 on the open G string.) Get this right *before* coding the cap, or the ceilings won't line up. May require fixing `SCALE_START_OCTAVE` too.
+- **How to represent the reachable top.** Decide between (a) an explicit `topNote: NoteWithOctave|string` on `ScaleEntry`, or (b) a computed cap (a `MAX_PLAYABLE = D6` constant + per-key exception for E major → C#6) applied inside `getScaleNotes`. An explicit per-scale top is the least magical and matches the v2 tables.
+- **Scope of consumers.** Decide whether this lands only in the necklace game (smallest, since it scores by pitch class) or across Soittohetki + Tähtiasteikko too (they share `getScale`/`assignAscendingOctaves`; notation makes the wrong range *visible*, so it probably should be consistent). Note the per-screen blast radius.
+- **Arpeggios.** `ScaleEntry` also has `arpeggio`/`arpeggioOctaves`; check whether arpeggios hit the same ceiling and need the same treatment, or are out of scope here.
+- **Level interaction.** v2 says the *same* key is 1-octave at Level 1 but 2-octave (with the required shift) at Level 2+. Confirm whether the octave/top should vary by `level`, and whether the game/notation should reflect that (the `level` param is already passed through).
+
+### Out of scope (suggest)
+
+- Teaching the *shift* mechanics themselves (fingerings, position drills) — this task is about the **note range**, not how the hand gets there.
+- Any tuner/detection changes.
+
+### Files (likely)
+
+- `app/src/lib/practiceMethod.ts` — richer `ScaleEntry` (top note / partial), reconciled `SCALES` data
+- `app/src/lib/necklaceModels.ts` — `getScaleNotes` caps the ascending run at the reachable top
+- `app/src/lib/noteOctave.ts` — possibly fix `SCALE_START_OCTAVE` to real violin pitch
+- `app/src/screens/Soittohetki.tsx` / `app/src/lib/musicStave.ts`, `app/src/screens/Tahtiasteikko.tsx`, `app/src/screens/Jalokiviasteikko.tsx` — consume the capped notes (scope TBD)
+- `docs/scale-practice-method.md` (+ `CLAUDE.md` pointer), `docs/jalokiviasteikko.md`, `docs/tahtiasteikko.md`, `docs/soittohetki.md` — reflect the reconciled, reach-aware data
+
+---
+
 ## Task 34: Jalokivipeli — gem-necklace scale game (MVP: Level 1) launched from the Harjoittelu list
 
 **Status:** done

@@ -18,7 +18,7 @@ export function ScaleDetailPanel({ detail }: ScaleDetailPanelProps) {
         <h3 className='text-base font-bold text-[#5a2d0c] mb-1'>Nuotit</h3>
         <p className='text-base text-[#3a1a00]'>{detail.notes.join(' – ')}</p>
         <p className='text-sm text-[#8B4513] mt-1'>
-          {detail.octaves} oktaavia, {detail.positionLabel}
+          {detail.octaveLabel}, {detail.positionLabel}
         </p>
       </section>
 
