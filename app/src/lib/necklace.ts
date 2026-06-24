@@ -155,7 +155,7 @@ export interface NecklaceModel {
   palette: number[]
 }
 
-interface Metal {
+export interface Metal {
   hi: string
   mid: string
   lo: string
@@ -2020,6 +2020,37 @@ function paintSocket(
   if (morph > 0) drawBezel(ctx, P.x, P.y, r, metal, false, socket.gem)
 
   ctx.restore()
+}
+
+/**
+ * Draw one fully-finished stone — gem body → fire → sparkle → metal setting — centred
+ * at (cx,cy) with radius r. This is the static, animation-free heart of `paintSocket`,
+ * pulled out so lightweight renderers (the one-line `simplenecklace` row, the theme
+ * generator) reuse the *exact* game gem look without the ring projection / morph state.
+ */
+export function drawFinishedGem(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  r: number,
+  hue: number,
+  quality: number,
+  gem: GemSpec,
+  metal: Metal,
+  spin: number,
+  seed: number,
+  gemStyle: GemStyle = 'faceted',
+  sparkleScale = NECKLACE_SPARKLE_SCALE,
+  time = 0,
+): void {
+  if (gemStyle === 'cabochon') {
+    drawShapedCabochon(ctx, cx, cy, r, hue, quality, gem)
+  } else {
+    drawShapedGem(ctx, cx, cy, r, hue, quality, gem, spin, seed)
+  }
+  drawFire(ctx, cx, cy, r, quality, spin)
+  drawSparkle(ctx, cx, cy, r, scoreLevel(gem.polish), 1, time, seed, gem, sparkleScale)
+  drawBezel(ctx, cx, cy, r, metal, false, gem)
 }
 
 /** Sample points along a ring span (between two angles) so the chain follows the ellipse. */

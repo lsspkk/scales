@@ -63,6 +63,12 @@ const TEST_MENU_ITEMS: TestMenuItem[] = [
     description: 'Aseta jokaisen kiven laatu liukurilla tai näppäimistöllä, arvo satunnainen kaulakoru ja siirry ihailemaan.',
     tone: 'red',
   },
+  {
+    to: '/test/themes',
+    title: 'Teemapaja',
+    description: 'Selaa 30 kaulakorua, napauta parhaat, arvo värit (🎨) tai muodot (◆) uudelleen ja vie valitut teemat TypeScriptinä.',
+    tone: 'red',
+  },
 ]
 
 function getTestMenuLinkToneClasses(tone: TestMenuTone): string {

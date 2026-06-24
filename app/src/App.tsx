@@ -37,6 +37,8 @@ const ScaleTunerTest = lazy(() => import('./screens/ScaleTunerTest').then((m) =>
 const StarFlightTest = lazy(() => import('./screens/StarFlightTest').then((m) => ({ default: m.StarFlightTest })))
 // DEBUG / TEST ROUTE — procedural necklace/gem graphics spike. Reach from #/test or directly via #/test/necklace.
 const NecklaceTest = lazy(() => import('./screens/NecklaceTest').then((m) => ({ default: m.NecklaceTest })))
+// DEBUG / TEST ROUTE — browse + pick necklace colour/shape themes. Reach from #/test or directly via #/test/themes.
+const ThemeGenerator = lazy(() => import('./screens/ThemeGenerator').then((m) => ({ default: m.ThemeGenerator })))
 // DEBUG / TEST ROUTE — hand-drive the gem-necklace game (set qualities, roll, admire).
 // Reach from #/test or directly via #/test/jalokiviasteikko.
 const JalokiviasteikkoTest = lazy(() =>
@@ -76,6 +78,7 @@ export function App() {
         <Route path='/test/scaletuner' element={<ScaleTunerTest />} />
         <Route path='/test/starflight' element={<StarFlightTest />} />
         <Route path='/test/necklace' element={<NecklaceTest />} />
+        <Route path='/test/themes' element={<ThemeGenerator />} />
         <Route path='/test/jalokiviasteikko/*' element={<JalokiviasteikkoTest />} />
         <Route path='*' element={<Navigate to='/' replace />} />
       </Routes>
