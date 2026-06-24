@@ -441,6 +441,13 @@ export const LEVEL_SPARKLES: readonly SparkleLevel[] = [
   { count: 4, brightness: 1.0 }, // 10 — 4 sparkles, very bright and sharp
 ]
 
+/**
+ * Per-mode glint size multiplier: a touch bigger on the worn necklace where gems are
+ * small, a touch smaller in the close-up admire viewer where they're zoomed large.
+ */
+export const NECKLACE_SPARKLE_SCALE = 1.15
+export const ADMIRE_SPARKLE_SCALE = 0.85
+
 /** Turn a 0..1 score carrier (as stored on a socket) into a 0..10 score level. */
 const scoreLevel = (unit: number) => clamp(Math.round(unit * 10), 0, 10)
 
@@ -1281,24 +1288,56 @@ function drawSparkle(
   fade: number,
   time: number,
   seed: number,
+  gem: GemSpec,
+  sizeScale: number,
 ): void {
   const spec = LEVEL_SPARKLES[level]
   if (!spec || spec.count <= 0 || fade <= 0.01) return
-  const rand = mulberry32(seed ^ 0x5447)
+  // Anchor glints to the gem's real facet geometry (same outline drawShapedGem uses):
+  // the radial seams run table[i] (inner cut corner) → outline[i] (rim corner), so a
+  // point along a seam sits on a polishing line and a small off-seam jitter scatters it
+  // just beside one — mostly near the inner cut corners, where light catches a cut stone.
+  const unit = buildGemOutline(gem.form, gem.cut, ROUND_FACETS)
+  const outline = scaleOutline(unit, x, y, r)
+  const table = scaleOutline(unit, x, y, r * gem.table)
+  const n = outline.length
   ctx.save()
   ctx.globalCompositeOperation = 'lighter'
   for (let k = 0; k < spec.count; k++) {
-    const tw = 0.5 + 0.5 * Math.sin(time * 3 + k * 2.1)
-    // Brighter levels: longer rays, higher alpha, a thicker crisp white core.
-    const len = r * (0.3 + 0.45 * spec.brightness) * (0.65 + 0.35 * tw)
-    const px = x + (rand() - 0.5) * r
-    const py = y + (rand() - 0.5) * r
+    // Twinkle 1.5× slower than before (rate 3 → 2) so glints ease in/out more gently.
+    const phase = time * 2 + k * 2.1
+    const tw = 0.5 + 0.5 * Math.sin(phase)
+    // Fresh placement every twinkle cycle: re-seed by the cycle index, offset so the
+    // jump happens at the dim point (tw≈0) where the glint is invisible — no popping.
+    const cycle = Math.floor((phase + Math.PI / 2) / TAU)
+    const rand = mulberry32((seed ^ 0x5447) + k * 0x9e3779b1 + cycle * 0x85ebca77)
+    // Smaller crisp glints (was up to ~0.75r long, ~0.06r thick — too chunky on mobile);
+    // `sizeScale` tunes them per mode (bigger on the necklace, smaller in the viewer).
+    const len = r * sizeScale * (0.1 + 0.16 * spec.brightness) * (0.7 + 0.3 * tw)
+    // Pick a seam; bias the anchor toward the inner cut corner (t→0), and jitter it a
+    // little off the seam so most land slightly beside a polishing line, some right on it.
+    const i = Math.floor(rand() * n)
+    const t = rand() * rand()
+    let px = lerp(table[i].x, outline[i].x, t) + (rand() - 0.5) * r * 0.16
+    let py = lerp(table[i].y, outline[i].y, t) + (rand() - 0.5) * r * 0.16
+    // Let some glints drift inward toward the gem centre (rand()*rand() keeps most near
+    // the rim, the occasional one catches deeper), but never past the halfway point —
+    // a sparkle pinned at the dead centre looks fake, so clamp to ≥ 50% of the radius.
+    const pull = rand() * rand()
+    px = lerp(px, x, pull)
+    py = lerp(py, y, pull)
+    const dx = px - x
+    const dy = py - y
+    const d = Math.hypot(dx, dy)
+    const minR = r * 0.5
+    if (d > 0 && d < minR) {
+      px = x + (dx / d) * minR
+      py = y + (dy / d) * minR
+    }
     const alpha = clamp((0.2 + 0.7 * spec.brightness) * tw * fade, 0, 1)
     ctx.strokeStyle = `rgba(255,255,255,${alpha.toFixed(3)})`
-    // Stroke width scales with the gem radius (was a fixed 1.4–3.2 px): a small gem
-    // on mobile got the same absolute width as a big one on desktop, so the glints
-    // read ~2.5× thicker there. Tying it to `r` keeps a sharp glint at any size/zoom.
-    ctx.lineWidth = r * lerp(0.03, 0.06, spec.brightness)
+    // Stroke width scales with the gem radius so glints stay hair-fine at any size/zoom.
+    ctx.lineWidth = r * sizeScale * lerp(0.014, 0.028, spec.brightness)
     ctx.beginPath()
     ctx.moveTo(px - len, py)
     ctx.lineTo(px + len, py)
@@ -1309,7 +1348,7 @@ function drawSparkle(
     if (spec.brightness > 0.4) {
       ctx.fillStyle = `rgba(255,255,255,${(alpha).toFixed(3)})`
       ctx.beginPath()
-      ctx.arc(px, py, r * lerp(0.025, 0.055, spec.brightness), 0, TAU)
+      ctx.arc(px, py, r * sizeScale * lerp(0.014, 0.03, spec.brightness), 0, TAU)
       ctx.fill()
     }
   }
@@ -1699,6 +1738,7 @@ function paintRingBody(
   metal: Metal,
   n: number,
   spin: number,
+  sparkleScale = NECKLACE_SPARKLE_SCALE,
 ): Projected[] {
   const gemP = model.sockets.map((_, i) => projectRing(socketAngle(i, n), spin, L))
 
@@ -1720,7 +1760,7 @@ function paintRingBody(
   model.sockets.forEach((_, i) => {
     items.push({
       z: gemP[i].z,
-      paint: () => paintSocket(ctx, L, model, draw, theme, metal, i, gemP[i], spin),
+      paint: () => paintSocket(ctx, L, model, draw, theme, metal, i, gemP[i], spin, sparkleScale),
     })
   })
 
@@ -1828,7 +1868,9 @@ export function drawCloseup(
 
   // Spin the hoop so the (fractional) focused gem sits at the front-centre, where
   // sin(spin + angle) = 1. Sliding `focus` just rotates the ring through that point.
-  const f = n <= 1 ? 0 : clamp(focus, 0, n - 1)
+  // `focus` is left unclamped so it can run past either end: the necklace is a circle,
+  // so socketAngle wraps and the carousel scrolls eternally through the seam.
+  const f = n <= 1 ? 0 : focus
   const focusAngle = socketAngle(f, n)
   const spin = Math.PI / 2 - focusAngle
   const anchor = projectRing(focusAngle, spin, layout) // the fixed front-centre point
@@ -1841,7 +1883,7 @@ export function drawCloseup(
   ctx.translate(-anchor.x, -anchor.y)
   // No "active" gem in the viewer → no game glow / size-boost; show the stones as-is.
   const quiet: NecklaceModel = model.activeIndex === -1 ? model : { ...model, activeIndex: -1 }
-  paintRingBody(ctx, layout, quiet, draw, theme, metal, n, spin)
+  paintRingBody(ctx, layout, quiet, draw, theme, metal, n, spin, ADMIRE_SPARKLE_SCALE)
   ctx.restore()
 
   // Captions: drawn in *screen* space (after the zoom transform is popped) so the
@@ -1873,8 +1915,11 @@ function paintCloseupLabels(
     const sx = screenW / 2 + (P.x - anchor.x) * zoom
     const sy = screenH / 2 + (P.y - anchor.y) * zoom
     const gemR = L.gemR * P.scale * zoom
-    // Fade with distance from the focused gem so neighbours don't clutter.
-    const fade = clamp(1 - Math.abs(i - focus) * 0.55, 0.12, 1)
+    // Fade with distance from the focused gem so neighbours don't clutter. Measured
+    // around the ring (focus may run past either end while scrolling eternally).
+    const around = (((i - focus) % n) + n) % n
+    const ringDist = Math.min(around, n - around)
+    const fade = clamp(1 - ringDist * 0.55, 0.12, 1)
     const fs = clamp(gemR * 0.4, 12, 30)
     const baseY = sy - gemR - fs * 0.5
     ctx.globalAlpha = fade
@@ -1910,6 +1955,7 @@ function paintSocket(
   i: number,
   P: Projected,
   spin: number,
+  sparkleScale = NECKLACE_SPARKLE_SCALE,
 ): void {
   const socket = model.sockets[i]
   const a = draw.anim[i]
@@ -1964,7 +2010,7 @@ function paintSocket(
     drawFire(ctx, P.x, P.y, gr, socket.quality, spin)
     // Sparkle is the polish-pass payoff: its count + brightness come from that score
     // level (LEVEL_SPARKLES), eased in with the ore→gem reveal (`morph`).
-    drawSparkle(ctx, P.x, P.y, gr, scoreLevel(socket.gem.polish), morph, draw.time, socket.seed)
+    drawSparkle(ctx, P.x, P.y, gr, scoreLevel(socket.gem.polish), morph, draw.time, socket.seed, socket.gem, sparkleScale)
     ctx.restore()
   }
 

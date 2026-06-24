@@ -12,7 +12,8 @@ import {
 interface GemCloseupCanvasProps {
   /** The (finished) necklace to inspect. Read live through a ref. */
   model: NecklaceModel
-  /** Which gem is centred (controlled by the parent). Clamped to range. */
+  /** Which gem is centred (controlled by the parent). Unbounded — wraps around the
+   *  circular necklace via modulo, so the carousel scrolls eternally. */
   index: number
   /** Called when swipe / arrow-key navigation wants a different gem. */
   onIndexChange: (index: number) => void
@@ -95,11 +96,9 @@ export function GemCloseupCanvas({ model, index, onIndexChange, labels, classNam
     }
     raf = requestAnimationFrame(frame)
 
-    const stepTo = (d: number) => {
-      const n = modelRef.current.sockets.length
-      const next = Math.max(0, Math.min(n - 1, indexRef.current + d))
-      if (next !== indexRef.current) onChangeRef.current(next)
-    }
+    // Unbounded: the necklace is a circle, so the parent maps the index back onto a
+    // gem with modulo and the hoop scrolls eternally past either seam.
+    const stepTo = (d: number) => onChangeRef.current(indexRef.current + d)
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'ArrowRight') {
         e.preventDefault()
