@@ -4,6 +4,78 @@ Active task list. Completed tasks are archived in `completed-tasks.md`; a one-li
 
 ---
 
+## Task 36: Two-octave staff drawing — wrapped "systems" on mobile (Soittohetki + Tähtiasteikko)
+
+**Status:** todo
+**Blocked by:** Task 35 (done — supplies `getScaleNotes(root, mode, octaves, reachUpTo)` + `ScaleDetail.reachUpTo`)
+**Reference:**
+- `app/src/lib/musicStave.ts` — `computeLayout` (geometry) + `renderScale` (draws). **Today it is hardwired to one octave**: `renderScale` builds notes from `getScale` (8) and `noteSpacing = (width − …)/7`. The existing `staves: 1|2` means *ascending-on-top / descending-on-bottom of one octave* (a mirrored pair) — **not** two octaves. Genuine 2-octave rendering is new: variable note count + wrapping into stacked **systems**.
+- `app/src/components/ui/MusicCanvas.tsx` — the React wrapper (DPR, ResizeObserver, rAF). Picks `staves`, sizes the bitmap from the wrapper box, calls `computeLayout`/`renderScale`. Knows `isDesktop` (`useViewport`).
+- `app/src/lib/necklaceModels.ts` — `getScaleNotes(root, mode, octaves, reachUpTo)` already produces the **reach-capped ascending sequence** (8 for 1-oct; 15 for 2-oct; 13/14 for "1+"). Reuse it as the single source so notation == the necklace game. It only needs `getScale`/`assignAscendingOctaves`/`SCALE_START_OCTAVE`, so **move it to a neutral module** (`noteOctave.ts`) and re-export from `necklaceModels` — otherwise importing it into `MusicCanvas` drags `necklace.ts` render code into the notation bundle.
+- `app/src/screens/Soittohetki.tsx` — notation reader. Mobile column: `MusicCanvas staves={1} aspect-4/1` → scale-line text + `VariationActions` → pelican box (`flex-1`, with the scale/arpeggio toggle) → `SoundControlsRow` (volume + drone/reference-tone picker) → `TimerControlsRow` (durations + Start/Pause). Sound playback is already gated on `isRunning ∧ activeSound` (Start = the play button); selection/volume can change live via the effect.
+- `app/src/screens/Tahtiasteikko.tsx` — star practice game. **Currently ignores `octaves`** (hardcodes a single ascending octave at the `scaleNotes` memo). Mobile column: `MusicCanvas staves={1} aspect-[5/2] scaleDirection={phase}` (highlights `targetKey`) → target-note text → `TunerDial` (+ "Taso N") → hold-progress bar → precision/time text → stretch spacer → bottom row `CompactTunerControls` (Mittausnopeus slider) + Aloita/Lopeta.
+- `app/src/screens/Harjoittelu.tsx` — launches both screens with `root/mode/octaves/level`; **already forwards `&reachUpTo=` to the game** (`onPlayGame`) but **not** to Soittohetki/Tähtiasteikko yet.
+- `app/src/screens/Kirkkosavellajit.tsx` — also uses `MusicCanvas` (up/down `staves={2}`, single octave). **Out of scope** — must keep working unchanged.
+- `docs/architecture.md` (notation/canvas), `docs/ux-spec.md`, `docs/ui-components.md`, `docs/soittohetki.md`, `docs/tahtiasteikko.md`.
+
+### Goal
+
+Draw **two-octave (and "1+") scales** legibly. On **mobile** an octave is the legible max per line, so a multi-octave scale **wraps into two stacked "systems"** (each its own 5-line staff + treble clef); on **desktop** the whole scale fits on **one wide system**. Reuse the Task-35 reach-capped sequence so the drawn range finally matches the necklace game. Scope: **Soittohetki + Tähtiasteikko only**.
+
+### Decisions (locked with the user — do not relitigate)
+
+1. **Mobile = 2 systems, desktop = 1 system.** Wrap at the **octave boundary**: system 1 = notes 0–7 (first octave incl. the octave root), system 2 = notes 8…top. A "1+" scale (13/14 notes) fills system 1 (8) + a short system 2 (5/6). 1-octave scales stay a single system everywhere.
+   - **Consistent staff area on mobile.** The staff canvas keeps **one fixed size** (the 2-system height) regardless of the scale — a **1-octave scale draws a single, comfortably-sized stave (larger than a wrapped system), centered** in that area (vertically), so the pelican / tuner dial below **never shift position** between scales. `computeLayout` already centers a lone staff (`staffTop = height/2 − 2·lineSpacing`); just always hand it the taller area on mobile and let `systems` (1 or 2) decide the contents. (This is why the room-making — relocating Soittohetki’s sound row, dropping Tähtiasteikko’s slider — applies to **every** scale, not only multi-octave ones.) Desktop sizes to content as usual.
+2. **Tighter inter-system gap** than Kirkkosävellajit's up/down `staves={2}` pair — the two systems are the *same scale continuing*, not a mirrored up/down pair, so they sit closer together.
+3. **Soittohetki staff = ascending only** (static, the scale going up, wrapped). **Tähtiasteikko staff = direction-aware**: the **playing-order** sequence is wrapped — ascending phase → both lines ascend; at the turn the sequence reverses so **both lines descend** and the highlight keeps sweeping forward (generalises today's single-octave `scaleDirection` reverse).
+4. **Soittohetki sound controls relocate.** Mobile: a **speaker icon on the bottom (timer) row** opens a **closable popover overlaid on the pelican box** (volume + drone/sound picker), usable **while the pelican plays**; the reference tone still starts/stops with the **Start** button and can be changed live. Desktop: keep the controls **inline** (there is room). The pelican stays and shrinks to make room for system 2.
+5. **Tähtiasteikko condenses** to fit the taller staff: **remove the Mittausnopeus slider** (`CompactTunerControls`) — the screen inherits sensitivity from the persisted `useTunerStore` (like the necklace game MVP); turn **Aloita/Lopeta into a small play/stop icon button moved onto another row** (e.g. right-aligned on the target-note line); drop the stretch spacer / tighten gaps. Keep the `TunerDial` (shrink only if it still won't fit).
+
+### Engine work (`musicStave.ts` + `MusicCanvas.tsx`)
+
+- **Move `getScaleNotes` (+ `parseReachNote`) to `noteOctave.ts`** (neutral, no `necklace` deps); re-export from `necklaceModels.ts` so existing importers are unchanged. `MusicCanvas` then imports it cleanly.
+- **`computeLayout`** gains a `systems: 1 | 2` axis (vertical stack of full staves for the wrapped scale), **distinct from** the existing `staves: 1 | 2` (up/down mirror). For `systems === 2`: compute a shared (slightly smaller) `lineSpacing` and two `staffTop`s following the **condensed vertical budget** below; **`noteSpacing` is per-system**, based on the fuller system (8 notes) so a short system 2 is **left-aligned and its columns line up** under system 1.
+- **Condensed 2-system vertical budget (mobile)** — within the fixed staff area, top→bottom:
+  - **tight top margin** — system 1 holds the *low* octave; its highest note is the octave root (~1 ledger above the staff), so little headroom is needed;
+  - **system 1 staff** (the slightly-smaller wrapped `lineSpacing`);
+  - **a clear, generous inter-system gap — the dominant empty zone.** It must clear *both* system 1's **low** ledger notes (hanging down) and system 2's **high** ledger notes (rising up — D6/C#6, or as high as G6 in the octave-4 drawing convention), **and** stay visually open enough that it's obvious **which notes belong to which staff** (the user's explicit requirement). Do **not** minimise this gap;
+  - **system 2 staff**;
+  - **tight bottom margin** — system 2's lowest note is the octave-2 root (on/near the staff), so little headroom below.
+  - The **1-octave single stave** uses a **larger `lineSpacing`** (more legible than a wrapped system) and is **centered** in the same fixed area.
+- **`renderScale`** learns to take the **precomputed `notes` array** (the capped sequence) + `systems`, and to **wrap**: split at the octave boundary, draw a treble clef + 5 lines per system, place each system's notes. For Tähtiasteikko pass `direction`; when descending, **reverse the sequence before wrapping**. Preserve back-compat: 1-octave / `systems===1` and the up/down `staves===2` path (Kirkkosävellajit) render exactly as today.
+- **`MusicCanvas`**: add `octaves` + `reachUpTo` props (build notes via `getScaleNotes`), decide `systems` from `isDesktop` + note count (`>8 && !isDesktop → 2`). On **mobile** the wrapper keeps **one fixed (taller) height for all scales** (Decision 1): `systems===2` stacks two staves; `systems===1` lets `computeLayout` center the lone staff in that same height. Keep the "parent gives definite size" rule from the component doc. Highlighting: ensure the active target lights a **single** note (highlight by sequence index if value+octave keys ever collide across the wrap).
+
+### Per-screen work
+
+**Soittohetki**
+- Pass `octaves` + `scaleDetail.reachUpTo` to `MusicCanvas`; mobile staff area uses **one consistent taller aspect (~`2/1`) for every scale** (Decision 1) — a 1-octave scale centers its single stave in it; desktop sizes to content.
+- Replace the always-visible `SoundControlsRow` with: desktop → inline (as now); mobile → a **speaker-icon button on the `TimerControlsRow`** that toggles a **popover over the pelican box** holding the volume slider + sound/drone picker. No change to the `isRunning ∧ activeSound` playback model.
+
+**Tähtiasteikko**
+- Rebuild `scaleNotes` via `getScaleNotes(root, mode, octaves, reachUpTo)` (was hardcoded 1 octave) so the **walk + draw are 2-octave/reach-aware**; `top = length − 1`, the up→down phase logic is unchanged otherwise.
+- `MusicCanvas` with `octaves`+`reachUpTo`+`scaleDirection={phase}` (engine wraps + reverses per Decision 3); **one consistent taller aspect on mobile** (Decision 1), single stave centered for 1-octave scales.
+- Remove `CompactTunerControls`; move the listen toggle to a compact **play/stop icon** on another row; remove the stretch spacer / tighten gaps so the dial + 2-system staff fit a phone in portrait.
+- `Harjoittelu.tsx`: add `&reachUpTo=` to the **tahtiasteikko** link (mirror the game link) so reach-limited scales walk/draw to the right top.
+
+### Out of scope (Task 36)
+
+- **Kirkkosävellajit** (keep its up/down `staves={2}` single-octave look unchanged) and the **necklace game** (draws a ring, no staff).
+- **Arpeggio** rendering (Soittohetki arpeggio view stays one octave) and any **tuner/detection** changes.
+- Persisting a per-screen sensitivity for Tähtiasteikko (it intentionally drops its slider and inherits the global store).
+
+### Files (likely)
+
+- `app/src/lib/noteOctave.ts` — host `getScaleNotes`/`parseReachNote` (moved from `necklaceModels.ts`)
+- `app/src/lib/necklaceModels.ts` — re-export the moved helpers
+- `app/src/lib/musicStave.ts` — `computeLayout` `systems` axis + `renderScale` wrapping/reverse
+- `app/src/components/ui/MusicCanvas.tsx` — `octaves`/`reachUpTo` props, `systems` decision, height
+- `app/src/screens/Soittohetki.tsx` — sound popover (mobile) / inline (desktop), taller staff, pass octaves+reachUpTo
+- `app/src/screens/Tahtiasteikko.tsx` — 2-octave scaleNotes/walk + draw, drop slider, relocate play button
+- `app/src/screens/Harjoittelu.tsx` — forward `reachUpTo` to the tahtiasteikko link
+- `docs/soittohetki.md`, `docs/tahtiasteikko.md`, `docs/ui-components.md` (MusicCanvas `systems`/wrapping), `docs/architecture.md` (notation wrapping), `docs/ux-spec.md` — reflect the new layouts; `CLAUDE.md` row if a doc’s scope changes
+
+---
+
 ## Task 35: Reach-aware scales — cap 2-octave scales at the 3rd-position ceiling (partial top octave)
 
 **Status:** done
