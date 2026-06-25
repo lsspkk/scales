@@ -6,12 +6,24 @@ import {
   type NoteWithOctave,
   type ScaleDirection,
 } from '../../lib/musicStave'
+import { getScaleNotes } from '../../lib/noteOctave'
 import { useViewport } from '../../lib/useViewport'
 
 interface MusicCanvasProps {
   scaleKey?: string
   mode?: string
   staves?: 1 | 2
+  /**
+   * Octave count for the scale render. With `>1` (or a `reachUpTo` cap) the reach-aware
+   * sequence from `getScaleNotes` is drawn, wrapping onto two stacked systems on mobile.
+   * Omit (the Kirkkosävellajit / one-octave default) to draw a single ascending octave.
+   */
+  octaves?: number
+  /** "1+" reach cap (e.g. "D6", "C#6") forwarded to `getScaleNotes`. */
+  reachUpTo?: string | null
+  /** Exact lowest note (e.g. "G3", "A3") forwarded to `getScaleNotes` to set the
+   *  starting octave. Omit to use the SCALE_START_OCTAVE default (octave 4). */
+  lowestNote?: string | null
   arpeggioNotes?: NoteWithOctave[]
   /** Single-stave scale render direction. Two-stave scales keep the normal up-then-down layout. */
   scaleDirection?: ScaleDirection
@@ -42,6 +54,9 @@ export function MusicCanvas({
   scaleKey,
   mode,
   staves = 2,
+  octaves,
+  reachUpTo = null,
+  lowestNote = null,
   arpeggioNotes,
   scaleDirection = 'ascending',
   hiddenNotes,
@@ -66,6 +81,14 @@ export function MusicCanvas({
     const hiddenSet = hiddenNotes && hiddenNotes.length > 0 ? new Set(hiddenNotes) : null
     const highlightSet = highlightNotes && highlightNotes.length > 0 ? new Set(highlightNotes) : null
 
+    // Reach-aware sequence for multi-octave / "1+" scales. Built only when `octaves`
+    // is supplied so Kirkkosävellajit + one-octave callers keep the original path.
+    const noteList =
+      scaleKey && mode && octaves ? getScaleNotes(scaleKey, mode, octaves, reachUpTo, lowestNote) : null
+    // Wrap onto two stacked systems only on mobile, only when the scale overflows one
+    // octave. Desktop draws the whole scale on one wide system.
+    const systems: 1 | 2 = !isDesktop && noteList && noteList.length > 8 ? 2 : 1
+
     const draw = () => {
       // Measure the content box (clientWidth/Height), not getBoundingClientRect()
       // which is the border-box: feeding a border-box height back into the
@@ -73,7 +96,10 @@ export function MusicCanvas({
       // grow the wrapper by the border width on every callback (infinite loop).
       const cssW = Math.max(1, wrapper.clientWidth)
       const wrapperH = Math.max(1, wrapper.clientHeight)
-      const cssH = Math.max(1, Math.round(wrapperH * (!isDesktop && staves === 1 ? 0.9 : 1)))
+      // Single-staff mobile renders leave ~10% breathing room; a wrapped two-system
+      // render uses the full (taller) area the screen reserves for it.
+      const shrink = !isDesktop && staves === 1 && systems === 1 ? 0.9 : 1
+      const cssH = Math.max(1, Math.round(wrapperH * shrink))
       const dpr = window.devicePixelRatio || 1
 
       canvas.style.width = `${cssW}px`
@@ -82,7 +108,13 @@ export function MusicCanvas({
       canvas.height = Math.round(cssH * dpr)
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
 
-      const layout = computeLayout({ width: cssW, height: cssH, staves })
+      const layout = computeLayout({
+        width: cssW,
+        height: cssH,
+        staves,
+        systems,
+        noteCount: noteList?.length ?? 8,
+      })
       if (arpeggioNotes) {
         renderArpeggio(ctx, arpeggioNotes, layout, hiddenSet)
       } else if (scaleKey && mode) {
@@ -96,6 +128,7 @@ export function MusicCanvas({
           highlightColor,
           basicNoteColor,
           scaleDirection,
+          noteList,
         )
       }
     }
@@ -116,6 +149,9 @@ export function MusicCanvas({
     scaleKey,
     mode,
     staves,
+    octaves,
+    reachUpTo,
+    lowestNote,
     arpeggioNotes,
     scaleDirection,
     hiddenNotes,

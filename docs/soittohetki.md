@@ -93,6 +93,12 @@ Procedural CSS pelican rendered by `app/src/components/animations/PelicanTimer.t
 
 Two variants share the same rig: **walking** and **flying**. Harjoittelu picks one at random when opening Soittohetki, and direct links without `anim` are normalised to a random variant once and then kept stable in the URL. The internal test menu lives at `#/test`, and the timer preview route is documented in `animations.md`.
 
+## Two-octave notation + sound popover (Task 36)
+
+The scale-view `MusicCanvas` now receives `octaves` (from the URL) and `reachUpTo` (from the resolved `scaleDetail`), so the notation finally draws the **full reach-aware range** (the same `getScaleNotes` sequence the necklace game and Tähtiasteikko use) instead of a single octave. On **mobile** a scale longer than one octave **wraps onto two stacked systems**; a 1-octave scale stays a single centered staff in the same fixed (taller, `aspect-[2/1]`) area, so nothing below it shifts between scales. Desktop keeps the wide single-system `md:aspect-4/1`. (The **arpeggio** view stays one octave — out of scope.)
+
+To make room for the taller staff on mobile, the **sound row is no longer always visible**: a **speaker button** (`Volume2`) on the `TimerControlsRow` toggles a **popover overlaid on the bottom of the pelican box** holding the same volume slider + sound/drone picker. It is closable (✕) and usable **while the pelican plays**; the reference tone still starts/stops with **Start** and can be changed live (the `(isRunning ∧ activeSound)` playback model is unchanged). On **desktop** the sound row stays **inline** below the pelican (there is room) and no speaker button is shown.
+
 ## Sound row (Task 25)
 
 Below the duration-controls row sits a second row with an **olive** background (`#5a6b3d`) so the eye reads it as a different functional band ("sound") from the red-brown timer row above. The row holds, left to right:

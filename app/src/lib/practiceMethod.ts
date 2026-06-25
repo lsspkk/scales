@@ -21,6 +21,14 @@ export interface ScaleEntry {
   positions: string[]
   octaves: number
   /**
+   * The exact lowest (starting) note of this scale on the violin, as SPN ("G3",
+   * "A3", "C4"). Chosen per practice level + scale so the top of the run stays
+   * within the position(s) listed — e.g. a 2-octave A major starts on A3 (A3→A5),
+   * not A4. The letter is always the root; only the octave drives rendering, so
+   * the practice screens can begin a scale on any octave (incl. future 3-octave
+   * forms). Threaded to `getScaleNotes` via the `low` URL param. */
+  lowestNote: string
+  /**
    * Reach-aware top of a "1+" scale (full first octave + as much of the 2nd octave
    * as 1st–3rd position reaches). For E, F, Eb major and E, F# minor the full 2nd
    * octave tops above the 3rd-position ceiling (D6), so the ascending run climbs only
@@ -47,6 +55,8 @@ export interface ScaleDetail {
   notes: string[]
   positionLabel: string
   octaves: number
+  /** Exact lowest note of the scale ("G3", "A3", "C4"); see ScaleEntry.lowestNote. */
+  lowestNote: string
   /** Reach-aware top of a "1+" scale (else null); see ScaleEntry.reachUpTo. */
   reachUpTo: string | null
   /** Finnish octave summary, e.g. "2 oktaavia", "1 oktaavi", "1+ oktaavia (kurkotus D6 asti)". */
@@ -74,46 +84,46 @@ const CLIMB_CS6 = 'Siirto 3. asemaan E-kielellä, kurkota C#6:een asti'
  */
 export const SCALES: ScaleEntry[] = [
   // ── Level 1 — First Position Foundations (1st position only, top ≤ B5 → 2 oct, else 1 oct) ──
-  { key: 'G', mode: 'ionian', level: 1, positions: ['1st'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'D', mode: 'ionian', level: 1, positions: ['1st'], octaves: 1, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'A', mode: 'ionian', level: 1, positions: ['1st'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'F', mode: 'ionian', level: 1, positions: ['1st'], octaves: 1, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'Bb', mode: 'ionian', level: 1, positions: ['1st'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'C', mode: 'ionian', level: 1, positions: ['1st'], octaves: 1, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'D', mode: 'aeolian', level: 1, positions: ['1st'], octaves: 1, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'minor', arpeggioOctaves: 1 },
-  { key: 'G', mode: 'aeolian', level: 1, positions: ['1st'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'minor', arpeggioOctaves: 1 },
-  { key: 'A', mode: 'aeolian', level: 1, positions: ['1st'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'minor', arpeggioOctaves: 1 },
-  { key: 'E', mode: 'aeolian', level: 1, positions: ['1st'], octaves: 1, reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'minor', arpeggioOctaves: 1 },
+  { key: 'G', mode: 'ionian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'G4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'D', mode: 'ionian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'D4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'A', mode: 'ionian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'A4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'F', mode: 'ionian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'F4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'Bb', mode: 'ionian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'Bb4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'C', mode: 'ionian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'C4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'D', mode: 'aeolian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'D4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'minor', arpeggioOctaves: 1 },
+  { key: 'G', mode: 'aeolian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'G4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'minor', arpeggioOctaves: 1 },
+  { key: 'A', mode: 'aeolian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'A4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'minor', arpeggioOctaves: 1 },
+  { key: 'E', mode: 'aeolian', level: 1, positions: ['1st'], octaves: 1, lowestNote: 'E4', reachUpTo: null, shiftRequired: false, shiftPattern: null, arpeggio: 'minor', arpeggioOctaves: 1 },
 
   // ── Level 2 — Introducing the 1st→3rd Shift (top ≤ D6 → full 2 oct; top > D6 → "1+") ──
-  { key: 'G', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä (D5 = 1. sormi)', arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'D', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: true, shiftPattern: SHIFT_TO_A5, arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'A', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'E', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 1, reachUpTo: 'C#6', shiftRequired: true, shiftPattern: CLIMB_CS6, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'F', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 1, reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'Bb', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'Eb', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 1, reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'E', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 1, reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'minor', arpeggioOctaves: 1 },
-  { key: 'B', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä (yläsävel B5 = 1. aseman katto)', arpeggio: 'minor', arpeggioOctaves: 2 },
-  { key: 'D', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: true, shiftPattern: SHIFT_TO_A5, arpeggio: 'minor', arpeggioOctaves: 2 },
-  { key: 'G', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä', arpeggio: 'minor', arpeggioOctaves: 2 },
-  { key: 'C', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: true, shiftPattern: SHIFT_TO_AB5, arpeggio: 'minor', arpeggioOctaves: 2 },
+  { key: 'G', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 2, lowestNote: 'G3', reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä (D5 = 1. sormi)', arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'D', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 2, lowestNote: 'D4', reachUpTo: null, shiftRequired: true, shiftPattern: SHIFT_TO_A5, arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'A', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 2, lowestNote: 'A3', reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'E', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 1, lowestNote: 'E4', reachUpTo: 'C#6', shiftRequired: true, shiftPattern: CLIMB_CS6, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'F', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 1, lowestNote: 'F4', reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'Bb', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 2, lowestNote: 'Bb3', reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'Eb', mode: 'ionian', level: 2, positions: ['1st', '3rd'], octaves: 1, lowestNote: 'Eb4', reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'E', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 1, lowestNote: 'E4', reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'minor', arpeggioOctaves: 1 },
+  { key: 'B', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 2, lowestNote: 'B3', reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä (yläsävel B5 = 1. aseman katto)', arpeggio: 'minor', arpeggioOctaves: 2 },
+  { key: 'D', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 2, lowestNote: 'D4', reachUpTo: null, shiftRequired: true, shiftPattern: SHIFT_TO_A5, arpeggio: 'minor', arpeggioOctaves: 2 },
+  { key: 'G', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 2, lowestNote: 'G3', reachUpTo: null, shiftRequired: false, shiftPattern: 'Yläoktaavi 3. asemassa A-kielellä', arpeggio: 'minor', arpeggioOctaves: 2 },
+  { key: 'C', mode: 'aeolian', level: 2, positions: ['1st', '3rd'], octaves: 2, lowestNote: 'C4', reachUpTo: null, shiftRequired: true, shiftPattern: SHIFT_TO_AB5, arpeggio: 'minor', arpeggioOctaves: 2 },
 
   // ── Level 3 — Adding 2nd Position (ceiling still D6; octave verdicts match Level 2) ──
-  { key: 'G', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. A-kielellä, 2.→3. E-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'D', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: true, shiftPattern: '1.→2. A-kielellä, 2.→3. E-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'A', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. D-kielellä, 2.→3. A-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'E', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, reachUpTo: 'C#6', shiftRequired: true, shiftPattern: CLIMB_CS6, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'B', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. E-kielellä, 2.→3. E-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'F', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'Bb', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. G-kielellä, 2.→3. D-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'Eb', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'major', arpeggioOctaves: 1 },
-  { key: 'Ab', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. D-kielellä, 2.→3. A-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
-  { key: 'E', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'minor', arpeggioOctaves: 1 },
-  { key: 'B', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. E-kielellä, 2.→3. E-kielellä', arpeggio: 'minor', arpeggioOctaves: 2 },
-  { key: 'F#', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'minor', arpeggioOctaves: 1 },
-  { key: 'C', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: true, shiftPattern: '1.→2. G-kielellä, 2.→3. D-kielellä', arpeggio: 'minor', arpeggioOctaves: 2 },
-  { key: 'D', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, reachUpTo: null, shiftRequired: true, shiftPattern: '1.→2. D-kielellä, 2.→3. A-kielellä', arpeggio: 'minor', arpeggioOctaves: 2 },
+  { key: 'G', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, lowestNote: 'G3', reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. A-kielellä, 2.→3. E-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'D', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, lowestNote: 'D4', reachUpTo: null, shiftRequired: true, shiftPattern: '1.→2. A-kielellä, 2.→3. E-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'A', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, lowestNote: 'A3', reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. D-kielellä, 2.→3. A-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'E', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, lowestNote: 'E4', reachUpTo: 'C#6', shiftRequired: true, shiftPattern: CLIMB_CS6, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'B', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, lowestNote: 'B3', reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. E-kielellä, 2.→3. E-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'F', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, lowestNote: 'F4', reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'Bb', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, lowestNote: 'Bb3', reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. G-kielellä, 2.→3. D-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'Eb', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, lowestNote: 'Eb4', reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'major', arpeggioOctaves: 1 },
+  { key: 'Ab', mode: 'ionian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, lowestNote: 'Ab3', reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. D-kielellä, 2.→3. A-kielellä', arpeggio: 'major', arpeggioOctaves: 2 },
+  { key: 'E', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, lowestNote: 'E4', reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'minor', arpeggioOctaves: 1 },
+  { key: 'B', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, lowestNote: 'B3', reachUpTo: null, shiftRequired: false, shiftPattern: '1.→2. E-kielellä, 2.→3. E-kielellä', arpeggio: 'minor', arpeggioOctaves: 2 },
+  { key: 'F#', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 1, lowestNote: 'F#4', reachUpTo: 'D6', shiftRequired: true, shiftPattern: CLIMB_D6, arpeggio: 'minor', arpeggioOctaves: 1 },
+  { key: 'C', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, lowestNote: 'C4', reachUpTo: null, shiftRequired: true, shiftPattern: '1.→2. G-kielellä, 2.→3. D-kielellä', arpeggio: 'minor', arpeggioOctaves: 2 },
+  { key: 'D', mode: 'aeolian', level: 3, positions: ['1st', '2nd', '3rd'], octaves: 2, lowestNote: 'D4', reachUpTo: null, shiftRequired: true, shiftPattern: '1.→2. D-kielellä, 2.→3. A-kielellä', arpeggio: 'minor', arpeggioOctaves: 2 },
 ]
 
 /**
@@ -245,6 +255,7 @@ export function getScaleDetail(scale: ScaleEntry): ScaleDetail {
     notes,
     positionLabel,
     octaves: scale.octaves,
+    lowestNote: scale.lowestNote,
     reachUpTo: scale.reachUpTo,
     octaveLabel,
     shiftExercise,
@@ -278,6 +289,7 @@ export function findScaleDetail(
       level: 1,
       positions: ['1st'],
       octaves,
+      lowestNote: `${key}4`,
       reachUpTo: null,
       shiftRequired: false,
       shiftPattern: null,

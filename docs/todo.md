@@ -6,7 +6,7 @@ Active task list. Completed tasks are archived in `completed-tasks.md`; a one-li
 
 ## Task 36: Two-octave staff drawing — wrapped "systems" on mobile (Soittohetki + Tähtiasteikko)
 
-**Status:** todo
+**Status:** done
 **Blocked by:** Task 35 (done — supplies `getScaleNotes(root, mode, octaves, reachUpTo)` + `ScaleDetail.reachUpTo`)
 **Reference:**
 - `app/src/lib/musicStave.ts` — `computeLayout` (geometry) + `renderScale` (draws). **Today it is hardwired to one octave**: `renderScale` builds notes from `getScale` (8) and `noteSpacing = (width − …)/7`. The existing `staves: 1|2` means *ascending-on-top / descending-on-bottom of one octave* (a mirrored pair) — **not** two octaves. Genuine 2-octave rendering is new: variable note count + wrapping into stacked **systems**.

@@ -8,10 +8,12 @@ plays its notes in tune up to the top and back down, and each completed run
 celebrations at the top and bottom. This is the **first cut** — kept simple, with
 the tunables grouped at the top of the screen file so they are trivial to tweak.
 
-- **Route:** `/tahtiasteikko?root=…&mode=…&octaves=…&level=…`
+- **Route:** `/tahtiasteikko?root=…&mode=…&octaves=…&level=…&reachUpTo=…` (`reachUpTo`
+  forwarded by Harjoittelu for "1+" reach-limited scales; optional otherwise).
 - **Screen:** `app/src/screens/Tahtiasteikko.tsx`
-- **Reuses:** `MusicCanvas`, `TunerDial`, `SimpleTunerControls` + `useTunerStore`,
-  `useMicPitch`, `StarFlight` / `FlyingStar`.
+- **Reuses:** `MusicCanvas` (now `octaves`/`reachUpTo`-aware), `TunerDial`, the persisted
+  `useTunerStore` + `useMicPitch`, `StarFlight` / `FlyingStar`. (Task 36 dropped the
+  `CompactTunerControls` slider — sensitivity is inherited from the store.)
 
 The hidden `#/test/scaletuner` prototype is **untouched** — this is the real,
 shipping screen. It deliberately drops that page's extra mechanics (10-run cap,
@@ -26,21 +28,29 @@ passes to Soittohetki (`root`, `mode`, `octaves`, `level`).
 
 ## Screen behaviour
 
-1. **Scale on one stave.** `MusicCanvas` with `staves={1}`, the current target note
-   highlighted (`highlightNotes`). Scale comes from the URL params. When all notes
-   have been played upward (top reached), the canvas flips to `descending` and the
-   target walks back down — the ascending/descending **phase + targetIndex** logic
-   mirrors `ScaleTunerTest` (the top note is played again on the way down).
+1. **Scale on a reach-aware stave (Task 36).** `MusicCanvas` with `staves={1}`,
+   `octaves` + `reachUpTo` from the URL, and the current target highlighted
+   (`highlightNotes`). The walk and the drawing share one source — `getScaleNotes(root,
+   mode, octaves, reachUpTo)` (8 notes for 1 octave, 15 for 2, 13/14 for a "1+" scale) —
+   so the target always lines up with a drawn note. On **mobile** a multi-octave scale
+   **wraps onto two stacked systems** (`aspect-[2/1]`); on **desktop** it stays one wide
+   system (`md:aspect-[5/2]`). The canvas is **direction-aware**: when the run reaches the
+   top it flips to `descending`, the engine reverses the playing-order sequence, **both
+   systems descend**, and the highlight keeps sweeping forward (the top note is played
+   again on the way down).
 2. **Tuner for the target note.** Below the stave: `TunerDial` + note/cents readout
    and a **hold-progress** bar. Holding the highlighted note in tune long enough
    advances to the next note (`useMicPitch` + in-tune / hold-timer logic).
-3. **Aloita kuuntelu button.** Start/stop the mic — **"Aloita kuuntelu"** when
-   stopped, **"Lopeta kuuntelu"** when running. Every fresh start restarts the
-   game from level 1.
-4. **Sensitivity control.** The production **`SimpleTunerControls`**
-   ("Mittausnopeus") wired to the persisted **`useTunerStore`** + `calmnessToSettings()`.
-5. **Level info line.** Beneath the slider, a Finnish one-liner:
-   `Taso {n}. Tarkkuus ±{cents} Aika {hold}s`.
+3. **Listen toggle = a compact icon (Task 36).** A round **play/stop icon button**
+   (`Play`/`Square`) rides the right of the target-note line (`aria-label`
+   "Aloita kuuntelu" / "Lopeta kuuntelu"). Every fresh start restarts from level 1.
+   (The taller wrapped stave left no room for the old full-width button row.)
+4. **No sensitivity slider (Task 36).** The `CompactTunerControls` ("Mittausnopeus")
+   slider was **removed** to fit the taller staff; the screen now **inherits** the
+   player's persisted sensitivity from `useTunerStore` + `calmnessToSettings()`, like
+   the necklace-game MVP.
+5. **Level info line.** A Finnish one-liner under the progress bar:
+   `Tarkkuus ±{cents} ¢ · Aika {hold} s` (the level number also shows over the dial).
 
 ## Leveling + star animations
 

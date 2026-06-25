@@ -38,6 +38,8 @@
  *   Keski-C (C4)     = apuviiva alapuolella
  */
 
+import { getScale } from './musicScale'
+
 export interface NoteWithOctave {
   letter: string
   accidental: string | null
@@ -108,10 +110,13 @@ export const VIOLIN_OPEN_STRING_OCTAVES: Record<string, number> = {
 /**
  * Hard drawing bounds.
  *   min = G3 (pieni g, avoin G-kieli — note one octave below middle C / C4)
- *   max = G6 (one octave + minor third above violin's open E string;
- *             i.e. the G a minor third higher than 3rd-finger G5 on the E-string)
+ *   max = C7 — raised from G6 so a 2-octave scale rendered from octave 4
+ *             (Kirkkosävellajit's fixed convention) still draws its closing top
+ *             note instead of being skipped. Practice scales place their own
+ *             lowest note explicitly (ScaleEntry.lowestNote) so their tops stay
+ *             within reach.
  */
-export const DRAWING_RANGE = { min: { letter: 'G', octave: 3 }, max: { letter: 'G', octave: 6 } }
+export const DRAWING_RANGE = { min: { letter: 'G', octave: 3 }, max: { letter: 'C', octave: 7 } }
 
 function diatonicPosition(letter: string, octave: number): number {
   return octave * 7 + DIATONIC_INDEX[letter]
@@ -158,6 +163,14 @@ export const SCALE_START_OCTAVE: Record<string, number> = {
   'Db': 4, 'Eb': 4, 'Gb': 4, 'Ab': 4, 'Bb': 4,
 }
 
+/** Parse the octave number off a note string ("G3" → 3, "C#4" → 4). Returns null
+ *  for a note with no trailing octave (e.g. a bare "G"). */
+export function parseNoteOctave(note: string | null | undefined): number | null {
+  if (!note) return null
+  const m = note.match(/(-?\d+)\s*$/)
+  return m ? Number(m[1]) : null
+}
+
 /**
  * Assign ascending octaves to a sequence of note letter strings (e.g. ['G','A','B','C','D','E','F#','G']),
  * starting from the given octave. The octave increments whenever the diatonic letter
@@ -180,4 +193,61 @@ export function assignAscendingOctaves(
     out.push({ letter, accidental, octave })
   }
   return out
+}
+
+/** Parse a reach-top note string ("C#6", "D6") into its letter + accidental. */
+function parseReachNote(note: string): { letter: string; accidental: string | null } | null {
+  const m = note.match(/^([A-G])(##|bb|#|b)?\d*$/)
+  return m ? { letter: m[1], accidental: m[2] ?? null } : null
+}
+
+/** Ascending scale notes for root/mode over `octaves` octaves. One octave = 8 entries
+ *  (last = the octave repeat of the root); each extra octave adds the 7 degrees again
+ *  before the final closing root (2 octaves = 15 entries). Socket count = note count and
+ *  the turn is the top, mirroring Tähtiasteikko.
+ *
+ *  Reach-aware: when `reachUpTo` is given (a "1+" scale — full first octave, then climb
+ *  the 2nd octave only as far as 1st–3rd position reaches, e.g. "D6" / "C#6"), the
+ *  ascending run is cut at that note in the 2nd octave so the necklace shows the correct
+ *  socket count and turn note. The cap is letter-based within the 2nd octave; for every
+ *  reach-limited key the SCALE_START_OCTAVE=4 convention already coincides with real
+ *  violin pitch, so the cut note's octave label is correct. See scale-practice-method-v2.md §2. */
+export function getScaleNotes(
+  root: string,
+  mode: string,
+  octaves = 1,
+  reachUpTo: string | null = null,
+  lowestNote: string | null = null,
+): NoteWithOctave[] {
+  const scale = getScale(root, mode) // 8 entries, last = root one octave up
+  const rootLetter = root.replace(/[#b].*$/, '')
+  // Practice callers pass `lowestNote` (e.g. "G3") — the exact note the scale starts
+  // on, chosen per level + scale (ScaleEntry.lowestNote). Only its octave is used (the
+  // first degree is always the root). Falls back to the SCALE_START_OCTAVE convention.
+  const startOctave =
+    parseNoteOctave(lowestNote) ?? SCALE_START_OCTAVE[root] ?? SCALE_START_OCTAVE[rootLetter] ?? 4
+  const degrees = scale.slice(0, -1) // the 7 distinct degrees (drop the closing root)
+  const closingRoot = scale[scale.length - 1]
+
+  // "1+" reach-limited scale: build two octaves, then cut the ascending run at the
+  // reachable top note (first match in the 2nd octave, i.e. from index `degrees.length`).
+  if (reachUpTo) {
+    const target = parseReachNote(reachUpTo)
+    const notes = assignAscendingOctaves([...degrees, ...degrees, closingRoot], startOctave)
+    if (target) {
+      const cut = notes.findIndex(
+        (n, i) =>
+          i >= degrees.length && n.letter === target.letter && (n.accidental ?? null) === target.accidental,
+      )
+      if (cut !== -1) return notes.slice(0, cut + 1)
+    }
+    return notes
+  }
+
+  const reps = Math.max(1, octaves)
+  if (reps === 1) return assignAscendingOctaves(scale, startOctave)
+  const seq: string[] = []
+  for (let o = 0; o < reps; o++) seq.push(...degrees)
+  seq.push(closingRoot) // single closing root at the very top
+  return assignAscendingOctaves(seq, startOctave)
 }

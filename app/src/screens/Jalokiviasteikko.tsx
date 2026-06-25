@@ -5,11 +5,19 @@ import { NecklaceCanvas } from '../components/ui/NecklaceCanvas'
 import { AdmireView } from '../components/ui/AdmireView'
 import { TuningBar } from '../components/ui/TuningBar'
 import { Button } from '../components/ui/Button'
+import { Play } from 'lucide-react'
 import { useMicPitch } from '../hooks/useMicPitch.ts'
 import { useTunerStore, calmnessToSettings } from '../stores/tunerStore.ts'
 import { formatNoteSPN } from '../lib/noteOctave.ts'
 import { noteNameToMidi } from '../lib/audio/tuning.ts'
-import { rollPalette, mulberry32, COLOR_PATTERNS, FORM_SETS, type NecklaceModel, type NecklaceOverlay } from '../lib/necklace'
+import {
+  rollPalette,
+  mulberry32,
+  COLOR_PATTERNS,
+  FORM_SETS,
+  type NecklaceModel,
+  type NecklaceOverlay,
+} from '../lib/necklace'
 import {
   parseMode,
   scaleLabel,
@@ -54,7 +62,6 @@ const COUNTDOWN_FROM = 4
 const GOOD_ZONE_CENTS = 12 // §3 shaded band half-width (playtest)
 const MAX_OFF_CENTS = 50 // beyond this a sampled frame scores 0 centeredness
 const POOR_SCORE = 0.3 // window score below this → neutral "didn't hear it" pause
-const AUTO_REPLAY_MS = 20000 // end-of-round auto-advance
 
 // score(0..1) → one of 11 visible reward levels (0..10), so the level matches the
 // "pisteet y/10" the player sees. We store the level as `level/10` on the socket:
@@ -91,8 +98,6 @@ interface View {
   barActive: boolean
   timer: number | null
   message: string | null
-  /** Whole seconds left on the end-of-round auto-replay, or null when not counting. */
-  autoReplayLeft: number | null
 }
 
 const IDLE_VIEW: View = {
@@ -103,7 +108,6 @@ const IDLE_VIEW: View = {
   barActive: false,
   timer: null,
   message: null,
-  autoReplayLeft: null,
 }
 
 function viewsEqual(a: View, b: View): boolean {
@@ -114,8 +118,7 @@ function viewsEqual(a: View, b: View): boolean {
     a.focusRing === b.focusRing &&
     a.barActive === b.barActive &&
     a.timer === b.timer &&
-    a.message === b.message &&
-    a.autoReplayLeft === b.autoReplayLeft
+    a.message === b.message
   )
 }
 
@@ -149,11 +152,17 @@ export function Jalokiviasteikko() {
   // "1+" reach-limited scales pass their reachable top note (e.g. "D6"/"C#6"); the
   // ascending run is then cut there so the necklace shows the right socket count + turn.
   const reachUpTo = searchParams.get('reachUpTo')
+  // Exact lowest note (e.g. "G3"/"A3") so the run starts on the same octave the
+  // scale is drawn/played on; see ScaleEntry.lowestNote.
+  const lowestNote = searchParams.get('low')
 
   const calmness = useTunerStore((s) => s.calmness)
   const pitch = useMicPitch(calmnessToSettings(calmness))
 
-  const scaleNotes = useMemo(() => getScaleNotes(root, mode, octaves, reachUpTo), [root, mode, octaves, reachUpTo])
+  const scaleNotes = useMemo(
+    () => getScaleNotes(root, mode, octaves, reachUpTo, lowestNote),
+    [root, mode, octaves, reachUpTo, lowestNote],
+  )
   const socketCount = scaleNotes.length
   const top = socketCount - 1
   const targetPcs = useMemo(() => scaleNotes.map((n) => pitchClassOf(formatNoteSPN(n))), [scaleNotes])
@@ -161,7 +170,6 @@ export function Jalokiviasteikko() {
   const [model, setModel] = useState<NecklaceModel>(() => decorativeNecklace(0x5eed, socketCount))
   const [view, setView] = useState<View>(IDLE_VIEW)
   const [infoOpen, setInfoOpen] = useState(false)
-  const [autoReplayOn, setAutoReplayOn] = useState(true)
   // Player-chosen pause between notes (start screen slider). Read live by the rAF loop.
   const [delayIdx, setDelayIdx] = useState(DEFAULT_DELAY_IDX)
   const [noteScores, setNoteScores] = useState<NoteScore[]>(() =>
@@ -184,17 +192,13 @@ export function Jalokiviasteikko() {
   pitchRef.current = pitch
   const pausedRef = useRef(false)
   pausedRef.current = infoOpen
-  const autoReplayRef = useRef(autoReplayOn)
-  autoReplayRef.current = autoReplayOn
   const betweenNoteMsRef = useRef(BETWEEN_NOTE_OPTIONS[delayIdx])
   betweenNoteMsRef.current = BETWEEN_NOTE_OPTIONS[delayIdx]
-  const admireRef = useRef(admire)
-  admireRef.current = admire
   const scaleRef = useRef({ targetPcs, scaleNotes, top })
   scaleRef.current = { targetPcs, scaleNotes, top }
 
   // Begin a fresh round: empty necklace, build steps, count-in for the first note,
-  // and make sure the mic is listening. Used by the Aloita button and auto-replay.
+  // and make sure the mic is listening. Used by the start/play button.
   const startRound = useRef<() => void>(() => {})
   startRound.current = () => {
     const { top: t } = scaleRef.current
@@ -284,13 +288,7 @@ export function Jalokiviasteikko() {
     const advanceGame = (dt: number) => {
       const g = game.current
       if (g.phase === 'idle') return
-      if (g.phase === 'done') {
-        if (autoReplayRef.current && !admireRef.current) {
-          g.tMs += dt
-          if (g.tMs >= AUTO_REPLAY_MS) startRound.current()
-        }
-        return
-      }
+      if (g.phase === 'done') return
       // Playing phases only advance while the mic is live.
       if (!pitchRef.current.listening) return
       const step = g.steps[g.stepIndex]
@@ -333,7 +331,6 @@ export function Jalokiviasteikko() {
             barActive: false,
             timer: null,
             message: null,
-            autoReplayLeft: null,
           }
         case 'pause':
           return {
@@ -344,7 +341,6 @@ export function Jalokiviasteikko() {
             barActive: false,
             timer: null,
             message: g.resultMessage,
-            autoReplayLeft: null,
           }
         case 'reveal':
           return {
@@ -355,7 +351,6 @@ export function Jalokiviasteikko() {
             barActive: false,
             timer: null,
             message: null,
-            autoReplayLeft: null,
           }
         case 'window':
           return {
@@ -366,7 +361,6 @@ export function Jalokiviasteikko() {
             barActive: true,
             timer: Math.round(g.tMs / 100) / 10,
             message: null,
-            autoReplayLeft: null,
           }
         case 'poor':
           return {
@@ -377,10 +371,8 @@ export function Jalokiviasteikko() {
             barActive: false,
             timer: null,
             message: g.resultMessage,
-            autoReplayLeft: null,
           }
-        case 'done': {
-          const counting = autoReplayRef.current && !admireRef.current
+        case 'done':
           return {
             phase: 'done',
             countdown: null,
@@ -389,9 +381,7 @@ export function Jalokiviasteikko() {
             barActive: false,
             timer: null,
             message: null,
-            autoReplayLeft: counting ? Math.max(0, Math.ceil((AUTO_REPLAY_MS - g.tMs) / 1000)) : null,
           }
-        }
       }
     }
 
@@ -423,6 +413,44 @@ export function Jalokiviasteikko() {
     view.barActive && pitch.cents != null && detectedPc != null && detectedPc === curTargetPc ? pitch.cents : null
 
   const playing = view.phase !== 'idle' && view.phase !== 'done'
+
+  // Second line of the start prompt: the playable range. A "1+" scale (reachUpTo set)
+  // climbs only part of the 2nd octave → "Nuottiin D asti."; a full 2-octave scale →
+  // "2 oktaavia"; a plain 1-octave scale has no second line.
+  const rangeLine = reachUpTo ? `Nuottiin ${reachUpTo.replace(/\d+$/, '')} asti.` : octaves === 2 ? '2 oktaavia' : null
+
+  // Shared start row: between-note pause slider + the play (start) button. Used on the
+  // first-time idle prompt and the end-of-round screen (both start a fresh round).
+  const startControls = (
+    <div className='flex w-full max-w-[360px] items-center gap-3'>
+      <div className='flex-1 rounded-2xl bg-black/55 px-4 py-3 text-white'>
+        <div className='mb-1 text-xs text-white/75'>Tauko nuottien välissä</div>
+        <input
+          type='range'
+          min={0}
+          max={BETWEEN_NOTE_OPTIONS.length - 1}
+          step={1}
+          value={delayIdx}
+          onChange={(e) => setDelayIdx(Number(e.target.value))}
+          aria-label='Tauko nuottien välissä'
+          className='w-full accent-[#9fd0ff]'
+        />
+        <div className='mt-1 flex justify-between text-[10px] text-white/60'>
+          {BETWEEN_NOTE_LABELS.map((l) => (
+            <span key={l}>{l}</span>
+          ))}
+        </div>
+      </div>
+
+      <button
+        onClick={() => startRound.current()}
+        aria-label='Aloita'
+        className='flex h-[3.375rem] w-[3.375rem] shrink-0 items-center justify-center rounded-full bg-[#9fd0ff] text-[#05060f] shadow-lg active:bg-[#7fb8ee]'
+      >
+        <Play size={27} />
+      </button>
+    </div>
+  )
 
   if (admire) {
     return (
@@ -499,75 +527,37 @@ export function Jalokiviasteikko() {
           </div>
         )}
 
-        {/* First-time idle prompt over the decorative full necklace: instruction + the
-            between-note pause slider above, the lone Aloita button below. */}
+        {/* First-time idle prompt over the decorative full necklace: instruction, then a
+            row with the between-note pause slider and the play (start) button bottom-right. */}
         {view.phase === 'idle' && (
           <div className='absolute inset-0 flex flex-col items-center justify-end gap-4 px-6 pb-10 text-center'>
             <p className='rounded-2xl bg-black/55 px-5 py-3 text-base font-semibold leading-snug text-white'>
-              Soita {scaleLabel(root, mode)} (ylös ja alas){octaves === 2 ? ' (2 oktaavia)' : ''}
+              Soita {scaleLabel(root, mode)} ylös ja alas
+              {rangeLine && (
+                <>
+                  <br />
+                  {rangeLine}
+                </>
+              )}
             </p>
 
-            {/* Pause between notes — 0,2 s / 0,5 s / 1 s. */}
-            <div className='w-full max-w-[300px] rounded-2xl bg-black/55 px-4 py-3 text-white'>
-              <div className='mb-1 flex items-center justify-between text-xs'>
-                <span className='text-white/75'>Tauko nuottien välissä</span>
-                <span className='font-bold'>{BETWEEN_NOTE_LABELS[delayIdx]}</span>
-              </div>
-              <input
-                type='range'
-                min={0}
-                max={BETWEEN_NOTE_OPTIONS.length - 1}
-                step={1}
-                value={delayIdx}
-                onChange={(e) => setDelayIdx(Number(e.target.value))}
-                aria-label='Tauko nuottien välissä'
-                className='w-full accent-[#9fd0ff]'
-              />
-              <div className='mt-1 flex justify-between text-[10px] text-white/60'>
-                {BETWEEN_NOTE_LABELS.map((l) => (
-                  <span key={l}>{l}</span>
-                ))}
-              </div>
-            </div>
-
-            <button
-              onClick={() => startRound.current()}
-              className='min-h-[44px] rounded-xl bg-[#9fd0ff] px-8 text-base font-bold text-[#05060f] shadow-lg'
-            >
-              Aloita
-            </button>
+            {startControls}
             {pitch.error && <p className='text-xs text-red-300'>{pitch.error}</p>}
           </div>
         )}
 
-        {/* End-of-round: admire the finished necklace + auto-replay control. */}
+        {/* End-of-round: admire the finished necklace, then the same start row to replay. */}
         {view.phase === 'done' && (
-          <div className='absolute inset-x-0 bottom-0 flex flex-col items-center gap-3 px-6 pb-6 text-center'>
-            <p className='rounded-xl bg-black/55 px-4 py-2 text-sm font-semibold text-white'>Kaulakoru on valmis!</p>
-            <div className='flex flex-wrap items-center justify-center gap-2'>
-              {view.autoReplayLeft != null ? (
-                <>
-                  <button
-                    onClick={openAdmire}
-                    className='min-h-[44px] rounded-xl bg-white/15 px-5 text-sm font-bold text-white'
-                  >
-                    Jää ihailemaan
-                  </button>
-                  <span className='text-sm text-white/70'>Uusi alkaa {view.autoReplayLeft} s…</span>
-                </>
-              ) : (
-                <button
-                  onClick={() => startRound.current()}
-                  className='min-h-[44px] rounded-xl bg-[#9fd0ff] px-6 text-sm font-bold text-[#05060f]'
-                >
-                  Aloita uusi
-                </button>
-              )}
-            </div>
-            <label className='flex items-center gap-2 text-xs text-white/70'>
-              <input type='checkbox' checked={autoReplayOn} onChange={(e) => setAutoReplayOn(e.target.checked)} />
-              Aloita uusi kierros automaattisesti
-            </label>
+          <div className='absolute inset-0 flex flex-col items-center justify-end gap-4 px-6 pb-10 text-center'>
+            <button
+              onClick={openAdmire}
+              className='flex min-h-[44px] items-center gap-3 rounded-xl bg-white/15 px-6 text-base font-bold text-white'
+            >
+              <span aria-hidden>◆</span>
+              Ihaile
+              <span aria-hidden>◆</span>
+            </button>
+            {startControls}
           </div>
         )}
       </div>

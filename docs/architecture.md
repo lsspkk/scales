@@ -62,16 +62,18 @@ User interacts with UI (Kirkkosavellajit screen)
 The drawing logic is extracted into a pure TypeScript module with no React dependencies:
 
 **Key functions:**
-- `computeLayout(options)` — returns a `StaveLayout` config from the canvas's measured CSS size (`width`, `height`, `staves: 1 | 2`). All geometry (line spacing, clef size, note-head radius, stem length, accidental size) scales with the measured size — no `mobile`/`compact` flags
-- `drawStaffLines(ctx, layout)` — draws 5 staff lines for 1 or 2 staves; uses `Math.round(y) + 0.5` for crisp 1px strokes
-- `drawTrebleClef(ctx, layout)` — draws 𝄞 clef at configured size/position
+- `computeLayout(options)` — returns a `StaveLayout` config from the canvas's measured CSS size (`width`, `height`, `staves: 1 | 2`, `systems: 1 | 2`, `noteCount`). All geometry (line spacing, clef size, note-head radius, stem length, accidental size) scales with the measured size — no `mobile`/`compact` flags
+- `drawStaffLines(ctx, layout)` — draws 5 staff lines for 1 or 2 staves; for `systems === 2` also draws the second system's lines (`staffLines2`); uses `Math.round(y) + 0.5` for crisp 1px strokes
+- `drawTrebleClef(ctx, layout)` — draws 𝄞 clef at configured size/position (one per system)
 - `drawLedgerLines(ctx, x, y, staffLineYs, halfWidth)` — ledger lines for notes above/below staff
 - `drawAccidental(ctx, x, y, accidental, fontSize)` — ♯, ♭, 𝄪, 𝄫 symbols
-- `drawNoteAt(ctx, x, note, staffLineYs, layout)` — complete note (head, stem, ledger lines, accidental) at absolute pitch; enforces the `DRAWING_RANGE` [G3, G6] bound
-- `renderScale(ctx, key, mode, layout)` — orchestrates full scale render using `SCALE_START_OCTAVE` + `assignAscendingOctaves`
+- `drawNoteAt(ctx, x, note, staffLineYs, layout)` — complete note (head, stem, ledger lines, accidental) at absolute pitch; enforces the `DRAWING_RANGE` [G3, **C7**] bound
+- `renderScale(ctx, key, mode, layout, …, direction, precomputedNotes?)` — orchestrates the scale render. With no `precomputedNotes` it builds one ascending octave from `SCALE_START_OCTAVE` + `assignAscendingOctaves` (Kirkkosävellajit / 1-octave callers). With a precomputed reach-aware sequence (`getScaleNotes`, see `noteOctave.ts`) it draws **multi-octave / "1+" scales**, reversing the playing order when `direction === 'descending'` and, when `systems === 2`, **wrapping** at the octave boundary (notes 0–7 on system 1, 8…top on system 2)
 - `renderArpeggio(ctx, notes, layout)` — renders arpeggio notes spaced across the staff
 
-**Design principle:** All geometry derives from the canvas's actual CSS-pixel size, scaled by `lineSpacing` (`= height / 20` for two staves, centered for one). The same code renders cleanly at any size from a 260×65 compact panel to a 1200×600 desktop canvas — there are no fixed pixel constants tied to a 1000×500 layout.
+**Two-octave wrapping (Task 36).** On **mobile** a scale longer than one octave wraps onto two stacked **systems** (each a full 5-line staff + clef); on **desktop** the whole scale stays on one wide system. `computeLayout({ systems: 2 })` lays out two equal staves with a generous `systemGap` (9·`lineSpacing`) between them — the dominant empty zone that clears system 1's low ledger notes and system 2's high ones (D6/C#6, up to the octave-4 ceiling) and keeps the two visually distinct; the 13·L block is centered. `noteSpacing` is based on the fuller line (8 notes → 7 gaps) so a short system 2 left-aligns under system 1. A 1-octave scale stays a single, comfortably-sized centered staff in the same fixed mobile area, so the UI below it never shifts between scales. `DRAWING_RANGE.max` was raised G6 → **C7** so the high closing tops of A/Bb/B/Ab 2-octave scales (A6/Bb6/B6 in the `SCALE_START_OCTAVE=4` convention) still draw.
+
+**Design principle:** All geometry derives from the canvas's actual CSS-pixel size, scaled by `lineSpacing`. The same code renders cleanly at any size from a 260×65 compact panel to a 1200×600 desktop canvas — there are no fixed pixel constants tied to a 1000×500 layout.
 
 ## Canvas Bitmap Sizing (`MusicCanvas.tsx`)
 
@@ -80,7 +82,7 @@ The drawing logic is extracted into a pure TypeScript module with no React depen
 1. The caller gives the wrapper a definite size via CSS (e.g. `w-full aspect-[2/1]`).
 2. On every measurement, the component sets `canvas.style.width/height` to the measured CSS pixels, and `canvas.width/height` (the bitmap) to `cssSize × window.devicePixelRatio`.
 3. `ctx.setTransform(dpr, 0, 0, dpr, 0, 0)` lets all drawing code keep using CSS-pixel coordinates.
-4. `computeLayout({ width: cssW, height: cssH, staves })` derives all geometry from the measured size, then `renderScale` / `renderArpeggio` draws.
+4. `computeLayout({ width: cssW, height: cssH, staves, systems, noteCount })` derives all geometry from the measured size, then `renderScale` / `renderArpeggio` draws. `MusicCanvas` builds the reach-aware note sequence via `getScaleNotes` when given an `octaves` prop, and sets `systems = 2` only on mobile when that sequence exceeds one octave.
 
 This avoids two pitfalls of the old fixed-bitmap + CSS-scale approach: fading 1px staff lines at fractional scale factors, and blurry strokes on HiDPI displays.
 

@@ -3,15 +3,14 @@ import { useNavigate, useSearchParams } from 'react-router-dom'
 import { ScreenHeader } from '../components/ui/ScreenHeader.tsx'
 import { MusicCanvas } from '../components/ui/MusicCanvas.tsx'
 import { TunerDial } from '../components/ui/TunerDial.tsx'
-import { CompactTunerControls } from '../components/ui/CompactTunerControls.tsx'
 import { StarFlight } from '../components/ui/StarFlight.tsx'
 import type { StarTone } from '../components/ui/FlyingStar.tsx'
 import { useViewport } from '../lib/useViewport'
 import { useMicPitch } from '../hooks/useMicPitch.ts'
 import { useTunerStore, calmnessToSettings } from '../stores/tunerStore.ts'
-import { getScale } from '../lib/musicScale.ts'
-import { assignAscendingOctaves, SCALE_START_OCTAVE, formatNoteSPN, formatNoteFi } from '../lib/noteOctave.ts'
+import { getScaleNotes, formatNoteSPN, formatNoteFi } from '../lib/noteOctave.ts'
 import { noteNameToMidi } from '../lib/audio/tuning.ts'
+import { Play, Square } from 'lucide-react'
 
 /*
  * Tähtiasteikko — leveling scale-practice tuner (Task 32, first cut).
@@ -42,7 +41,7 @@ const ANIMATION_OFF_MS = 3000
 // reserved for the top and the final level-5 celebration).
 const RANDOM_TONES: StarTone[] = ['indigo', 'purple', 'pink', 'blue', 'green', 'yellow']
 
-const HIGHLIGHT_COLOR = '#a0069f'
+const HIGHLIGHT_COLOR = '#6d0470'
 const BASIC_NOTE_COLOR = '#aaaaaa'
 
 type Phase = 'ascending' | 'descending'
@@ -67,6 +66,11 @@ function parseMode(value: string | null): string {
   return value === 'aeolian' ? 'aeolian' : 'ionian'
 }
 
+function parseOctaves(value: string | null): number {
+  const n = Number(value)
+  return n === 1 || n === 2 || n === 3 ? n : 2
+}
+
 function scaleLabel(root: string, mode: string): string {
   return `${root}-${mode === 'aeolian' ? 'molli' : 'duuri'}`
 }
@@ -78,9 +82,13 @@ export function Tahtiasteikko() {
 
   const root = searchParams.get('root') ?? 'C'
   const mode = parseMode(searchParams.get('mode'))
+  const octaves = parseOctaves(searchParams.get('octaves'))
+  const reachUpTo = searchParams.get('reachUpTo')
+  const lowestNote = searchParams.get('low')
 
+  // No sensitivity slider on this screen — it inherits the player's persisted
+  // tuner sensitivity from the store (like the necklace game MVP).
   const calmness = useTunerStore((s) => s.calmness)
-  const setCalmness = useTunerStore((s) => s.setCalmness)
   const pitch = useMicPitch(calmnessToSettings(calmness))
   const stopMic = pitch.stop
 
@@ -95,14 +103,12 @@ export function Tahtiasteikko() {
 
   const { cents: levelCents, holdSeconds } = PRACTICE_LEVELS[level - 1]
 
-  // Single ascending octave (8 entries; last is the octave repeat of the root),
-  // mirroring the drawn one-stave scale so targets line up with the canvas.
-  const scaleNotes = useMemo(() => {
-    const scale = getScale(root, mode)
-    const rootLetter = root.replace(/[#b].*$/, '')
-    const startOctave = SCALE_START_OCTAVE[root] ?? SCALE_START_OCTAVE[rootLetter] ?? 4
-    return assignAscendingOctaves(scale, startOctave)
-  }, [root, mode])
+  // Reach-aware ascending sequence (8 for 1 octave; 15 for 2; 13/14 for "1+"),
+  // the same source the drawn stave wraps, so targets line up with the canvas.
+  const scaleNotes = useMemo(
+    () => getScaleNotes(root, mode, octaves, reachUpTo, lowestNote),
+    [root, mode, octaves, reachUpTo, lowestNote],
+  )
   const top = scaleNotes.length - 1
 
   const target = scaleNotes[Math.min(targetIndex, top)]
@@ -221,31 +227,24 @@ export function Tahtiasteikko() {
           scaleKey={root}
           mode={mode}
           staves={1}
+          octaves={octaves}
+          reachUpTo={reachUpTo}
+          lowestNote={lowestNote}
           scaleDirection={phase}
           highlightNotes={[targetKey]}
           highlightColor={HIGHLIGHT_COLOR}
           basicNoteColor={BASIC_NOTE_COLOR}
-          className='aspect-[5/2] w-full bg-white md:rounded-lg'
+          className='aspect-[2/1] w-full bg-white md:aspect-[5/2] md:rounded-lg'
         />
       </div>
 
-      {/* justify-between + a stretch spacer let the gaps grow on tall phones
-          while everything still fits a short, old screen. */}
-      <div className='mx-auto flex w-full max-w-[420px] flex-1 flex-col items-center gap-2 px-2 py-2'>
-        <p className='text-center text-xs text-[#5a2d0c]'>
-          Soita <span aria-hidden>{phase === 'ascending' ? '↑' : '↓'}</span>{' '}
-          <span className='text-lg font-bold text-[#a0563f]'>
-            {target.letter}
-            {target.accidental ?? ''}
-            {target.octave}
-          </span>{' '}
-          <span className='text-[10px] text-[#8B4513]'>({formatNoteFi(target)})</span>
-        </p>
-
+      {/* The taller wrapped stave leaves no room for a slider/stretch spacer, so the
+          controls condense: the listen toggle rides the target-note line as an icon. */}
+      <div className='mx-auto flex w-full max-w-[420px] flex-1 flex-col items-center gap-1.5 px-2 py-2'>
         <div className='relative'>
           <TunerDial noteName={pitch.noteName} cents={pitch.cents} accuracyCents={levelCents} inTune={inTune} />
           <div className='pointer-events-none absolute inset-0 flex items-center justify-center'>
-            <span className='font-medieval text-6xl font-bold tracking-wide text-[#6b1fa8]/60 [text-shadow:_-2px_-2px_0_rgba(255,195,0,0.55),_2px_-2px_0_rgba(255,195,0,0.55),_-2px_2px_0_rgba(255,195,0,0.55),_2px_2px_0_rgba(255,195,0,0.55),_0_0_12px_rgba(255,195,0,0.35)]'>
+            <span className='font-medieval text-6xl font-bold tracking-wide text-[#6b1fa8] opacity-70 translate-y-[6px] [text-shadow:_-2px_-2px_0_rgba(255,195,0,0.55),_2px_-2px_0_rgba(255,195,0,0.55),_-2px_2px_0_rgba(255,195,0,0.55),_2px_2px_0_rgba(255,195,0,0.55),_0_0_12px_rgba(255,195,0,0.35)]'>
               Taso {level}
             </span>
           </div>
@@ -268,22 +267,27 @@ export function Tahtiasteikko() {
 
         {pitch.error && <p className='text-center text-xs text-red-700'>{pitch.error}</p>}
 
-        {/* Stretch spacer — soaks up extra vertical space on taller screens. */}
-        <div className='min-h-0 flex-1' />
-
-        {/* Slider on the left, listen toggle on the right — one compact row.
-            On desktop the slider is capped at ~4/12 so it isn't over-wide. */}
-        <div className={`flex w-full max-w-[320px] items-end ${isDesktop ? 'justify-between gap-3 mt-8' : 'gap-6'}`}>
-          <div className={`flex min-w-0 ${isDesktop ? 'grow-0 basis-1/3' : 'flex-1'}`}>
-            <CompactTunerControls calmness={calmness} onChange={setCalmness} />
-          </div>
+        {/* Target note + listen toggle, pinned to the bottom. The note is centered
+            across the full width; the toggle floats at the right (absolute) so it
+            doesn't pull the note off-center. */}
+        <div className='relative mt-auto flex w-full items-center justify-center pt-1'>
+          <p className='text-center text-xs text-[#5a2d0c]'>
+            Soita{' '}
+            <span className='text-lg font-bold text-[#a0563f]'>
+              {target.letter}
+              {target.accidental ?? ''}
+              {target.octave}
+            </span>{' '}
+            <span className='text-[10px] text-[#8B4513]'>({formatNoteFi(target)})</span>
+          </p>
           <button
             onClick={toggleListening}
-            className={`min-h-[36px] rounded-xl px-3 text-sm font-bold text-white ${
-              isDesktop ? 'grow-0 basis-1/3' : 'flex-1'
-            } ${pitch.listening ? 'bg-[#a0563f]' : 'bg-[#5a2d0c]'}`}
+            aria-label={pitch.listening ? 'Lopeta kuuntelu' : 'Aloita kuuntelu'}
+            className={`absolute right-0 flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-white ${
+              pitch.listening ? 'bg-[#a0563f] active:bg-[#7a3f2e]' : 'bg-[#5a2d0c] active:bg-[#3a1a00]'
+            }`}
           >
-            {pitch.listening ? 'Lopeta' : 'Aloita'}
+            {pitch.listening ? <Square size={18} /> : <Play size={18} />}
           </button>
         </div>
       </div>

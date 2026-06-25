@@ -2,7 +2,6 @@
 
 Unprioritised list of future ideas for the app. Just a bucket — no specs, no order, no commitment. Promote an item to `todo.md` when it's ready to be designed.
 
-
 ## Todo
 
 - Finger numbering on top of the notes
@@ -11,10 +10,13 @@ Unprioritised list of future ideas for the app. Just a bucket — no specs, no o
 - 8va clef so high notes are easy to read
 - Metronome with audio samples in various time signatures
 - Chord progression backgrounds for practice
-- Listening game (Pelikaanin aarteet), see `game-gems-draft.md` and `game-necklace-ideas.md`: 1. basic necklace game — 2. multiple jewellery tiers — 3. bronze/silver/gold note-help versions
-
+- Listening game (Pelikaanin aarteet): 2. multiple jewellery tiers — 3. bronze/silver/gold note-help versions
 
 ## Done
+
+- Listening game (Pelikaanin aarteet),
+  see `game-gems-draft.md` and `game-necklace-ideas.md`:
+  1. basic necklace game
 
 - Moodit-näyttö (Kirkkosävellajit) — kertoo mitä moodeja on
 - Harjoittelu-näyttö — arpoo sävellajilistan harjoitussessiolle
@@ -25,7 +27,7 @@ Unprioritised list of future ideas for the app. Just a bucket — no specs, no o
 - implement 5 variations for scale practice, that are most easy to implement in code from file scale-variation-research.md
 - Simple tuner, or listener, that detects the pitch of note being played, and shows it, and how in tune it is.
 
-
 # Abandoned ideas
+
 - Configurable break reminders
 - Practice history / streak tracking

@@ -19,7 +19,7 @@ import { getChordType } from '../lib/audio/chords'
 import { SAMPLES } from '../lib/audio/samples'
 import { noteNameToMidi } from '../lib/audio/tuning'
 import { playChord, stopAll, setMasterVolume } from '../lib/audio/audioService'
-import { Dice5, EyeOff, Info, Play, Square } from 'lucide-react'
+import { Dice5, EyeOff, Info, Play, Square, Volume2, X } from 'lucide-react'
 
 type Mode = 'ionian' | 'aeolian'
 type View = 'scale' | 'arpeggio'
@@ -65,6 +65,9 @@ interface TimerControlsRowProps {
   onSelectDuration: (minutes: number) => void
   onStart: () => void
   onPause: () => void
+  /** Mobile only: toggles the sound popover overlaid on the pelican box. */
+  onToggleSound?: () => void
+  soundOpen?: boolean
 }
 
 interface ScaleCanvasActionsProps {
@@ -111,7 +114,7 @@ function SoundControlsRow({
   onSoundClick,
 }: SoundControlsRowProps) {
   return (
-    <div className='-mx-1 bg-[#5a6b3d] px-2 py-1 md:mx-0 md:mt-2 md:rounded-lg md:px-3 md:py-2'>
+    <div className='-mx-1 bg-[#5a6b3d] px-2 py-0 md:mx-0 md:mt-2 md:rounded-lg md:px-3 md:py-2'>
       <div className='flex items-center gap-1 md:gap-2 w-full'>
         <label className='sr-only' htmlFor='soittohetki-sample'>
           Näyte
@@ -120,7 +123,7 @@ function SoundControlsRow({
           id='soittohetki-sample'
           value={sampleId}
           onChange={(e) => onSampleChange(e.target.value)}
-          className='justify-self-start shrink-0 rounded bg-[#fffbe9] px-2 text-xs font-semibold text-[#5a2d0c] min-w-[88px] max-w-[120px] focus:outline focus:outline-2 focus:outline-[#fffbe9] md:h-9 md:text-sm'
+          className='justify-self-start shrink-0 rounded bg-[#fffbe9] px-2 py-1 text-sm font-semibold text-[#5a2d0c] min-w-[88px] max-w-[120px] focus:outline focus:outline-2 focus:outline-[#fffbe9] md:h-9'
         >
           {SAMPLES.map((sample) => (
             <option key={sample.id} value={sample.id}>
@@ -137,7 +140,7 @@ function SoundControlsRow({
                 onClick={() => onSoundClick(option.id)}
                 aria-pressed={selected}
                 aria-label={option.ariaLabel}
-                className={`shrink-0 rounded-md border-2 px-1 md:px-3 md:py-1 text-xs font-bold transition-colors md:text-sm ${
+                className={`shrink-0 rounded-md border-2 px-1.5 md:px-3 md:py-1 text-sm font-bold transition-colors ${
                   selected
                     ? 'bg-[#8B2500] border-[#8B2500] text-white'
                     : 'bg-[#fffbe9] border-[#c9a96e] text-[#5a2d0c] active:bg-[#f0dbb8]'
@@ -149,7 +152,7 @@ function SoundControlsRow({
           })}
         </div>
       </div>
-      <div className='flex items-center overflow-x-auto md:mt-2 gap-1.5 justify-end w-full'>
+      <div className='flex items-center overflow-x-auto mt-2 gap-1.5 justify-end w-full'>
         <VolumeSlider value={volume} onChange={onVolumeChange} className='flex-1 min-w-[80px] max-w-[160px]' />
       </div>
     </div>
@@ -163,9 +166,11 @@ function TimerControlsRow({
   onSelectDuration,
   onStart,
   onPause,
+  onToggleSound,
+  soundOpen = false,
 }: TimerControlsRowProps) {
   return (
-    <div className='-mx-1 mt-1 md:mt-4 flex items-center px-1 md:mx-0 md:gap-1.5 md:px-0'>
+    <div className='-mx-1 mt-1 md:mt-4 flex items-center gap-1 px-1 md:mx-0 md:gap-1.5 md:px-0'>
       <div className='flex gap-0.5 shrink-0 md:gap-1'>
         {DURATION_PRESETS_MIN.map((m) => {
           const selected = durationMin === m
@@ -193,6 +198,20 @@ function TimerControlsRow({
       >
         {formatTime(remainingMs)}
       </div>
+      {onToggleSound && (
+        <button
+          onClick={onToggleSound}
+          aria-pressed={soundOpen}
+          aria-label='Äänet'
+          className={`h-[clamp(2.25rem,10vw,2.75rem)] w-[clamp(2.25rem,10vw,2.75rem)] shrink-0 rounded-full border-2 flex items-center justify-center transition-colors ${
+            soundOpen
+              ? 'bg-[#8B2500] border-[#8B2500] text-white'
+              : 'bg-[#fffbe9] border-[#c9a96e] text-[#5a2d0c] active:bg-[#f0dbb8]'
+          }`}
+        >
+          <Volume2 size={20} />
+        </button>
+      )}
       <div className='shrink-0'>
         {isRunning ? (
           <button
@@ -331,6 +350,9 @@ export function Soittohetki() {
   const [sampleId, setSampleId] = useState<string>(SAMPLES[0].id)
   const [selectedSoundId, setSelectedSoundId] = useState<string | null>(null)
   const [volume, setVolume] = useState<number>(INITIAL_VOLUME)
+  // Mobile: the sound controls live in a popover over the pelican box (desktop shows
+  // them inline). Toggled by the speaker button on the timer row.
+  const [showSound, setShowSound] = useState(false)
 
   // Push the initial slider value into the engine once on mount so the engine
   // and the on-screen control agree before any playback starts.
@@ -487,8 +509,11 @@ export function Soittohetki() {
                   scaleKey={root}
                   mode={mode}
                   staves={1}
+                  octaves={octaves}
+                  reachUpTo={scaleDetail.reachUpTo}
+                  lowestNote={scaleDetail.lowestNote}
                   hiddenNotes={activeHiddenNotes}
-                  className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
+                  className='w-full aspect-[2/1] bg-[#fff3c9] md:aspect-4/1 md:rounded-lg'
                 />
                 <div className='mt-1 flex items-center gap-1 pl-4 pr-2 md:mt-2 md:gap-1.5 md:px-0'>
                   <MarqueeText
@@ -509,7 +534,7 @@ export function Soittohetki() {
                 <MusicCanvas
                   arpeggioNotes={arpeggioNotes}
                   staves={1}
-                  className='w-full aspect-4/1 bg-[#fff3c9] md:rounded-lg'
+                  className='w-full aspect-[2/1] bg-[#fff3c9] md:aspect-4/1 md:rounded-lg'
                 />
                 <div className='mt-1 flex items-center gap-1 pl-4 pr-2 md:mt-2 md:gap-1.5 md:px-0'>
                   <p className='min-w-0 flex-1 text-xs md:text-sm text-[#8B4513] text-center md:text-left'>
@@ -577,18 +602,45 @@ export function Soittohetki() {
                     </svg>
                   </button>
                 </div>
+
+                {/* Mobile sound popover — overlaid on the pelican box, usable while it
+                    plays. The reference tone still starts/stops with the timer's Start. */}
+                {!isDesktop && showSound && (
+                  <div className='absolute inset-x-0 bottom-1 z-20 translate-y-[6px]'>
+                    <div className='relative rounded-xs bg-[#5a6b3d] pt-[46px] pb-2 shadow-lg'>
+                      <button
+                        onClick={() => setShowSound(false)}
+                        aria-label='Sulje äänet'
+                        className='absolute right-1 top-1 z-10 flex h-8 w-8 items-center justify-center rounded-full bg-[#3a1a00] text-white active:bg-[#1f0e00]'
+                      >
+                        <X size={20} />
+                      </button>
+                      <SoundControlsRow
+                        volume={volume}
+                        onVolumeChange={handleVolumeChange}
+                        sampleId={sampleId}
+                        onSampleChange={setSampleId}
+                        soundOptions={soundOptions}
+                        selectedSoundId={selectedSoundId}
+                        onSoundClick={handleSoundClick}
+                      />
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
             <div className='justify-self-end'>
-              <SoundControlsRow
-                volume={volume}
-                onVolumeChange={handleVolumeChange}
-                sampleId={sampleId}
-                onSampleChange={setSampleId}
-                soundOptions={soundOptions}
-                selectedSoundId={selectedSoundId}
-                onSoundClick={handleSoundClick}
-              />
+              {isDesktop && (
+                <SoundControlsRow
+                  volume={volume}
+                  onVolumeChange={handleVolumeChange}
+                  sampleId={sampleId}
+                  onSampleChange={setSampleId}
+                  soundOptions={soundOptions}
+                  selectedSoundId={selectedSoundId}
+                  onSoundClick={handleSoundClick}
+                />
+              )}
               <TimerControlsRow
                 durationMin={durationMin}
                 isRunning={isRunning}
@@ -596,6 +648,8 @@ export function Soittohetki() {
                 onSelectDuration={setDurationMin}
                 onStart={handleStart}
                 onPause={pause}
+                onToggleSound={isDesktop ? undefined : () => setShowSound((v) => !v)}
+                soundOpen={showSound}
               />
             </div>
           </div>

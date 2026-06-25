@@ -27,10 +27,19 @@ export interface StaveLayout {
   height: number
   /** Number of staves: 1 = ascending only, 2 = ascending + descending */
   staves: 1 | 2
+  /**
+   * Number of vertically-stacked "systems" (full staves) the same scale wraps onto.
+   * 1 = the whole scale on one staff; 2 = the scale split at the octave boundary into
+   * a top system (notes 0–7) and a bottom system (notes 8…top). Distinct from `staves`
+   * (which is the ascending/descending mirror used by Kirkkosävellajit).
+   */
+  systems: 1 | 2
   /** Vertical distance between adjacent staff lines */
   lineSpacing: number
   /** Y-positions of the 5 staff lines for the first (upper) staff */
   staffLines: number[]
+  /** Y-positions of the 5 staff lines for the second system (only when `systems === 2`). */
+  staffLines2: number[] | null
   /** Vertical gap between the upper staff's top line and the lower staff's top line */
   staffGap: number
   staffStartX: number
@@ -55,11 +64,21 @@ export interface StaveLayout {
  * Staff geometry scales with `height` (so the staff always fills the
  * available vertical space) and note spacing scales with `width`.
  */
-export function computeLayout(options: { width: number; height: number; staves?: 1 | 2 }): StaveLayout {
-  const { width, height, staves = 2 } = options
+export function computeLayout(options: {
+  width: number
+  height: number
+  staves?: 1 | 2
+  /** Wrap a multi-octave scale onto two stacked systems (mobile). Default 1. */
+  systems?: 1 | 2
+  /** Note count of the fullest line — drives horizontal spacing. Default 8 (one octave). */
+  noteCount?: number
+}): StaveLayout {
+  const { width, height, staves = 2, systems = 1, noteCount = 8 } = options
 
   // Vertical layout
-  // - Two staves: upper at top 19%, gap 44% of height, lower below; line spacing = height/20.
+  // - Two staves (mirror): upper at top 19%, gap 44% of height, lower below.
+  // - Two systems (wrapped scale): two equal staves with a generous gap between them
+  //   so it's obvious which notes belong to which; the whole block is centered.
   // - One staff: center it in the available height; line spacing = height/8 (caps at width/20
   //   so the staff doesn't dominate wide-and-short canvases).
   // Line spacing and staff top are snapped to whole pixels so the 5 staff
@@ -69,7 +88,20 @@ export function computeLayout(options: { width: number; height: number; staves?:
   let lineSpacing: number
   let staffTop: number
   let staffGap: number
-  if (staves === 2) {
+  let staffLines2: number[] | null = null
+  if (systems === 2) {
+    // Each system is a full 4·L-tall staff; `systemGap` (9·L) separates the bottom
+    // line of system 1 from the top line of system 2. That gap is the dominant empty
+    // zone: it clears system 1's low ledger notes hanging down and system 2's high
+    // (D6/C#6 … up to the octave-4 ceiling) ledger notes rising up, and keeps the two
+    // systems visually distinct. The 13·L block (top line of system 1 → bottom line of
+    // system 2) is centered, leaving ~1.5·L margins for the outermost ledger notes.
+    lineSpacing = Math.max(2, Math.round(Math.min(height / 16, width / 24)))
+    const systemGap = 9 * lineSpacing // top line of system 1 → top line of system 2
+    staffTop = Math.round((height - (systemGap + 4 * lineSpacing)) / 2)
+    staffGap = 0
+    staffLines2 = [0, 1, 2, 3, 4].map((i) => staffTop + systemGap + i * lineSpacing)
+  } else if (staves === 2) {
     lineSpacing = Math.max(2, Math.round(height / 22))
     staffTop = Math.round(height * 0.19)
     staffGap = Math.round(height * 0.44)
@@ -84,12 +116,16 @@ export function computeLayout(options: { width: number; height: number; staves?:
   }
   const staffLines = [0, 1, 2, 3, 4].map((i) => staffTop + i * lineSpacing)
 
-  // Horizontal layout — scales with width so the same code handles 260px and 1200px
+  // Horizontal layout — scales with width so the same code handles 260px and 1200px.
+  // Spacing is based on the fullest line: a wrapped scale's first system always holds a
+  // full octave (8 notes → 7 gaps) so a short second system left-aligns and lines up
+  // under it; an unwrapped one-system scale spreads its actual `noteCount` across the width.
   const staffStartX = 5
   const staffEndX = width - 5
   const noteStartX = Math.max(40, width * 0.115)
   const endPad = Math.max(30, width * 0.06)
-  const noteSpacing = (width - noteStartX - endPad) / 7
+  const spacingGaps = systems === 2 ? 7 : Math.max(1, noteCount - 1)
+  const noteSpacing = (width - noteStartX - endPad) / spacingGaps
 
   // Symbol sizes — anchored to lineSpacing so they keep their proportion
   const clefFontSize = lineSpacing * 5
@@ -108,8 +144,10 @@ export function computeLayout(options: { width: number; height: number; staves?:
     width,
     height,
     staves,
+    systems,
     lineSpacing,
     staffLines,
+    staffLines2,
     staffGap,
     staffStartX,
     staffEndX,
@@ -156,6 +194,16 @@ export function drawStaffLines(ctx: CanvasRenderingContext2D, layout: StaveLayou
       ctx.stroke()
     }
   }
+
+  if (layout.staffLines2) {
+    for (const y of layout.staffLines2) {
+      const cy = crispY(y)
+      ctx.beginPath()
+      ctx.moveTo(layout.staffStartX, cy)
+      ctx.lineTo(layout.staffEndX, cy)
+      ctx.stroke()
+    }
+  }
 }
 
 /**
@@ -174,7 +222,9 @@ export function drawTrebleClef(ctx: CanvasRenderingContext2D, layout: StaveLayou
   const yPositions =
     layout.staves === 2
       ? [layout.staffLines[4] + baselineOffset, layout.staffLines[4] + layout.staffGap + baselineOffset]
-      : [layout.staffLines[4] + baselineOffset]
+      : layout.staffLines2
+        ? [layout.staffLines[4] + baselineOffset, layout.staffLines2[4] + baselineOffset]
+        : [layout.staffLines[4] + baselineOffset]
 
   for (const clefY of yPositions) {
     const anchorY = clefY - layout.clefFontSize * 0.8
@@ -354,50 +404,64 @@ export function renderScale(
   highlightColor: string = '#a0563f',
   basicNoteColor?: string,
   direction: ScaleDirection = 'ascending',
+  /**
+   * Precomputed, reach-aware scale sequence (from `getScaleNotes`) for multi-octave /
+   * "1+" scales. When omitted, a single ascending octave is built from `key`/`mode`
+   * (the original behaviour Kirkkosävellajit + 1-octave callers rely on).
+   */
+  precomputedNotes?: NoteWithOctave[] | null,
 ): void {
   ctx.clearRect(0, 0, layout.width, layout.height)
 
   drawStaffLines(ctx, layout)
   drawTrebleClef(ctx, layout)
 
-  const scale = getScale(key, mode)
-  const rootLetter = key.replace(/[#b].*$/, '')
-  const startOctave = SCALE_START_OCTAVE[key] ?? SCALE_START_OCTAVE[rootLetter] ?? 4
-  const ascendingNotes = assignAscendingOctaves(scale, startOctave)
-  const notes = layout.staves === 1 && direction === 'descending' ? [...ascendingNotes].reverse() : ascendingNotes
+  let ascendingNotes: NoteWithOctave[]
+  if (precomputedNotes && precomputedNotes.length > 0) {
+    ascendingNotes = precomputedNotes
+  } else {
+    const scale = getScale(key, mode)
+    const rootLetter = key.replace(/[#b].*$/, '')
+    const startOctave = SCALE_START_OCTAVE[key] ?? SCALE_START_OCTAVE[rootLetter] ?? 4
+    ascendingNotes = assignAscendingOctaves(scale, startOctave)
+  }
 
-  const upperStaffLines = layout.staffLines
-  const lowerStaffLines = layout.staffLines.map((y) => y + layout.staffGap)
-
-  const ascShift = notes[0]?.accidental ? layout.accidentalOffsetX : 0
-  notes.forEach((note, i) => {
-    const x = layout.noteStartX + ascShift + i * layout.noteSpacing
-    drawNoteAt(
-      ctx,
-      x,
-      note,
-      upperStaffLines,
-      layout,
-      opacityFor(note, hiddenNotes),
-      colorFor(note, highlightNotes, highlightColor, basicNoteColor),
-    )
-  })
-
-  if (layout.staves === 2) {
-    const reversed = [...ascendingNotes].reverse()
-    const descShift = reversed[0]?.accidental ? layout.accidentalOffsetX : 0
-    reversed.forEach((note, i) => {
-      const x = layout.noteStartX + descShift + i * layout.noteSpacing
+  const drawRow = (rowNotes: NoteWithOctave[], staffLineYs: number[]) => {
+    const shift = rowNotes[0]?.accidental ? layout.accidentalOffsetX : 0
+    rowNotes.forEach((note, i) => {
+      const x = layout.noteStartX + shift + i * layout.noteSpacing
       drawNoteAt(
         ctx,
         x,
         note,
-        lowerStaffLines,
+        staffLineYs,
         layout,
         opacityFor(note, hiddenNotes),
         colorFor(note, highlightNotes, highlightColor, basicNoteColor),
       )
     })
+  }
+
+  if (layout.staves === 2) {
+    // Ascending/descending mirror (Kirkkosävellajit): top staff up, bottom staff down.
+    drawRow(ascendingNotes, layout.staffLines)
+    drawRow(
+      [...ascendingNotes].reverse(),
+      layout.staffLines.map((y) => y + layout.staffGap),
+    )
+    return
+  }
+
+  // Single-staff scale. The playing-order sequence reverses when descending so both
+  // wrapped systems read in playing order (generalises the old one-octave reverse).
+  const ordered = direction === 'descending' ? [...ascendingNotes].reverse() : ascendingNotes
+
+  if (layout.systems === 2 && layout.staffLines2) {
+    // Wrap at the octave boundary: system 1 = notes 0–7, system 2 = notes 8…top.
+    drawRow(ordered.slice(0, 7), layout.staffLines)
+    drawRow(ordered.slice(7), layout.staffLines2)
+  } else {
+    drawRow(ordered, layout.staffLines)
   }
 }
 

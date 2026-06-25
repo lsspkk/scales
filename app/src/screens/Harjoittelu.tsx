@@ -245,6 +245,7 @@ function PracticeBody() {
                   mode: item.scale.mode,
                   octaves: String(item.scale.octaves),
                   level: String(item.scale.level),
+                  low: item.scale.lowestNote,
                   anim: pickRandomAnimationVariant(),
                 })
                 navigateToSoittohetki(`/soittohetki?${params.toString()}`)
@@ -255,7 +256,10 @@ function PracticeBody() {
                   mode: item.scale.mode,
                   octaves: String(item.scale.octaves),
                   level: String(item.scale.level),
+                  low: item.scale.lowestNote,
                 })
+                // "1+" reach-limited scales walk/draw up to their reachable top note.
+                if (item.scale.reachUpTo) params.set('reachUpTo', item.scale.reachUpTo)
                 navigateToSoittohetki(`/tahtiasteikko?${params.toString()}`)
               }}
               onPlayGame={() => {
@@ -264,6 +268,7 @@ function PracticeBody() {
                   mode: item.scale.mode,
                   octaves: String(item.scale.octaves),
                   level: String(item.scale.level),
+                  low: item.scale.lowestNote,
                 })
                 // "1+" reach-limited scales cap the necklace's ascending run at their top note.
                 if (item.scale.reachUpTo) params.set('reachUpTo', item.scale.reachUpTo)
